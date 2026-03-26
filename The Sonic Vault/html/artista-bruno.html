@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>THE SONIC VAULT | Bruno Mars</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <a href="../index.html" class="logo">THE SONIC <span class="accent">VAULT</span></a>
+        <nav>
+    <a href="../index.html">Inicio</a>
+    <a href="artistas.html">Artistas</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="beat-it.html">Beat It</a>
+    <a href="#" id="cart-icon" onclick="toggleCart()" style="color: var(--accent-color); margin-left: 20px; cursor: pointer;">
+        <i class="fa-solid fa-cart-shopping"></i> <span id="cart-count">0</span>
+    </a>
+</nav>
+    </header>
+
+    <section class="artist-hero">
+        <div class="artist-hero-img">
+            <img src="https://i.pinimg.com/736x/20/0b/1a/200b1ad6a115acb72f71fe39f63fffa4.jpg" alt="Bruno Mars">
+        </div>
+        <div class="artist-bio">
+            <h1>Bruno <br>Mars</h1>
+            <h2>24K Funk & Smooth Soul</h2>
+            <p>Conocido por sus actuaciones electrizantes y su impecable estilo retro, Bruno Mars es uno de los artistas más exitosos de su generación. Tras una década desde su último proyecto en solitario, en 2026 regresó triunfalmente con <b>"The Romantic"</b>, un álbum que fusiona influencias latinas, soul clásico y un romanticismo inigualable. Con éxitos recientes que han roto récords mundiales, su musicalidad lo consolida como el rey indiscutible de la pista de baile moderna.</p>
+            <a href="#discografia" class="btn" style="border: 1px solid #00f2ff; padding: 10px 25px; color: #00f2ff; text-decoration: none; text-transform: uppercase; font-weight: bold;">Ver Catálogo</a>
+        </div>
+    </section>
+
+    <section class="catalog-section" id="discografia">
+        <div class="section-header">
+            <h2>Cajas de Vinilo <span class="accent">Oficiales</span></h2>
+            <div class="controls">
+                <button onclick="scrollGrid('bruno-vinyls', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="scrollGrid('bruno-vinyls', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        
+        <div class="grid-wrapper" id="bruno-vinyls">
+            <div class="card">
+                <div class="card-img"><img src="https://i.scdn.co/image/ab67616d0000b2731cc6f24606517f854014ca69" alt="The Romantic"></div>
+                <div class="card-body">
+                    <h3>The Romantic (2026)</h3>
+                    <p>Webstore Exclusive - Velvet Sleeve</p>
+                    <div class="card-footer"><span class="price">$49.98</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+             <div class="card">
+                <div class="card-img"><img src="https://akamai.sscdn.co/letras/360x360/albuns/7/f/e/b/1190821636713923.jpg" alt="An Evening With Silk Sonic"></div>
+                <div class="card-body">
+                    <h3>An Evening With SS (2021)</h3>
+                    <p>Webstore Exclusive - Velvet Sleeve</p>
+                    <div class="card-footer"><span class="price">$32.90</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/2/2b/Bruno_Mars_-_24K_Magic_%28Official_Album_Cover%29.png" alt="24K Magic"></div>
+                <div class="card-body">
+                    <h3>24K Magic (2016)</h3>
+                    <p>12" LP - Gold Edition</p>
+                    <div class="card-footer"><span class="price">$50.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://i.scdn.co/image/ab67616d0000b273926f43e7cce571e62720fd46" alt="Unorthodox Jukebox"></div>
+                <div class="card-body">
+                    <h3>Unorthodox Jukebox (2012)</h3>
+                    <p>12" LP - Red Vinyl</p>
+                    <div class="card-footer"><span class="price">$42.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/e/eb/Bruno_Mars_-_Doo-Wops_%26_Hooligans.png" alt="Doo-Wops & Hooligans"></div>
+                <div class="card-body">
+                    <h3>Doo-Wops & Hooligans (2010)</h3>
+                    <p>12" LP - Classic Yellow</p>
+                    <div class="card-footer"><span class="price">$38.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <div class="section-header"><h2>Merch <span class="accent">Exclusiva</span></h2></div>
+        <div class="grid-wrapper">
+            <div class="card">
+                <div class="card-img"><img src="https://store.brunomars.com/cdn/shop/files/tee_US_grande.png?v=1767820396"></div>
+                <div class="card-body"><h3>The Romantic T-Shirt</h3><p>Algodón Premium - White</p><span class="price">$50.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://alternaloud.com/cdn/shop/files/MKP1-BM24kMagic.png?v=1719424096"></div>
+                <div class="card-body"><h3>24K Magic Hoodie</h3><p>Hoodie Negra</p><span class="price">$85.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://i.etsystatic.com/62362544/r/il/6cb961/7738833401/il_300x300.7738833401_c99w.jpg"></div>
+                <div class="card-body"><h3>Silk Sonic T-Shirt</h3><p>Camiseta Negra</p><span class="price">$35.00</span></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="../script.js"></script>
+</body>
+</html>

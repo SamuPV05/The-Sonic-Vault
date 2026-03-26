@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>THE SONIC VAULT | Beat It</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <a href="../index.html" class="logo">THE SONIC <span class="accent">VAULT</span></a>
+        <nav>
+    <a href="../index.html">Inicio</a>
+    <a href="artistas.html">Artistas</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="beat-it.html">Beat It</a>
+    <a href="#" id="cart-icon" onclick="toggleCart()" style="color: var(--accent-color); margin-left: 20px; cursor: pointer;">
+        <i class="fa-solid fa-cart-shopping"></i> <span id="cart-count">0</span>
+    </a>
+</nav>
+    </header>
+
+    <section class="catalog-section">
+        <div class="section-header" style="justify-content: center; text-align: center; border:none;">
+            <h2><span class="accent">Beat It</span> Studio</h2>
+            <p style="color:#888; font-size:1rem; margin-top: 10px;">Crea tus propios ritmos. [BETA V0.1]</p>
+        </div>
+
+        <div class="beat-studio">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #222; padding-bottom: 10px;">
+                <span style="color: var(--accent-color); font-weight: bold;">BPM: 120</span>
+                <span>KIT: TR-808 Classic</span>
+            </div>
+            
+            <div class="mpc-grid">
+                <div class="pad">KICK</div>
+                <div class="pad">SNARE</div>
+                <div class="pad">HI-HAT C</div>
+                <div class="pad">HI-HAT O</div>
+                
+                <div class="pad">TOM 1</div>
+                <div class="pad">TOM 2</div>
+                <div class="pad">CLAP</div>
+                <div class="pad">CRASH</div>
+                
+                <div class="pad">BASS C</div>
+                <div class="pad">BASS D</div>
+                <div class="pad">VOCAL 1</div>
+                <div class="pad">VOCAL 2</div>
+
+                <div class="pad">FX 1</div>
+                <div class="pad">FX 2</div>
+                <div class="pad">SYNTH A</div>
+                <div class="pad">SYNTH B</div>
+            </div>
+
+            <div class="studio-controls">
+                <button class="play-btn">▶ Play Sequence</button>
+                <span style="color: #666; font-size: 0.8rem; align-self: center;">Próximamente funcional...</span>
+            </div>
+        </div>
+    </section>
+
+    <script src="../script.js"></script>
+</body>
+</html>

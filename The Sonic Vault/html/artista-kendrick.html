@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>THE SONIC VAULT | Kendrick Lamar</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <a href="../index.html" class="logo">THE SONIC <span class="accent">VAULT</span></a>
+        <nav>
+    <a href="../index.html">Inicio</a>
+    <a href="artistas.html">Artistas</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="beat-it.html">Beat It</a>
+    <a href="#" id="cart-icon" onclick="toggleCart()" style="color: var(--accent-color); margin-left: 20px; cursor: pointer;">
+        <i class="fa-solid fa-cart-shopping"></i> <span id="cart-count">0</span>
+    </a>
+</nav>
+    </header>
+
+    <section class="artist-hero">
+        <div class="artist-hero-img">
+            <img src="https://people.com/thmb/i6c3G3AXGNSjcGGFQH1qT1txIOk=/4000x0/filters:no_upscale():max_bytes(150000):strip_icc():focal(739x252:741x254)/kendrick-lamar-super-bowl-lix-halftime-show-new-orleans-021025-d475390879514d9bbcc5f21f79814ecb.jpg" alt="Kendrick Lamar">
+        </div>
+        <div class="artist-bio">
+            <h1>Kendrick <br>Lamar</h1>
+            <h2>Pulitzer Rap & Poesía</h2>
+            <p>Criado en Compton, California, Kendrick Lamar es considerado uno de los raperos más influyentes de todos los tiempos. Con una narrativa compleja, crítica social aguda y producciones que mezclan jazz, funk y soul con hip-hop, Lamar ha trascendido el género. Es el primer músico fuera de la música clásica o el jazz en ganar el Premio Pulitzer de Música, demostrando que el rap es una forma elevada de poesía contemporánea.</p>
+            <a href="#discografia" class="btn" style="border: 1px solid #00f2ff; padding: 10px 25px; color: #00f2ff; text-decoration: none; text-transform: uppercase; font-weight: bold;">Ver Catálogo</a>
+        </div>
+    </section>
+
+    <section class="catalog-section" id="discografia">
+        <div class="section-header">
+            <h2>Cajas de Vinilo <span class="accent">Oficiales</span></h2>
+            <div class="controls">
+                <button onclick="scrollGrid('kendrick-vinyls', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="scrollGrid('kendrick-vinyls', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        
+        <div class="grid-wrapper" id="kendrick-vinyls">
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/5/51/Kendrick_Lamar_-_DAMN.png" alt="DAMN."></div>
+                <div class="card-body">
+                    <h3>DAMN. (2017)</h3>
+                    <p>2xLP - Red Vinyl Edition</p>
+                    <div class="card-footer"><span class="price">$48.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/f/f6/Kendrick_Lamar_-_To_Pimp_a_Butterfly.png" alt="To Pimp a Butterfly"></div>
+                <div class="card-body">
+                    <h3>To Pimp a Butterfly (2015)</h3>
+                    <p>2xLP - Classic Black</p>
+                    <div class="card-footer"><span class="price">$55.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/8/80/Kendrick_Lamar_-_Good_Kid%2C_M.A.A.D_City.jpg" alt="Good Kid, M.A.A.D City"></div>
+                <div class="card-body">
+                    <h3>Good Kid, M.A.A.D City (2012)</h3>
+                    <p>2xLP - Clear Vinyl</p>
+                    <div class="card-footer"><span class="price">$45.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <div class="section-header"><h2>Merch <span class="accent">Exclusiva</span></h2></div>
+        <div class="grid-wrapper">
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>TDE Heavy Hoodie</h3><p>Oversized Fit</p><span class="price">$75.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>Compton Tour Tee</h3><p>Washed Black Cotton</p><span class="price">$40.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>DAMN. Beanie</h3><p>Tejido de Invierno</p><span class="price">$25.00</span></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="../script.js"></script>
+</body>
+</html>

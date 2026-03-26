@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE SONIC VAULT | Inicio</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<div id="cart-sidebar" class="cart-sidebar">
+    <div class="cart-header">
+        <h2>Tu <span class="accent">Bóveda</span></h2>
+        <button onclick="toggleCart()" class="close-cart"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="cart-items" id="cart-items">
+        </div>
+    <div class="cart-footer">
+        <div class="cart-total">Total: $<span id="cart-total-price">0.00</span></div>
+        <button class="btn-checkout">Proceder al Pago</button>
+    </div>
+</div>
+<body>
+
+    <header>
+        <a href="index.html" class="logo">THE SONIC <span class="accent">VAULT</span></a>
+      <nav>
+    <a href="index.html">Inicio</a>
+    <a href="html/artistas.html">Artistas</a>
+    <a href="html/catalogo.html">Catálogo</a>
+    <a href="html/beat-it.html">Beat It</a>
+    <a href="html/beat-it.html">Echo-Safe</a>
+    <a href="#" id="cart-icon" onclick="toggleCart()" style="color: var(--accent-color); margin-left: 20px; cursor: pointer;">
+        <i class="fa-solid fa-cart-shopping"></i> <span id="cart-count">0</span>
+    </a>
+</nav>
+    </header>
+
+    <section class="hero">
+        <h2>El Sonido <br><span class="accent">Es Tuyo</span></h2>
+        <div class="vinyl-container">
+            <div class="vinyl"><div class="vinyl-label">VAULT</div></div>
+            <div class="vinyl-hole"></div>
+        </div>
+        <p style="letter-spacing: 3px; text-transform: uppercase; opacity: 0.6;">Conecta. Escucha. Crea.</p>
+    </section>
+
+    <section class="catalog-section">
+        <div class="section-header">
+            <h2>Recomendaciones <span class="accent">Sónicas</span></h2>
+            <div class="controls">
+                <button onclick="scrollGrid('rec-grid', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="scrollGrid('rec-grid', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <div class="grid-wrapper" id="rec-grid">
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1619983081563-430f63602796?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>Midnight Groove</h3><p>12" LP</p><span class="price">$35.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>Sonic Tee</h3><p>Merch Oficial</p><span class="price">$42.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRBhv0CErmyFQmgknlixX3UrAlQ3IbHh3TtBT-VTkbvO7MoQ1iqDQf2jFRWrtHxoQsjn9HKQNIBjW2-mNa-ldVKOO2Zv1F1RkXGsh1Hd5bjLKpuoGIDQEejwus"></div>
+                <div class="card-body"><h3> Unisex Michael Jackson T-Shirt</h3><p>Camiseta</p><span class="price">$18.00</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="register-section">
+        <div class="form-container">
+            <h2>Únete a la <span class="accent">Bóveda</span></h2>
+            <p style="color: #888; font-size: 0.8rem; margin-bottom: 20px;">Regístrate para comprar y usar Beat It Studio.</p>
+            <form action="#">
+                <div class="input-group">
+                    <label>Nombre de Usuario</label>
+                    <input type="text" placeholder="Ej: CyberKid99" required>
+                </div>
+                <div class="input-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" placeholder="tu@correo.com" required>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-submit">Entrar al Sistema</button>
+            </form>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>

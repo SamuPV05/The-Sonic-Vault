@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>THE SONIC VAULT | Billie Eilish</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <a href="../index.html" class="logo">THE SONIC <span class="accent">VAULT</span></a>
+        <nav>
+    <a href="../index.html">Inicio</a>
+    <a href="artistas.html">Artistas</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="beat-it.html">Beat It</a>
+    <a href="#" id="cart-icon" onclick="toggleCart()" style="color: var(--accent-color); margin-left: 20px; cursor: pointer;">
+        <i class="fa-solid fa-cart-shopping"></i> <span id="cart-count">0</span>
+    </a>
+</nav>
+    </header>
+
+    <section class="artist-hero">
+        <div class="artist-hero-img">
+            <img src="https://akamai.sscdn.co/uploadfile/letras/fotos/c/3/5/3/c3536a6c436d0dd65a500dfa8b6bd7fb.jpg" alt="Billie Eilish">
+        </div>
+        <div class="artist-bio">
+            <h1>Billie <br>Eilish</h1>
+            <h2>Dark Alt-Pop</h2>
+            <p>Billie Eilish redefinió el pop contemporáneo con su álbum debut grabado íntegramente en la habitación de su hermano Finneas. Con una estética visual oscura, letras vulnerables y una voz susurrada inconfundible, Eilish se convirtió en la persona más joven y la primera mujer en ganar las cuatro categorías principales de los Grammy en un mismo año. Su música es un viaje melancólico y electrónico que resuena con toda una generación.</p>
+            <a href="#discografia" class="btn" style="border: 1px solid #00f2ff; padding: 10px 25px; color: #00f2ff; text-decoration: none; text-transform: uppercase; font-weight: bold;">Ver Catálogo</a>
+        </div>
+    </section>
+
+    <section class="catalog-section" id="discografia">
+        <div class="section-header">
+            <h2>Cajas de Vinilo <span class="accent">Oficiales</span></h2>
+            <div class="controls">
+                <button onclick="scrollGrid('billie-vinyls', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="scrollGrid('billie-vinyls', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        
+        <div class="grid-wrapper" id="billie-vinyls">
+            <div class="card">
+                <div class="card-img"><img src="https://cafevinilo.co/wp-content/uploads/IMG_9088.jpg" alt="Hit Me Hard and Soft"></div>
+                <div class="card-body">
+                    <h3>Hit Me Hard and Soft (2024)</h3>
+                    <p>12" LP - Eco-Mix Blue</p>
+                    <div class="card-footer"><span class="price">$45.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://akamai.sscdn.co/letras/360x360/albuns/9/c/9/1/2190341713277478.jpg" alt="Happier Than Ever"></div>
+                <div class="card-body">
+                    <h3>Happier Than Ever (2021)</h3>
+                    <p>2xLP - Pale Yellow Vinyl</p>
+                    <div class="card-footer"><span class="price">$50.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://media.pitchfork.com/photos/63b2f94e198393ca23dbcb83/master/pass/Billie-Eilish.jpg" alt="When We All Fall Asleep..."></div>
+                <div class="card-body">
+                    <h3>When We All Fall Asleep... (2019)</h3>
+                    <p>12" LP - Glow in the Dark</p>
+                    <div class="card-footer"><span class="price">$42.00</span><button class="add-btn">Añadir +</button></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <div class="section-header"><h2>Merch <span class="accent">Exclusiva</span></h2></div>
+        <div class="grid-wrapper">
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>Blohsh Neon Hoodie</h3><p>Extreme Oversized</p><span class="price">$80.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>Spider Graphic Tee</h3><p>Heavyweight Black</p><span class="price">$45.00</span></div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=80"></div>
+                <div class="card-body"><h3>Green Logo Beanie</h3><p>Knit Hat</p><span class="price">$30.00</span></div>
+            </div>
+        </div>
+    </section>
+
+    <script src="../script.js"></script>
+</body>
+</html>

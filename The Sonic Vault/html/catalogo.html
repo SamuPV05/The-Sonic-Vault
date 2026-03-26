@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>THE SONIC VAULT | Catálogo</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <a href="../index.html" class="logo">THE SONIC <span class="accent">VAULT</span></a>
+        <nav>
+    <a href="../index.html">Inicio</a>
+    <a href="artistas.html">Artistas</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="beat-it.html">Beat It</a>
+    <a href="#" id="cart-icon" onclick="toggleCart()" style="color: var(--accent-color); margin-left: 20px; cursor: pointer;">
+        <i class="fa-solid fa-cart-shopping"></i> <span id="cart-count">0</span>
+    </a>
+</nav>
+    </header>
+
+    <section class="catalog-section">
+        <div class="section-header">
+            <h2>Todos los <span class="accent">Vinilos</span></h2>
+            <div class="controls">
+                <button onclick="scrollGrid('vinyl-full', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="scrollGrid('vinyl-full', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <div class="grid-wrapper" id="vinyl-full">
+            <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1619983081563-430f63602796?auto=format&fit=crop&w=400&q=80"></div><div class="card-body"><h3>Thriller Edición</h3><p>MJ - 12" LP</p><span class="price">$55.00</span></div></div>
+            <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1603048588665-791ca8aea617?auto=format&fit=crop&w=400&q=80"></div><div class="card-body"><h3>24K Magic</h3><p>Bruno Mars - LP</p><span class="price">$45.00</span></div></div>
+            <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1539375665275-f9ad415ef9ac?auto=format&fit=crop&w=400&q=80"></div><div class="card-body"><h3>DAMN.</h3><p>Kendrick Lamar</p><span class="price">$40.00</span></div></div>
+            <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1459749411177-042180ce6742?auto=format&fit=crop&w=400&q=80"></div><div class="card-body"><h3>Hit Me Hard</h3><p>Billie Eilish - Blue LP</p><span class="price">$48.00</span></div></div>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <div class="section-header">
+            <h2>Ropa y <span class="accent">Merch</span></h2>
+            <div class="controls">
+                <button onclick="scrollGrid('merch-full', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="scrollGrid('merch-full', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        <div class="grid-wrapper" id="merch-full">
+            <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=400&q=80"></div><div class="card-body"><h3>Kendrick Tour Tee</h3><p>Oversized Black</p><span class="price">$42.00</span></div></div>
+            <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=400&q=80"></div><div class="card-body"><h3>Billie Neon Hoodie</h3><p>Green/Blue Embroidery</p><span class="price">$65.00</span></div></div>
+            <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=80"></div><div class="card-body"><h3>Bruno Silk Shirt</h3><p>Estilo Vintage</p><span class="price">$85.00</span></div></div>
+        </div>
+    </section>
+
+    <script src="../script.js"></script>
+</body>
+</html>

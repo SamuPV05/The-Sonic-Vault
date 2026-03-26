@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>THE SONIC VAULT | Michael Jackson</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <a href="../index.html" class="logo">THE SONIC <span class="accent">VAULT</span></a>
+        <nav>
+    <a href="../index.html">Inicio</a>
+    <a href="artistas.html">Artistas</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="beat-it.html">Beat It</a>
+    <a href="#" id="cart-icon" onclick="toggleCart()" style="color: var(--accent-color); margin-left: 20px; cursor: pointer;">
+        <i class="fa-solid fa-cart-shopping"></i> <span id="cart-count">0</span>
+    </a>
+</nav>
+    </header>
+
+    <section class="artist-hero">
+        <div class="artist-hero-img">
+            <img src="https://i8.amplience.net/i/naras/michael-jackson_MI0003641483-MN0000467203" alt="Michael Jackson">
+        </div>
+        <div class="artist-bio">
+            <h1>Michael <br>Jackson</h1>
+            <h2>The King of Pop</h2>
+            <p>Reconocido como el "Rey del Pop", Michael Jackson es una de las figuras culturales más significativas del siglo XX. A través de presentaciones en el escenario y en videos, popularizó técnicas de baile complicadas como el moonwalk. Su sonido y estilo han influido a artistas de varios géneros, y sus contribuciones a la música, la danza y la moda lo convirtieron en una figura global inigualable.</p>
+            <a href="#discografia" class="btn" style="border: 1px solid #00f2ff; padding: 10px 25px; color: #00f2ff; text-decoration: none; text-transform: uppercase; font-weight: bold;">Ver Catálogo</a>
+        </div>
+    </section>
+
+    <section class="catalog-section" id="discografia">
+        <div class="section-header">
+            <h2>Cajas de Vinilo <span class="accent">Oficiales</span></h2>
+            <div class="controls">
+                <button onclick="scrollGrid('mj-vinyls', -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <button onclick="scrollGrid('mj-vinyls', 1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+        
+        <div class="grid-wrapper" id="mj-vinyls">
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/5/55/Michael_Jackson_-_Thriller.png" alt="Thriller"></div>
+                <div class="card-body">
+                    <h3>Thriller (1982)</h3>
+                    <p>12" LP - Edición Aniversario</p>
+                    <div class="card-footer">
+                        <span class="price">$55.00</span>
+                        <button class="add-btn">Añadir +</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/5/51/Michael_Jackson_-_Bad.png" alt="Bad"></div>
+                <div class="card-body">
+                    <h3>Bad (1987)</h3>
+                    <p>12" LP - Remasterizado</p>
+                    <div class="card-footer">
+                        <span class="price">$45.00</span>
+                        <button class="add-btn">Añadir +</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://upload.wikimedia.org/wikipedia/en/f/f6/Off_the_wall.jpg" alt="Off the Wall"></div>
+                <div class="card-body">
+                    <h3>Off the Wall (1979)</h3>
+                    <p>12" LP - Classic Black</p>
+                    <div class="card-footer">
+                        <span class="price">$40.00</span>
+                        <button class="add-btn">Añadir +</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="catalog-section">
+        <div class="section-header">
+            <h2>Merch <span class="accent">Exclusiva</span></h2>
+        </div>
+        <div class="grid-wrapper">
+            <div class="card">
+                <div class="card-img"><img src="https://store-uk.michaeljackson.com/cdn/shop/files/Y3CTMJ077.png?v=1709649659"></div>
+                <div class="card-body">
+                    <h3>Dangerous Tour Tee</h3>
+                    <p>Algodón Premium - Vintage Wash</p>
+                    <span class="price">$45.00</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://image-cdn.neatoshop.com/styleimg/87593/hoodies/black/default/418951-20;1558833446y.jpg"></div>
+                <div class="card-body">
+                    <h3>Smooth Criminal Hoodie</h3>
+                    <p>Bordado Frontal - Heavyweight</p>
+                    <span class="price">$70.00</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img"><img src="https://i.etsystatic.com/61147229/r/il/cc057c/7513755941/il_570xN.7513755941_bbas.jpg"></div>
+                <div class="card-body">
+                    <h3>MJ Signature Cap</h3>
+                    <p>Gorra Ajustable - Color Roja</p>
+                    <span class="price">$28.00</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="../script.js"></script>
+</body>
+</html>
