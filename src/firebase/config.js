@@ -5,12 +5,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Tus llaves maestras (sacadas de tu consola)
 const firebaseConfig = {
-  apiKey: "AIzaSyCL9J9VVoPjeGhY1siarDsj7MxGb9NvcsI",
-  authDomain: "the-sonic-vault.firebaseapp.com",
-  projectId: "the-sonic-vault",
-  storageBucket: "the-sonic-vault.firebasestorage.app",
-  messagingSenderId: "360741332062",
-  appId: "1:360741332062:web:a83935fd7f697bdf15c0cf"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Inicializamos la aplicación con tus llaves
