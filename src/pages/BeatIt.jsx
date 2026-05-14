@@ -212,7 +212,7 @@ export default function BeatIt() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', background: '#0a0a0a', padding: '10px 20px', borderRadius: '8px', border: '1px solid #222' }}>
+         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1.5rem', alignItems: 'center', background: '#0a0a0a', padding: '10px 20px', borderRadius: '8px', border: '1px solid #222' }}>
             <select value={currentKit} onChange={(e) => setCurrentKit(e.target.value)} style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #444', padding: '8px', borderRadius: '4px', outline: 'none', cursor: 'pointer' }}>
               {Object.keys(SOUND_KITS).map(kit => <option key={kit} value={kit}>{kit}</option>)}
             </select>
