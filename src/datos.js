@@ -65,7 +65,7 @@ export const DATA_ARTISTAS = {
             titulo: "La Inmersión en los 90s", 
             descripcion: "Con '24K Magic', Bruno no hizo un homenaje, construyó una máquina del tiempo. Sintetizadores pesados y cajas de ritmos Roland lo coronaron como el rey de la pista.", 
             img: "https://cdn-images.dzcdn.net/images/cover/012b27906b430a37ec1d8f793d5c4fa6/0x1900-000000-80-0-0.jpg",
-            stems: [ { titulo: "24K Magic", tieneDesensamblador: true, rutaStems: "/stems/24k-magic" }, "Chunky", "Perm", "That's What I Like", "Versace on the Floor", "Straight up & Down", "Calling All My Lovelies", "Finesse", "Too Good to Say Goodbay"]
+            stems: ["24K Magic", "Chunky", "Perm", "That's What I Like", "Versace on the Floor", "Straight up & Down", "Calling All My Lovelies", "Finesse", "Too Good to Say Goodbay"]
         },
         { 
             año: "2021", 
@@ -106,19 +106,22 @@ export const DATA_ARTISTAS = {
             año: "2015", 
             titulo: "La Obra Maestra del Jazz-Rap", 
             descripcion: "'To Pimp a Butterfly' rompió todas las reglas comerciales. Una colisión caótica de free-jazz, funk de los 70s y poesía hablada que se convirtió en la banda sonora de los movimientos por los derechos civiles modernos.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/f/f6/Kendrick_Lamar_-_To_Pimp_a_Butterfly.png" 
+            img: "https://upload.wikimedia.org/wikipedia/en/f/f6/Kendrick_Lamar_-_To_Pimp_a_Butterfly.png",
+            stems: ["Wesley's Theory", "Institutionalized", "These Walls", "Mortal Man"]
         },
         { 
             año: "2017", 
             titulo: "La Letra Escarlata", 
             descripcion: "'DAMN.' fue un golpe a la mandíbula. Beats pesados, barras afiladas y una introspección sobre la religión y el destino que le valió el Premio Pulitzer de Música, haciendo historia en el género.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/5/51/Kendrick_Lamar_-_Damn.png" 
+            img: "https://upload.wikimedia.org/wikipedia/en/5/51/Kendrick_Lamar_-_Damn.png" ,
+            stems: ["BLOOD.", "DNA.", "LOYALTY.", "HUMBLE.", "FEAR.", "DUCKWORTH."]
         },
         { 
             año: "2022", 
             titulo: "La Terapia Cruda", 
             descripcion: "Tras un largo silencio, 'Mr. Morale & the Big Steppers' desnudó la psique del artista. Un álbum doble y teatral donde Kendrick renuncia a su rol de 'salvador' para enfrentar el trauma generacional.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/1/18/Kendrick_Lamar_-_Mr._Morale_%26_the_Big_Steppers.png" 
+            img: "https://cdn-images.dzcdn.net/images/cover/412361ce41f0bd2595978dbf0e035ad3/1900x1900-000000-80-0-0.jpg",
+            stems: ["United In Grief", "N95", "Worldwide Steppers", "Die Hard", "Savior", "Mr. Morale", "Mirror"]
         }
       ],
       ecos: [
@@ -136,25 +139,29 @@ export const DATA_ARTISTAS = {
             año: "2017", 
             titulo: "El Ascenso Viral", 
             descripcion: "Con el EP 'Don't Smile at Me', Billie pasó de ser un secreto de SoundCloud a un fenómeno global. Letras adolescentes con una madurez perturbadora y bases minimalistas que sentaron las bases de su imperio.", 
-            img: "https://cdn-images.dzcdn.net/images/cover/c6e5ffd676146c447a4a81819c5d29ae/0x1900-000000-80-0-0.jpg" 
+            img: "https://cdn-images.dzcdn.net/images/cover/c6e5ffd676146c447a4a81819c5d29ae/0x1900-000000-80-0-0.jpg",
+            stems: ["COPYCAT", "my boy", "watch", "ocean eyes", "&burn"] 
         },
         { 
             año: "2019", 
             titulo: "La Pesadilla Pop", 
             descripcion: "'When We All Fall Asleep, Where Do We Go?' lo cambió todo. Un disco de pop que suena a película de terror, lleno de bajos distorsionados y voces superpuestas que barrió con los premios Grammy.", 
-            img: "https://media.pitchfork.com/photos/63b2f94e198393ca23dbcb83/master/pass/Billie-Eilish.jpg" 
+            img: "https://media.pitchfork.com/photos/63b2f94e198393ca23dbcb83/master/pass/Billie-Eilish.jpg",
+            stems: ["bad guy", "you should see me in a crown", "all the good girls go to hell", "my strange addiction", "bury a friend"]
         },
         { 
             año: "2021", 
             titulo: "La Melancolía Dorada", 
             descripcion: "En 'Happier Than Ever', Billie abandonó el verde neón por un rubio clásico, entregando un álbum que reflexiona sobre el peso de la fama y el abuso, mezclando bossa nova, jazz y pop-punk.", 
-            img: "https://akamai.sscdn.co/letras/360x360/albuns/9/c/9/1/2190341713277478.jpg" 
+            img: "https://akamai.sscdn.co/letras/360x360/albuns/9/c/9/1/2190341713277478.jpg",
+            stems: ["Getting Older", "my future", "NDA", "Therefore I Am", "Happier Than Ever"]
         },
         { 
             año: "2024", 
             titulo: "El Retorno Sintético", 
             descripcion: "'Hit Me Hard and Soft' es un viaje de regreso a la oscuridad, pero con una producción mucho más rica. Cuerdas cinematográficas chocan contra sintetizadores agresivos en su trabajo más maduro hasta la fecha.", 
-            img: "https://storage.highresaudio.com/2024/05/17/tfaizq-hitmeharda-preview-m3.jpg" 
+            img: "https://storage.highresaudio.com/2024/05/17/tfaizq-hitmeharda-preview-m3.jpg",
+            stems: ["SKINNY", "LUNCH", "BIRDS OF A FEATHER", "L'AMOUR DE MA VIE", "BLUE"]
         }
       ],
       ecos: [
@@ -180,7 +187,8 @@ export const DATA_ARTISTAS = {
             año: "2014", 
             titulo: "El Descenso al Rock", 
             descripcion: "Producido por Dan Auerbach, 'Ultraviolence' abandonó el pop pulido por guitarras saturadas, jazz oscuro y una atmósfera densa de la Costa Oeste de los años 70.", 
-            img: "https://i.scdn.co/image/ab67616d0000b2731624590458126fc8b8c64c2f" 
+            img: "https://i.scdn.co/image/ab67616d0000b2731624590458126fc8b8c64c2f",
+            stems: ["Cruel World", "Ultraviolence", "West Coast", "Sad Girl", "Florida Kilos"] 
         },
         { 
             año: "2019", 
@@ -193,7 +201,8 @@ export const DATA_ARTISTAS = {
             año: "2023", 
             titulo: "La Introspección", 
             descripcion: "En 'Did you know that there's a tunnel under Ocean Blvd', Lana explora su linaje y la memoria con arreglos de piano desnudos, coros gospel y un tono casi conversacional.", 
-            img: "https://i.scdn.co/image/ab67616d0000b27359ae8cf65d498afdd5585634" 
+            img: "https://i.scdn.co/image/ab67616d0000b27359ae8cf65d498afdd5585634",
+            stems: ["The Grants", "Sweet", "A&W", "Fingertips", "Fishtail", "Peppers"]
         }
       ],
       ecos: [
@@ -226,14 +235,15 @@ export const DATA_ARTISTAS = {
             año: "2010", 
             titulo: "El Renacer", 
             descripcion: "En 'Recovery', Eminem abandona los alter egos para enfrentar sus demonios internos y la superación de sus adicciones, entregando himnos de estadio llenos de fuerza, resiliencia y redención.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/6/60/Recovery_Album_Cover.jpg" 
+            img: "https://upload.wikimedia.org/wikipedia/en/6/60/Recovery_Album_Cover.jpg",
+            stems: ["Cold Wind Blows", "On Fire", "Not Afraid", "Seduction", "Love The Way You Lie"]
         },
         { 
             año: "2020", 
             titulo: "El Asesino Lírico", 
             descripcion: "'Music to Be Murdered By', inspirado en el suspenso de Alfred Hitchcock, consolida su estatus de leyenda veterana, demostrando velocidades y esquemas de rimas inalcanzables para la nueva escuela.", 
             img: "https://upload.wikimedia.org/wikipedia/en/8/80/Eminem_-_Music_to_Be_Murdered_By.png",
-            stems: ["Godzilla", "Darkness", "Those Kinda Nights"]
+            stems: ["Godzilla", "Darkness", "Those Kinda Nights", "Lock It Up", "Farewell", "No Regrets"]
         }
       ],
       ecos: [
@@ -258,7 +268,8 @@ export const DATA_ARTISTAS = {
             año: "2012", 
             titulo: "El Pop Imparable", 
             descripcion: "'Unapologetic' capturó el caos y la intensidad de su vida pública en ese momento. Una mezcla cruda de dubstep, EDM y baladas de R&B que demostró su versatilidad.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/9/9b/Unapologetic_%28Rihanna_album_-_cover_art%29.png" 
+            img: "https://cdn-images.dzcdn.net/images/cover/07c1a0032b0333a38b65eebe65b1ef30/0x1900-000000-80-0-0.jpg",
+            stems: ["Diamonds", "Pour It Up", "Jump", "No Love Allowed"] 
         },
         { 
             año: "2016", 
@@ -289,14 +300,15 @@ export const DATA_ARTISTAS = {
             año: "1999", 
             titulo: "El Regreso del Rey", 
             descripcion: "Con '2001', Dre actualizó su sonido para el nuevo milenio. Beats cinematográficos, pianos icónicos y una producción meticulosa que sigue siendo la referencia de oro para los ingenieros de sonido.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/f/f3/Dr._Dre_-_2001.png",
+            img: "https://akamai.sscdn.co/letras/360x360/albuns/2/0/d/8/51821732195259.jpg",
             stems: ["Still D.R.E.", "The Next Episode", "Forgot About Dre"]
         },
         { 
             año: "2015", 
             titulo: "El Cierre Épico", 
             descripcion: "'Compton', la banda sonora inspirada en la película de N.W.A., fue su gran despedida. Un paisaje sonoro rico y complejo que sirvió como vitrina para la nueva generación de artistas de su ciudad.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/2/23/Compton_%28album%29.jpg" 
+            img: "https://upload.wikimedia.org/wikipedia/en/f/f4/DrDre-compton.jpg",
+            stems: ["Talk About It", "It's All On Me", "Darkside/Gone", "Deep Water", "Animals"]
         }
       ],
       ecos: [
@@ -313,7 +325,8 @@ export const DATA_ARTISTAS = {
             año: "2011", 
             titulo: "El Misterio de los Globos", 
             descripcion: "Con mixtapes como 'House of Balloons', introdujo un R&B denso, narcótico y misterioso que cambió el panorama del género, cantando sobre fiestas interminables y vacíos emocionales en las frías noches de Toronto.", 
-            img: "https://upload.wikimedia.org/wikipedia/en/9/96/The_Weeknd_-_House_of_Balloons.png" 
+            img: "https://udiscovermusic.co/cdn/shop/products/602547481917_THE_WEEKND_HOUSE_OF_BALLOONS_CD_A.png?v=1629731040&width=1000",
+            stems: ["High For This", "The Morning", "Wicked Games", "Loft Music", "The Knowing"]
         },
         { 
             año: "2015", 

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 export default function Inicio() {
   const { user } = useAuth();
@@ -10,16 +12,29 @@ export default function Inicio() {
   const [beats, setBeats] = useState(0);
   const [decibelios, setDecibelios] = useState(0);
 
+  // Conexión en tiempo real a Firebase
   useEffect(() => {
-    let start = 0;
-    const interval = setInterval(() => {
-      start += 3;
-      if (start <= 142) setExploradores(start);
-      if (start <= 854) setBeats(Math.floor(start * 6));
-      if (start <= 3200) setDecibelios(Math.floor(start * 22));
-      if (start > 150) clearInterval(interval);
-    }, 20);
-    return () => clearInterval(interval);
+    // 1. Escuchar la colección de Usuarios (Exploradores)
+    const unsubUsuarios = onSnapshot(collection(db, 'users'), (snapshot) => {
+      setExploradores(snapshot.size);
+    });
+
+    // 2. Escuchar la colección de Beats
+    const unsubBeats = onSnapshot(collection(db, 'beats'), (snapshot) => {
+      setBeats(snapshot.size);
+    });
+
+    // 3. Escuchar la colección de Echo-Safe (Puntos mapeados)
+    const unsubEcho = onSnapshot(collection(db, 'echo_reports'), (snapshot) => {
+      setDecibelios(snapshot.size);
+    });
+
+    // Limpieza de las conexiones al salir del componente
+    return () => {
+      unsubUsuarios();
+      unsubBeats();
+      unsubEcho();
+    };
   }, []);
 
   return (
