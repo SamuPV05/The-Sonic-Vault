@@ -21,14 +21,6 @@ El proyecto opera bajo una arquitectura moderna basada en componentes, con un en
 * **Testing & Documentación:** Vitest, React Testing Library y JSDoc.
 * **Versionamiento:** Git & GitHub (Flujo de trabajo estricto basado en GitFlow y gestión de Issues)
 
-## 🗺️ Roadmap (Próximos Sprints)
-
-El proyecto se encuentra en desarrollo continuo. Las próximas actualizaciones incluirán:
-
-* **Carrito de Compras Funcional:** Activar la pasarela de pagos simulada para la adquisición de la mercancía, artículos físicos y *stems* exclusivos de los artistas.
-* **Autenticación y Perfiles:** Sistema de inicio de sesión para que los usuarios puedan guardar sus compras, sus creaciones en BEAT IT y su historial de reportes en el mapa Echo-Safe.
-* **Integración de Backend:** Migración de la base de datos local (JSON) a una API RESTful para persistencia de datos en la nube.
-
 ## 🚀 Instalación y Ejecución Local
 
 Para correr este proyecto en tu entorno local:
