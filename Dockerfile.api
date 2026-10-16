@@ -1,0 +1,18 @@
+# ============================================================
+# The Sonic Vault - API del Captcha (Node.js sin dependencias externas)
+# ============================================================
+FROM node:20-alpine
+WORKDIR /app
+
+# El código usa ES Modules, así que se declara el tipo del paquete
+RUN echo '{"type":"module"}' > package.json
+
+COPY api/verify-captcha.js ./api/verify-captcha.js
+COPY server/captcha-server.js ./server/captcha-server.js
+
+# Se ejecuta sin privilegios de root (buena práctica de seguridad)
+USER node
+
+EXPOSE 3001
+
+CMD ["node", "server/captcha-server.js"]

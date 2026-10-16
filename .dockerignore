@@ -1,0 +1,21 @@
+# Dependencias y builds locales (Docker los genera por su cuenta)
+node_modules
+dist
+dev-dist
+
+# Secretos: nunca deben entrar a la imagen
+.env
+.env.*
+!.env.example
+
+# Control de versiones y editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Logs y archivos de Docker que no hacen falta dentro de la imagen
+*.log
+Dockerfile*
+docker-compose*.yml
+README.md
