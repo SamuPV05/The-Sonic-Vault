@@ -25,7 +25,9 @@ export default function Navbar() {
       // Esto evita que el padding haga que la barra sea más ancha que la pantalla
       boxSizing: 'border-box', 
       
-      background: '#000',
+      background: 'rgba(10, 10, 25, 0.8)',
+      backdropFilter: 'blur(15px)',
+      borderBottom: '1px solid var(--border-glow)',
       position: 'relative',
       zIndex: 1000 
     }}>
@@ -85,7 +87,8 @@ export default function Navbar() {
 
                   <button 
                     onClick={logout}
-                    style={{ background: 'transparent', color: '#ff0055', border: '1px solid #ff0055', padding: '4px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: esMovil ? '0.75rem' : '0.8rem' }}
+                    className="btn-logout"
+                    style={{ fontSize: esMovil ? '0.75rem' : '0.85rem' }}
                   >
                     Salir
                   </button>

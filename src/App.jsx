@@ -12,10 +12,10 @@ import BeatIt from './pages/BeatIt';
 // Componente guardián para proteger la bóveda
 // Si alguien intenta entrar a /perfil sin llave, lo patea al /login
 const RutaProtegida = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, is2FAPassed } = useAuth();
   
   if (loading) return <div style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>Cargando sistema...</div>;
-  if (!user) return <Navigate to="/login" />;
+  if (!user || !is2FAPassed) return <Navigate to="/login" />;
   
   return children;
 };

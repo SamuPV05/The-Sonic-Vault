@@ -1,7 +1,33 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { DATA_ARTISTAS } from '../datos';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 export default function ArbolEcos({ ecos }) {
+    const [artistasRelacionados, setArtistasRelacionados] = useState({});
+
+    useEffect(() => {
+        if (!ecos || ecos.length === 0) return;
+        
+        const fetchEcos = async () => {
+            const data = {};
+            // Obtenemos de la nube la info de los artistas conectados
+            for (const eco of ecos) {
+                try {
+                    const docRef = doc(db, 'artistas', eco.id);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        data[eco.id] = docSnap.data();
+                    }
+                } catch (error) {
+                    console.error("Error obteniendo eco:", error);
+                }
+            }
+            setArtistasRelacionados(data);
+        };
+        fetchEcos();
+    }, [ecos]);
+
     if (!ecos || ecos.length === 0) return null;
 
     return (
@@ -13,10 +39,10 @@ export default function ArbolEcos({ ecos }) {
 
             <div className="ecos-container">
                 {ecos.map((eco, index) => {
-                    // Buscamos la info del artista conectado en nuestra base de datos
-                    const artistaRelacionado = DATA_ARTISTAS[eco.id];
+                    // Buscamos la info del artista conectado en el estado que acabamos de traer de la nube
+                    const artistaRelacionado = artistasRelacionados[eco.id];
                     
-                    // Si por alguna razón el artista no existe en la BD, lo saltamos
+                    // Si por alguna razón el artista no existe o aún está cargando, no renderiza nada
                     if (!artistaRelacionado) return null;
 
                     return (

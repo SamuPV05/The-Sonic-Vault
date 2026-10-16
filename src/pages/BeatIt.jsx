@@ -186,18 +186,18 @@ export default function BeatIt() {
   };
 
   return (
-    <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', background: '#050505' }}>
+    <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', background: 'transparent' }}>
       
       <audio ref={vinylAudio} src="https://ia800806.us.archive.org/15/items/VinylScratchAndCrackle/vinyl-scratch-and-crackle.mp3" loop />
 
-      <div style={{ background: '#111', padding: '2rem', borderRadius: '16px', border: '1px solid #333', width: '100%', maxWidth: '900px', boxShadow: isLoFi ? '0 10px 50px rgba(255, 170, 0, 0.1)' : '0 10px 50px rgba(0,0,0,0.8)', transition: '0.5s', marginBottom: '2rem' }}>
+      <div style={{ background: 'var(--surface-bg)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-glow)', width: '100%', maxWidth: '900px', boxShadow: isLoFi ? '0 0 30px rgba(255, 170, 0, 0.2)' : 'var(--shadow-soft)', transition: '0.5s', marginBottom: '2rem', backdropFilter: 'blur(15px)' }}>
         
-        <div style={{ background: isLoFi ? '#1a1300' : '#0a0a0a', height: '100px', borderRadius: '8px', marginBottom: '2rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '30px', padding: '15px', border: '1px inset #222', transition: '0.5s' }}>
+        <div style={{ background: isLoFi ? 'rgba(255, 170, 0, 0.1)' : 'rgba(0,0,0,0.6)', height: '100px', borderRadius: '8px', marginBottom: '2rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '30px', padding: '15px', border: '1px inset rgba(255,255,255,0.1)', transition: '0.5s' }}>
           {INSTRUMENTS.map((inst, idx) => {
             const isFiring = isPlaying && grid[inst][currentStep];
             return (
                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                 <div style={{ width: '40px', height: isFiring ? '70px' : '15px', background: isFiring ? (isLoFi ? '#ffaa00' : 'var(--accent-color, #00ffcc)') : '#222', transition: isFiring ? 'height 0.05s ease-out' : 'height 0.2s ease-in', borderRadius: '4px', boxShadow: isFiring ? `0 0 20px ${isLoFi ? '#ffaa00' : 'var(--accent-color, #00ffcc)'}` : 'none' }} />
+                 <div style={{ width: '40px', height: isFiring ? '70px' : '15px', background: isFiring ? (isLoFi ? '#ffaa00' : 'var(--accent-color, #00ffcc)') : 'rgba(255,255,255,0.1)', transition: isFiring ? 'height 0.05s ease-out' : 'height 0.2s ease-in', borderRadius: '4px', boxShadow: isFiring ? `0 0 20px ${isLoFi ? '#ffaa00' : 'var(--accent-color, #00ffcc)'}` : 'none' }} />
                  <span style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px' }}>{inst}</span>
                </div>
             )
@@ -212,21 +212,21 @@ export default function BeatIt() {
             </p>
           </div>
 
-         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1.5rem', alignItems: 'center', background: '#0a0a0a', padding: '10px 20px', borderRadius: '8px', border: '1px solid #222' }}>
-            <select value={currentKit} onChange={(e) => setCurrentKit(e.target.value)} style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #444', padding: '8px', borderRadius: '4px', outline: 'none', cursor: 'pointer' }}>
+         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1.5rem', alignItems: 'center', background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--border-alt)' }}>
+            <select value={currentKit} onChange={(e) => setCurrentKit(e.target.value)} style={{ background: 'var(--surface-alt)', color: '#fff', border: '1px solid var(--border-alt)', padding: '8px', borderRadius: '4px', outline: 'none', cursor: 'pointer' }}>
               {Object.keys(SOUND_KITS).map(kit => <option key={kit} value={kit}>{kit}</option>)}
             </select>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ color: '#888', fontSize: '0.8rem' }}>BPM</span>
-              <input type="number" value={tempo} onChange={(e) => setTempo(Number(e.target.value))} min="60" max="200" style={{ width: '60px', background: '#1a1a1a', color: '#fff', border: '1px solid #444', padding: '5px', borderRadius: '4px', textAlign: 'center' }} />
+              <input type="number" value={tempo} onChange={(e) => setTempo(Number(e.target.value))} min="60" max="200" style={{ width: '60px', background: 'var(--surface-alt)', color: '#fff', border: '1px solid var(--border-alt)', padding: '5px', borderRadius: '4px', textAlign: 'center' }} />
             </div>
 
-            <button onClick={() => setIsLoFi(!isLoFi)} style={{ background: isLoFi ? '#ffaa00' : '#1a1a1a', color: isLoFi ? '#000' : '#888', border: `1px solid ${isLoFi ? '#ffaa00' : '#444'}`, padding: '8px 15px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: '0.3s' }}>
+            <button onClick={() => setIsLoFi(!isLoFi)} style={{ background: isLoFi ? '#ffaa00' : 'var(--surface-alt)', color: isLoFi ? '#000' : '#888', border: `1px solid ${isLoFi ? '#ffaa00' : 'var(--border-alt)'}`, padding: '8px 15px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: '0.3s' }}>
               <i className="fa-solid fa-record-vinyl" style={{ animation: isLoFi ? 'spin 2s linear infinite' : 'none' }}></i> LO-FI
             </button>
 
-            <button onClick={() => setIsPlaying(!isPlaying)} style={{ background: isPlaying ? '#ff4444' : 'var(--accent-color, #00ffcc)', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: '0.2s' }}>
+            <button onClick={() => setIsPlaying(!isPlaying)} style={{ background: isPlaying ? 'var(--accent-secondary)' : 'var(--accent-color, #00ffcc)', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: '0.2s', boxShadow: isPlaying ? '0 0 15px var(--accent-secondary)' : '0 0 15px var(--accent-color)' }}>
               <i className={`fa-solid ${isPlaying ? 'fa-stop' : 'fa-play'}`}></i> {isPlaying ? 'DETENER' : 'REPRODUCIR'}
             </button>
           </div>
@@ -243,7 +243,7 @@ export default function BeatIt() {
                   return (
                     <div 
                       key={index} onClick={() => toggleStep(inst, index)}
-                      style={{ flex: 1, height: '40px', borderRadius: '4px', cursor: 'pointer', transition: '0.1s', background: isActive ? activeColor : (index % 4 === 0 ? '#222' : '#151515'), border: isCurrentStep ? '2px solid #fff' : '1px solid #333', opacity: isActive ? 1 : 0.6 }}
+                      style={{ flex: 1, height: '40px', borderRadius: '4px', cursor: 'pointer', transition: '0.1s', background: isActive ? activeColor : (index % 4 === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'), border: isCurrentStep ? '2px solid #fff' : '1px solid var(--border-alt)', opacity: isActive ? 1 : 0.6 }}
                     />
                   );
                 })}
@@ -252,7 +252,7 @@ export default function BeatIt() {
           ))}
         </div>
 
-        <div style={{ borderTop: '1px dashed #333', paddingTop: '20px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <div style={{ borderTop: '1px dashed var(--border-alt)', paddingTop: '20px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end' }}>
           <input 
             type="text" 
             placeholder="Nombre de tu Beat..." 
@@ -260,7 +260,7 @@ export default function BeatIt() {
             onChange={(e) => setBeatName(e.target.value)}
             maxLength="25"
             disabled={!user || isSaving}
-            style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #444', padding: '10px 15px', borderRadius: '6px', width: '250px', outline: 'none', opacity: !user ? 0.5 : 1 }}
+            style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid var(--border-alt)', padding: '10px 15px', borderRadius: '6px', width: '250px', outline: 'none', opacity: !user ? 0.5 : 1 }}
           />
           <button 
             onClick={handleSaveBeat}
@@ -274,14 +274,14 @@ export default function BeatIt() {
       </div>
 
       {user && savedBeats.length > 0 && (
-        <div style={{ background: '#111', padding: '2rem', borderRadius: '16px', border: '1px solid #333', width: '100%', maxWidth: '900px', animation: 'fadeIn 0.5s ease' }}>
+        <div style={{ background: 'var(--surface-bg)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-glow)', width: '100%', maxWidth: '900px', animation: 'fadeIn 0.5s ease', boxShadow: 'var(--shadow-soft)', backdropFilter: 'blur(15px)' }}>
           <h3 style={{ color: '#fff', marginTop: 0, marginBottom: '20px', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <i className="fa-solid fa-cloud" style={{ color: 'var(--accent-color)' }}></i> CINTAS EN LA BÓVEDA
           </h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
             {savedBeats.map((beat) => (
-              <div key={beat.id} style={{ background: '#0a0a0a', border: '1px solid #222', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div key={beat.id} style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-alt)', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem' }}>{beat.name}</span>
                   {beat.isLoFi && <span style={{ background: '#ffaa00', color: '#000', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>LO-FI</span>}
@@ -294,9 +294,9 @@ export default function BeatIt() {
                 
                 <button 
                   onClick={() => loadBeat(beat)}
-                  style={{ background: '#222', color: '#fff', border: '1px solid #444', padding: '8px', borderRadius: '4px', cursor: 'pointer', width: '100%', marginTop: '5px', transition: '0.2s' }}
+                  style={{ background: 'var(--surface-alt)', color: '#fff', border: '1px solid var(--border-alt)', padding: '8px', borderRadius: '4px', cursor: 'pointer', width: '100%', marginTop: '5px', transition: '0.2s' }}
                   onMouseOver={(e) => e.target.style.background = 'var(--accent-color)'}
-                  onMouseOut={(e) => e.target.style.background = '#222'}
+                  onMouseOut={(e) => e.target.style.background = 'var(--surface-alt)'}
                 >
                   <i className="fa-solid fa-download"></i> CARGAR AL ESTUDIO
                 </button>

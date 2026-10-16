@@ -1,19 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { DATA_ARTISTAS } from '../datos';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import Desensamblador from '../components/Desensamblador';
 import ArbolEcos from '../components/ArbolEcos';
 
 export default function ArtistaDetalle() {
   const { id } = useParams();
-  const artista = DATA_ARTISTAS[id];
+  const [artista, setArtista] = useState(null);
+  const [cargando, setCargando] = useState(true);
   
+  useEffect(() => {
+    const obtenerArtista = async () => {
+      try {
+        const docRef = doc(db, 'artistas', id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setArtista(docSnap.data());
+        } else {
+          setArtista(null);
+        }
+      } catch (error) {
+        console.error("Error al obtener artista:", error);
+      } finally {
+        setCargando(false);
+      }
+    };
+    obtenerArtista();
+  }, [id]);
+
   const [cancionAMezclar, setCancionAMezclar] = useState(null);
   const [erasExpandidas, setErasExpandidas] = useState({});
 
   // ESTILOS RESPONSIVOS DE EMERGENCIA
   const esMovil = window.innerWidth < 768; // Usamos 768px para abarcar celulares grandes y tablets
 
+  if (cargando) return <h2 className="accent" style={{textAlign: 'center', marginTop: '100px'}}>Desencriptando Archivo...</h2>;
   if (!artista) return <h2 className="accent" style={{textAlign: 'center', marginTop: '100px'}}>Archivo Clasificado No Encontrado</h2>;
 
   const toggleEra = (index) => {

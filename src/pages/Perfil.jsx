@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../firebase/config';
-import { DATA_ARTISTAS } from '../datos'; 
+import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, query, where, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 
 export default function Perfil() {
+  const { updateUserPhoto } = useAuth();
   const [user, setUser] = useState(null);
   const [misBeats, setMisBeats] = useState([]);
   const [misReportes, setMisReportes] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [artistasDB, setArtistasDB] = useState({});
 
   // PerfilData: bio y vibes (solo guardamos artistId y eraIndex)
   const [perfilData, setPerfilData] = useState({ bio: '', vibes: [null, null, null] });
@@ -19,6 +21,11 @@ export default function Perfil() {
 
   const [editandoVibes, setEditandoVibes] = useState(false);
   const [tempVibes, setTempVibes] = useState([null, null, null]);
+
+  // Estado para el modal de cambio de foto
+  const [editandoFoto, setEditandoFoto] = useState(false);
+  const [tempFotoURL, setTempFotoURL] = useState('');
+  const [guardandoFoto, setGuardandoFoto] = useState(false);
 
   // Carga inicial (Auth, Beats y Perfil)
   useEffect(() => { 
@@ -35,6 +42,13 @@ export default function Perfil() {
           });
           beatsDescargados.sort((a, b) => b.timestamp - a.timestamp);
           setMisBeats(beatsDescargados);
+
+          // 1.5 Cargar Artistas de Firestore
+          const artistasCol = collection(db, "artistas");
+          const artistasSnap = await getDocs(artistasCol);
+          const dictArtistas = {};
+          artistasSnap.forEach(d => { dictArtistas[d.id] = d.data(); });
+          setArtistasDB(dictArtistas);
 
           // 2. Cargar Datos del Perfil (Bio y Vitrina)
           const userDocRef = doc(db, "users", currentUser.uid);
@@ -198,8 +212,8 @@ export default function Perfil() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           {[0, 1, 2].map((i) => {
             const vibe = editandoVibes ? tempVibes[i] : perfilData.vibes[i];
-            const artista = vibe && vibe.artistId ? DATA_ARTISTAS[vibe.artistId] : null;
-            const era = artista && vibe.eraIndex !== undefined ? artista.eras[vibe.eraIndex] : null;
+            const artista = vibe && vibe.artistId ? artistasDB[vibe.artistId] : null;
+            const era = artista && vibe.eraIndex !== undefined && artista.eras ? artista.eras[vibe.eraIndex] : null;
 
             return (
               <div key={i} style={{ background: '#0a0a0a', borderRadius: '12px', border: '1px solid #222', overflow: 'hidden' }}>
@@ -221,11 +235,11 @@ export default function Perfil() {
                   <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <select value={vibe?.artistId || ''} onChange={(e) => handleSelectVibe(i, e.target.value, 0)} style={{ background: '#111', color: '#fff', border: '1px solid #333', padding: '8px', borderRadius: '4px' }}>
                       <option value="">Seleccionar Artista...</option>
-                      {Object.keys(DATA_ARTISTAS).map(id => <option key={id} value={id}>{DATA_ARTISTAS[id].nombre}</option>)}
+                      {Object.keys(artistasDB).map(id => <option key={id} value={id}>{artistasDB[id].nombre}</option>)}
                     </select>
-                    {vibe?.artistId && (
+                    {vibe?.artistId && artistasDB[vibe.artistId]?.eras && (
                       <select value={vibe?.eraIndex || 0} onChange={(e) => handleSelectVibe(i, vibe.artistId, e.target.value)} style={{ background: '#111', color: 'var(--accent-color)', border: '1px solid #333', padding: '8px', borderRadius: '4px' }}>
-                        {DATA_ARTISTAS[vibe.artistId].eras.map((e, idx) => <option key={idx} value={idx}>{e.titulo} ({e.año})</option>)}
+                        {artistasDB[vibe.artistId].eras.map((e, idx) => <option key={idx} value={idx}>{e.titulo} ({e.año})</option>)}
                       </select>
                     )}
                   </div>
