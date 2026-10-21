@@ -69,12 +69,25 @@ export async function getEffectiveSpotifyToken() {
  */
 export async function searchSpotifyArtists(query, limit = 8) {
   if (!query || query.trim().length === 0) return [];
-  const token = await getEffectiveSpotifyToken();
+  let token = await getEffectiveSpotifyToken();
 
   const url = `${API_BASE}/search?q=${encodeURIComponent(query.trim())}&type=artist&limit=${limit}`;
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
+  // Si el token fue rechazado con 401 (ej: token de usuario vencido en localStorage), reintentamos con el token público
+  if (response.status === 401) {
+    console.warn('Token rechazado con 401. Reintentando con token público...');
+    try {
+      token = await getPublicSpotifyToken();
+      response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (err) {
+      console.error('Error al obtener token de respaldo:', err);
+    }
+  }
 
   if (!response.ok) {
     console.error('Error al buscar artistas en Spotify:', response.status);
