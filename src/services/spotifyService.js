@@ -48,11 +48,28 @@ export async function getPublicSpotifyToken() {
 }
 
 /**
+ * Obtiene un token válido para consultar el catálogo de Spotify:
+ * 1. Si el usuario ya sincronizó su cuenta, usamos su token directamente desde el navegador (instantáneo).
+ * 2. Si es un visitante sin login, solicita el token público seguro al backend.
+ */
+export async function getEffectiveSpotifyToken() {
+  try {
+    const userToken = await getUserAccessToken();
+    if (userToken) {
+      return userToken;
+    }
+  } catch (e) {
+    // Si falla la lectura del token de usuario, se recurre al público
+  }
+  return await getPublicSpotifyToken();
+}
+
+/**
  * Busca artistas en el catálogo global de Spotify por nombre.
  */
 export async function searchSpotifyArtists(query, limit = 8) {
   if (!query || query.trim().length === 0) return [];
-  const token = await getPublicSpotifyToken();
+  const token = await getEffectiveSpotifyToken();
 
   const url = `${API_BASE}/search?q=${encodeURIComponent(query.trim())}&type=artist&limit=${limit}`;
   const response = await fetch(url, {
@@ -72,7 +89,7 @@ export async function searchSpotifyArtists(query, limit = 8) {
  * Obtiene los detalles de un artista por su ID de Spotify.
  */
 export async function getSpotifyArtist(artistId) {
-  const token = await getPublicSpotifyToken();
+  const token = await getEffectiveSpotifyToken();
   const response = await fetch(`${API_BASE}/artists/${artistId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -85,7 +102,7 @@ export async function getSpotifyArtist(artistId) {
  * Obtiene las canciones más populares de un artista buscando en el catálogo.
  */
 export async function getSpotifyArtistTopTracks(artistId, artistName = '', limit = 6) {
-  const token = await getPublicSpotifyToken();
+  const token = await getEffectiveSpotifyToken();
   
   // Usamos la búsqueda de tracks por artista para garantizar compatibilidad con las nuevas directivas de Spotify API
   const query = artistName ? `artist:"${artistName}"` : `artist:${artistId}`;
@@ -102,7 +119,7 @@ export async function getSpotifyArtistTopTracks(artistId, artistName = '', limit
  * Obtiene la discografía (álbumes y singles) de un artista.
  */
 export async function getSpotifyArtistAlbums(artistId, limit = 12) {
-  const token = await getPublicSpotifyToken();
+  const token = await getEffectiveSpotifyToken();
   const response = await fetch(`${API_BASE}/artists/${artistId}/albums?include_groups=album,single&limit=${limit}`, {
     headers: { Authorization: `Bearer ${token}` },
   });

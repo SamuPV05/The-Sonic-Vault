@@ -10,22 +10,22 @@ export async function obtenerTokenSpotify(clientId, clientSecret) {
     return { access_token: cachedToken };
   }
 
-  const id = clientId || process.env.VITE_SPOTIFY_CLIENT_ID;
-  const secret = clientSecret || process.env.VITE_SPOTIFY_CLIENT_SECRET;
+  const id = clientId || process.env.VITE_SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID;
+  const secret = clientSecret || process.env.VITE_SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
 
   if (!id || !secret) {
     throw new Error('Faltan las credenciales de Spotify en las variables de entorno.');
   }
 
+  const basicAuth = Buffer.from(`${id}:${secret}`).toString('base64');
   const response = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
+      'Authorization': `Basic ${basicAuth}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
-      client_id: id,
-      client_secret: secret,
     }),
   });
 
