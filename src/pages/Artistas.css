@@ -1,0 +1,765 @@
+/* ==========================================================================
+   ESTILOS: SALÓN DE ARTISTAS (EXPLORACIÓN HORIZONTAL & CUADRÍCULA)
+   The Sonic Vault - Cyberpunk Sound Archive
+   ========================================================================== */
+
+/* Contenedor Principal */
+.artistas-page {
+  min-height: calc(100vh - 80px);
+  padding: 2.5rem 0 5rem 0;
+  position: relative;
+  overflow-x: hidden;
+  background: radial-gradient(circle at 50% 10%, rgba(0, 240, 255, 0.05) 0%, transparent 60%),
+              radial-gradient(circle at 90% 80%, rgba(255, 0, 122, 0.04) 0%, transparent 50%),
+              var(--bg-color, #050508);
+}
+
+/* Luces Ambientales de Fondo */
+.artistas-ambient-glow {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70vw;
+  height: 400px;
+  background: radial-gradient(ellipse at center, rgba(0, 240, 255, 0.08) 0%, rgba(255, 0, 122, 0.04) 40%, transparent 75%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Encabezado */
+.artistas-header-container {
+  position: relative;
+  z-index: 2;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 5% 2rem 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-glow, rgba(0, 240, 255, 0.2));
+}
+
+.artistas-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.artistas-badge-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--accent-color, #00f0ff);
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.artistas-badge-top .pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent-color, #00f0ff);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-color, #00f0ff);
+  animation: pulseNeonDot 1.8s infinite;
+}
+
+@keyframes pulseNeonDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.4; }
+}
+
+.artistas-titles h1 {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  text-transform: uppercase;
+  margin: 0;
+  color: #ffffff;
+  font-weight: 900;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.artistas-titles p {
+  margin: 0;
+  color: var(--text-muted, #8a99ad);
+  font-size: 0.95rem;
+  max-width: 500px;
+}
+
+/* Barra de Controles y Switch de Modo */
+.artistas-controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+}
+
+/* Switcher de Vista (Horizontal vs Cuadrícula) */
+.artistas-view-switcher {
+  display: flex;
+  background: rgba(15, 15, 25, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 30px;
+  padding: 4px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.view-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #8a99ad);
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 20px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  font-family: inherit;
+}
+
+.view-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.view-btn.active {
+  background: linear-gradient(135deg, var(--accent-color, #00f0ff) 0%, #0099cc 100%);
+  color: #050508;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+  font-weight: 800;
+}
+
+/* Botones de Navegación Flechas (‹ / ›) */
+.artistas-nav-arrows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-arrow-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(18, 18, 30, 0.8);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: #fff;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.nav-arrow-btn:hover:not(:disabled) {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: var(--accent-color, #00f0ff);
+  color: var(--accent-color, #00f0ff);
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.4);
+}
+
+.nav-arrow-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.nav-arrow-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ==========================================================================
+   MODO HORIZONTAL: PISTA / RUNWAY DE ARTISTAS
+   ========================================================================== */
+.artistas-horizontal-wrapper {
+  position: relative;
+  width: 100%;
+  margin-top: 2rem;
+  z-index: 1;
+}
+
+/* Gradientes laterales de difuminado para efecto infinito de cine */
+.artistas-fade-left,
+.artistas-fade-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5vw;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.artistas-fade-left {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-color, #050508) 0%, transparent 100%);
+}
+
+.artistas-fade-right {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-color, #050508) 0%, transparent 100%);
+}
+
+/* Pista de Scroll Horizontal */
+.artistas-horizontal-track {
+  display: flex;
+  gap: 30px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  padding: 20px 5% 35px 5%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.artistas-horizontal-track::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+/* Tarjeta Horizontal Panorámica */
+.artistas-card-horizontal {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(300px, 28vw, 400px);
+  height: clamp(480px, 62vh, 580px);
+  border-radius: 20px;
+  overflow: hidden;
+  background: #090912;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  text-decoration: none;
+  scroll-snap-align: center;
+  transition: all 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Resplandor Holográfico en Hover */
+.artistas-card-horizontal:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: var(--accent-secondary, #ff007a);
+  box-shadow: 0 20px 45px rgba(255, 0, 122, 0.35), 0 0 20px rgba(0, 240, 255, 0.2);
+}
+
+.artistas-card-horizontal.is-active-card {
+  border-color: var(--accent-color, #00f0ff);
+  box-shadow: 0 15px 40px rgba(0, 240, 255, 0.25);
+}
+
+/* Imagen de Fondo */
+.artistas-card-img-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.artistas-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.72;
+  filter: saturate(1.2) contrast(1.1);
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease, filter 0.5s ease;
+}
+
+.artistas-card-horizontal:hover .artistas-card-img-wrap img {
+  transform: scale(1.08);
+  opacity: 0.95;
+  filter: saturate(1.4) contrast(1.15);
+}
+
+/* Máscara de Gradiente Oscuro */
+.artistas-card-img-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 5, 8, 0.65) 0%,
+    rgba(5, 5, 8, 0.1) 40%,
+    rgba(5, 5, 8, 0.8) 75%,
+    rgba(5, 5, 8, 0.98) 100%
+  );
+  pointer-events: none;
+}
+
+/* HUD Superior de la Tarjeta */
+.artistas-card-hud {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 0 1.5rem;
+}
+
+.card-hud-badge {
+  background: rgba(5, 5, 12, 0.75);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--accent-color, #00f0ff);
+  backdrop-filter: blur(10px);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+}
+
+/* Equalizador Sónico en miniatura */
+.card-hud-equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+  padding: 4px 8px;
+  background: rgba(5, 5, 12, 0.75);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.eq-bar {
+  width: 3px;
+  background: var(--accent-secondary, #ff007a);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--accent-secondary, #ff007a);
+}
+
+.eq-bar:nth-child(1) { height: 6px; animation: eqPulse 1.2s ease-in-out infinite alternate; }
+.eq-bar:nth-child(2) { height: 14px; animation: eqPulse 0.9s ease-in-out infinite alternate 0.2s; }
+.eq-bar:nth-child(3) { height: 9px; animation: eqPulse 1.4s ease-in-out infinite alternate 0.4s; }
+.eq-bar:nth-child(4) { height: 12px; animation: eqPulse 1s ease-in-out infinite alternate 0.1s; }
+
+@keyframes eqPulse {
+  0% { transform: scaleY(0.4); }
+  100% { transform: scaleY(1.3); }
+}
+
+/* Contenido Inferior de la Tarjeta */
+.artistas-card-content {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateY(10px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.artistas-card-horizontal:hover .artistas-card-content {
+  transform: translateY(0);
+}
+
+.card-artist-subtitulo {
+  color: var(--accent-color, #00f0ff);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+.card-artist-nombre {
+  color: #ffffff;
+  font-size: clamp(1.6rem, 2.2vw, 2.1rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1.1;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
+}
+
+.card-artist-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fff;
+  opacity: 0.85;
+  transition: all 0.3s ease;
+}
+
+.card-artist-action i {
+  color: var(--accent-secondary, #ff007a);
+  transition: transform 0.3s ease;
+}
+
+.artistas-card-horizontal:hover .card-artist-action {
+  color: var(--accent-secondary, #ff007a);
+  opacity: 1;
+}
+
+.artistas-card-horizontal:hover .card-artist-action i {
+  transform: translateX(6px);
+}
+
+/* ==========================================================================
+   HUD INFERIOR: BARRA DE PROGRESO Y PUNTOS DE SALTO
+   ========================================================================== */
+.artistas-bottom-hud {
+  max-width: 1400px;
+  margin: 1.5rem auto 0 auto;
+  padding: 0 5%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.artistas-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.artistas-progress-rail {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.artistas-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-color, #00f0ff) 0%, var(--accent-secondary, #ff007a) 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 10px var(--accent-color, #00f0ff);
+  transition: width 0.15s ease-out;
+}
+
+.artistas-counter {
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: var(--text-muted, #8a99ad);
+  white-space: nowrap;
+}
+
+.artistas-counter .current-num {
+  color: var(--accent-color, #00f0ff);
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+
+/* Indicadores de Puntos de Navegación */
+.artistas-dots-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.artist-dot-btn {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  padding: 0;
+}
+
+.artist-dot-btn:hover {
+  background: rgba(0, 240, 255, 0.5);
+  transform: scale(1.3);
+}
+
+.artist-dot-btn.active {
+  width: 28px;
+  background: var(--accent-color, #00f0ff);
+  box-shadow: 0 0 12px var(--accent-color, #00f0ff);
+}
+
+.artistas-hint-scroll {
+  text-align: center;
+  color: #666;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+
+/* ==========================================================================
+   MODO CUADRÍCULA VERTICAL (Alternativa accesible con 1 click)
+   ========================================================================== */
+.artistas-grid-container {
+  max-width: 1400px;
+  margin: 3rem auto 0 auto;
+  padding: 0 5%;
+}
+
+/* ==========================================================================
+   ESTADOS DE CARGA Y VACÍO
+   ========================================================================== */
+.artistas-loading-state,
+.artistas-empty-state {
+  text-align: center;
+  padding: 6rem 2rem;
+  color: #fff;
+}
+
+.artistas-loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(0, 240, 255, 0.1);
+  border-top-color: var(--accent-color, #00f0ff);
+  border-radius: 50%;
+  margin: 0 auto 1.5rem auto;
+  animation: spinVault 1s linear infinite;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+}
+
+@keyframes spinVault {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   RESPONSIVIDAD
+   ========================================================================== */
+@media (max-width: 768px) {
+  .artistas-header-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .artistas-controls-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .artistas-card-horizontal {
+    width: 80vw;
+    max-width: 330px;
+    height: 480px;
+  }
+
+  .artistas-fade-left,
+  .artistas-fade-right {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   ESTILOS: RADAR Y BÚSQUEDA SPOTIFY API
+   ========================================================================== */
+
+.artistas-search-bar-wrap {
+  width: 100%;
+  max-width: 580px;
+  margin: 0.5rem 0 0 0;
+}
+
+.artistas-search-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(10, 15, 20, 0.75);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  backdrop-filter: blur(12px);
+  padding: 10px 18px;
+  border-radius: 30px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.artistas-search-field:focus-within {
+  border-color: #1DB954;
+  box-shadow: 0 0 20px rgba(29, 185, 84, 0.3), 0 0 0 1px #1DB954;
+  background: rgba(10, 20, 15, 0.9);
+}
+
+.artistas-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 0.95rem;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+.artistas-search-input::placeholder {
+  color: #667085;
+  font-size: 0.85rem;
+}
+
+.artistas-search-clear {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.artistas-search-clear:hover {
+  color: #ff4d4d;
+}
+
+.spotify-search-results-section {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2.5rem 5% 4rem 5%;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.spotify-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spotify-results-header h2 {
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+}
+
+.spotify-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.8rem;
+}
+
+.spotify-artist-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(20, 24, 30, 0.8) 0%, rgba(10, 12, 16, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  text-decoration: none;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.spotify-artist-card:hover {
+  transform: translateY(-8px);
+  border-color: #1DB954;
+  box-shadow: 0 14px 35px rgba(29, 185, 84, 0.2), 0 0 15px rgba(29, 185, 84, 0.15);
+}
+
+.spotify-card-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  background: #08080a;
+}
+
+.spotify-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.spotify-artist-card:hover .spotify-card-img-wrap img {
+  transform: scale(1.08);
+}
+
+.spotify-card-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(29, 185, 84, 0.4);
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  letter-spacing: 1.5px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.spotify-card-info {
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.spotify-card-name {
+  font-size: 1.2rem;
+  color: #fff;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotify-card-type {
+  font-size: 0.72rem;
+  color: #1DB954;
+  letter-spacing: 1.5px;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.spotify-card-action {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #aaa;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.8rem;
+  transition: color 0.2s;
+}
+
+.spotify-artist-card:hover .spotify-card-action {
+  color: var(--accent-color, #00f0ff);
+}

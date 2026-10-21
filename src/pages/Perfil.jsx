@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, query, where, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Link } from 'react-router-dom';
+import SpotifyProfileWidget from '../components/SpotifyProfileWidget';
 
 export default function Perfil() {
   const { updateUserPhoto } = useAuth();
@@ -255,6 +256,9 @@ export default function Perfil() {
           </button>
         )}
       </section>
+
+      {/* ENLACE NEURAL SPOTIFY // ADN SONORO & REPRODUCTOR */}
+      <SpotifyProfileWidget />
 
       {/* MIS CINTAS Y ECHO-SAFE */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>

@@ -1,0 +1,1034 @@
+/* ============================================================================
+   ECHO-SAFE: ESTACIÓN DE TELEMETRÍA ACÚSTICA URBANA (THE SONIC VAULT)
+   ============================================================================ */
+
+.echosafe-wrapper {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 2.5rem 5% 4rem 5%;
+  min-height: 88vh;
+  box-sizing: border-box;
+  color: var(--text-color, #ffffff);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  position: relative;
+}
+
+/* --- CABECERA DE TELEMETRÍA --- */
+.echosafe-hero {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
+.echosafe-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  padding: 6px 16px;
+  border-radius: 30px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-color, #00F0FF);
+  margin-bottom: 1rem;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.echosafe-beacon-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-color, #00F0FF);
+  box-shadow: 0 0 8px var(--accent-color, #00F0FF);
+  animation: beaconPulse 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.echosafe-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin: 0 0 0.8rem 0;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.echosafe-subtitle {
+  color: var(--text-muted, #8b9bb4);
+  font-size: 1.05rem;
+  max-width: 680px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* --- TARJETAS KPI DE RED (ESTADÍSTICAS RÁPIDAS) --- */
+.echosafe-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.echosafe-kpi-card {
+  background: rgba(18, 19, 32, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-alt, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.echosafe-kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--card-accent, var(--accent-color, #00F0FF));
+  opacity: 0.8;
+}
+
+.echosafe-kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.15);
+}
+
+.echosafe-kpi-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.echosafe-kpi-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.echosafe-kpi-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted, #8b9bb4);
+  margin-bottom: 4px;
+}
+
+.echosafe-kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.echosafe-kpi-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.echosafe-kpi-unit {
+  font-size: 0.85rem;
+  color: var(--text-muted, #8b9bb4);
+  font-weight: 600;
+}
+
+.echosafe-kpi-subtext {
+  font-size: 0.72rem;
+  margin-top: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- DISPOSICIÓN PRINCIPAL: CONSOLA Y MAPA --- */
+.echosafe-main-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+/* --- PANEL IZQUIERDO: TERMINAL DE CONTROL Y SONÓMETRO --- */
+.echosafe-control-panel {
+  background: rgba(14, 15, 26, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-alt, rgba(255, 255, 255, 0.08));
+  border-radius: 20px;
+  padding: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+.echosafe-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.echosafe-gps-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #090a10;
+  border: 1px solid #1c2030;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  max-width: 100%;
+}
+
+/* ARO Y DISPLAY DEL SONÓMETRO */
+.echosafe-gauge-container {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  margin: 0 auto 2rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.echosafe-gauge-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 6px solid #232738;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  background: radial-gradient(circle, rgba(25, 28, 48, 0.3) 0%, rgba(9, 10, 16, 0.8) 75%);
+}
+
+.echosafe-gauge-number {
+  font-size: 5.2rem;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.echosafe-gauge-unit {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-muted, #8b9bb4);
+  letter-spacing: 1px;
+}
+
+.echosafe-classification-badge {
+  position: absolute;
+  bottom: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: 16px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+/* Barra de progreso de escaneo */
+.echosafe-progress-bar-wrap {
+  position: absolute;
+  bottom: -22px;
+  width: 85%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.echosafe-progress-bar-fill {
+  height: 100%;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* ACCIONES Y BOTONERA */
+.echosafe-actions-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: auto;
+}
+
+.echosafe-btn-primary {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.echosafe-btn-primary:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.echosafe-btn-locate {
+  background: linear-gradient(135deg, var(--accent-color, #00F0FF) 0%, #0099ff 100%);
+  color: #05060a;
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.35);
+}
+
+.echosafe-btn-scan {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+}
+
+.echosafe-measuring-state {
+  text-align: center;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: telemetryPulse 1.6s infinite ease-in-out;
+}
+
+.echosafe-soundwaves-icon {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  height: 24px;
+}
+
+.echosafe-soundwaves-icon span {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--accent-color, #00F0FF);
+  animation: waveBar 0.9s infinite ease-in-out alternate;
+}
+
+.echosafe-soundwaves-icon span:nth-child(2) { animation-delay: 0.2s; height: 18px; }
+.echosafe-soundwaves-icon span:nth-child(3) { animation-delay: 0.4s; height: 26px; }
+.echosafe-soundwaves-icon span:nth-child(4) { animation-delay: 0.1s; height: 14px; }
+.echosafe-soundwaves-icon span:nth-child(5) { animation-delay: 0.3s; height: 20px; }
+
+/* FORMULARIO DE TRANSMISIÓN TRAS EL ESCANEO */
+.echosafe-form-container {
+  animation: formSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.echosafe-form-label {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted, #8b9bb4);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.echosafe-categories-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.echosafe-cat-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(20, 22, 36, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-align: left;
+}
+
+.echosafe-cat-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.echosafe-cat-btn.active {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: var(--accent-color, #00F0FF);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+.echosafe-cat-btn i {
+  font-size: 0.95rem;
+}
+
+.echosafe-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #090a12;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  resize: none;
+  min-height: 75px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.echosafe-textarea:focus {
+  border-color: var(--accent-color, #00F0FF);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+}
+
+.echosafe-form-btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+.echosafe-btn-repeat {
+  flex: 1;
+  background: transparent;
+  color: var(--text-muted, #8b9bb4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 13px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.echosafe-btn-repeat:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.echosafe-btn-transmit {
+  flex: 2;
+  background: #ffffff;
+  color: #05060a;
+  border: none;
+  padding: 13px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.echosafe-btn-transmit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+}
+
+.echosafe-btn-transmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* --- PANEL DERECHO: VISUALIZADOR CARTOGRÁFICO INMERSIVO --- */
+.echosafe-map-panel {
+  background: rgba(14, 15, 26, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-alt, rgba(255, 255, 255, 0.08));
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+.echosafe-map-hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.echosafe-map-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.echosafe-map-title i {
+  color: var(--accent-color, #00F0FF);
+}
+
+/* RESUMEN DE TELEMETRÍA DEL ESCANEO (PICO, MÍNIMO, PROMEDIO) */
+.echosafe-scan-summary {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  text-align: center;
+}
+
+.echosafe-scan-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.echosafe-scan-metric-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #8b9bb4);
+  letter-spacing: 0.5px;
+}
+
+.echosafe-scan-metric-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* CAPA TÉRMICA, MARCADORES Y POPUPS DEL MAPA */
+.echosafe-heat-canvas {
+  pointer-events: none;
+}
+
+.echosafe-marker-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 1px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--dot-color, #00F0FF);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 10px var(--dot-color, #00F0FF);
+  transition: transform 0.2s ease;
+}
+
+.echosafe-marker-dot:hover {
+  transform: scale(1.35);
+}
+
+.echosafe-popup {
+  text-align: center;
+  padding: 6px;
+  min-width: 200px;
+  max-width: 250px;
+}
+
+.echosafe-popup-tags {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.echosafe-popup-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.echosafe-popup-tag-level {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.echosafe-popup-db {
+  margin: 2px 0 6px 0;
+  color: #ffffff;
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.echosafe-popup-db small {
+  font-size: 0.85rem;
+  color: var(--text-muted, #8b9bb4);
+}
+
+.echosafe-popup-extremes {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.echosafe-popup-desc {
+  margin: 4px 0 8px 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.echosafe-popup-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem;
+  color: var(--text-muted, #8b9bb4);
+}
+
+/* SELECTOR DE VISTA (CALOR / PUNTOS) */
+.echosafe-view-toggle {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: #0b0d17;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.echosafe-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.echosafe-view-btn:hover {
+  color: #ffffff;
+}
+
+.echosafe-view-btn.active {
+  background: rgba(0, 240, 255, 0.14);
+  color: var(--accent-color, #00F0FF);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.echosafe-zoom-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 900;
+  padding: 5px 11px;
+  border-radius: 10px;
+  background: rgba(9, 10, 16, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* MODO DE SELECCIÓN MANUAL DE UBICACIÓN */
+.echosafe-map-viewport-wrap.picking {
+  border-color: var(--accent-color, #00F0FF);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8), 0 0 18px rgba(0, 240, 255, 0.35);
+}
+
+.echosafe-map-viewport-wrap.picking .leaflet-container {
+  cursor: crosshair;
+}
+
+.echosafe-pick-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 20px;
+  background: rgba(9, 10, 16, 0.92);
+  border: 1px solid var(--accent-color, #00F0FF);
+  color: var(--accent-color, #00F0FF);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  animation: telemetryPulse 1.6s infinite ease-in-out;
+}
+
+.echosafe-btn-secondary {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #cbd5e1;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.echosafe-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-color, #00F0FF);
+  color: #ffffff;
+}
+
+.echosafe-btn-secondary.active {
+  border-color: var(--accent-secondary, #FF007A);
+  color: var(--accent-secondary, #FF007A);
+}
+
+.echosafe-location-source {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  text-align: right;
+  line-height: 1.3;
+}
+
+/* VISUALIZADOR DE ESPECTRO EN VIVO (CANVAS) */
+.echosafe-spectrum-wrap {
+  margin: 0 0 1.6rem 0;
+  padding: 10px 14px 8px 14px;
+  background: rgba(9, 10, 16, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.echosafe-spectrum-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted, #8b9bb4);
+}
+
+.echosafe-spectrum-status {
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748b;
+  transition: all 0.3s ease;
+}
+
+.echosafe-spectrum-status.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+  animation: telemetryPulse 1.6s infinite ease-in-out;
+}
+
+.echosafe-spectrum-canvas {
+  display: block;
+  width: 100%;
+  height: 84px;
+}
+
+.echosafe-spectrum-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* BARRA DE FILTROS TÁCTICOS DEL MAPA */
+.echosafe-filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: rgba(9, 10, 16, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.echosafe-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.echosafe-filter-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #8b9bb4);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.echosafe-filter-select {
+  background: #141724;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.echosafe-filter-select:focus {
+  border-color: var(--accent-color, #00F0FF);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.echosafe-filter-badge {
+  font-size: 0.74rem;
+  color: var(--accent-color, #00F0FF);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.echosafe-char-count {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 0.7rem;
+  color: var(--text-muted, #8b9bb4);
+  margin-top: 4px;
+}
+
+.echosafe-map-viewport-wrap {
+  width: 100%;
+  height: 570px;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+/* LEYENDA TÁCTICA DE NIVELES ACÚSTICOS (OMS) */
+.echosafe-map-legend {
+  margin-top: 1.2rem;
+  padding: 1rem 1.25rem;
+  background: rgba(9, 10, 16, 0.7);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.echosafe-legend-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted, #8b9bb4);
+  text-transform: uppercase;
+}
+
+.echosafe-legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.echosafe-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #c5cde0;
+}
+
+.echosafe-legend-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* ESTILOS Y OVERRIDES PARA POPUPS DE LEAFLET EN TEMA OSCURO */
+.leaflet-popup-content-wrapper {
+  background: rgba(14, 15, 26, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(0, 240, 255, 0.4) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 240, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(14, 15, 26, 0.95) !important;
+  border: 1px solid rgba(0, 240, 255, 0.4) !important;
+}
+
+.leaflet-container {
+  font-family: 'Space Grotesk', system-ui, sans-serif !important;
+}
+
+/* ANIMACIONES */
+@keyframes beaconPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(0, 240, 255, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+}
+
+@keyframes telemetryPulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.3)); }
+  100% { opacity: 0.8; }
+}
+
+@keyframes waveBar {
+  0% { height: 6px; }
+  100% { height: 26px; }
+}
+
+@keyframes formSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- RESPONSIVIDAD (TABLET Y MÓVIL) --- */
+@media (max-width: 1200px) {
+  .echosafe-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .echosafe-main-grid {
+    grid-template-columns: 380px 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .echosafe-wrapper {
+    padding: 1.5rem 4% 3rem 4%;
+  }
+  .echosafe-main-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .echosafe-map-viewport-wrap {
+    height: 480px;
+  }
+}
+
+@media (max-width: 600px) {
+  .echosafe-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+  .echosafe-control-panel,
+  .echosafe-map-panel {
+    padding: 1.25rem;
+  }
+  .echosafe-gauge-container {
+    width: 210px;
+    height: 210px;
+  }
+  .echosafe-gauge-number {
+    font-size: 4.2rem;
+  }
+  .echosafe-legend-items {
+    gap: 10px;
+  }
+  .echosafe-map-viewport-wrap {
+    height: 400px;
+  }
+}

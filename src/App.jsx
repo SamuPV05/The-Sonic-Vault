@@ -8,6 +8,7 @@ import Artistas from './pages/Artistas';
 import ArtistaDetalle from './pages/ArtistaDetalle';
 import EchoSafe from './pages/EchoSafe';
 import BeatIt from './pages/BeatIt';
+import SpotifyCallback from './pages/SpotifyCallback';
 
 // Componente guardián para proteger la bóveda
 // Si alguien intenta entrar a /perfil sin llave, lo patea al /login
@@ -38,6 +39,7 @@ export default function App() {
           
           {/* == RUTAS PÚBLICAS == */}
           <Route path="/login" element={<Login />} />
+          <Route path="/callback" element={<SpotifyCallback />} />
           <Route path="/" element={<Inicio />} />
           <Route path="/artistas" element={<Artistas />} />
           
