@@ -53,7 +53,7 @@ export default function Artistas() {
         setBuscandoSpotify(true);
         const timer = setTimeout(async () => {
             try {
-                const resultados = await searchSpotifyArtists(terminoBusqueda, 12);
+                const resultados = await searchSpotifyArtists(terminoBusqueda, 10);
                 setResultadosSpotify(resultados);
             } catch (err) {
                 console.error("Error buscando en Spotify:", err);

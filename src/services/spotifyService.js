@@ -69,9 +69,12 @@ export async function getEffectiveSpotifyToken() {
  */
 export async function searchSpotifyArtists(query, limit = 8) {
   if (!query || query.trim().length === 0) return [];
+  
+  // Spotify exige estrictamente un límite máximo de 10 en aplicaciones de desarrollo
+  const safeLimit = Math.min(Math.max(1, Number(limit) || 8), 10);
   let token = await getEffectiveSpotifyToken();
 
-  const url = `${API_BASE}/search?q=${encodeURIComponent(query.trim())}&type=artist&limit=${limit}`;
+  const url = `${API_BASE}/search?q=${encodeURIComponent(query.trim())}&type=artist&limit=${safeLimit}`;
   let response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
