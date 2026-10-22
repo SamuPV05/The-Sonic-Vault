@@ -8,7 +8,8 @@ import {
   getUserTopArtists,
   getUserTopTracks,
   getCurrentlyPlaying,
-  controlPlayback
+  controlPlayback,
+  getLastSpotifyError
 } from '../services/spotifyService';
 import HolographicPassport from './HolographicPassport';
 import SonicTimeCapsule from './SonicTimeCapsule';
@@ -264,10 +265,40 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
   // ==========================================================================
   // ESTADO: CONECTADO (PASAPORTE REAL + NOW PLAYING + CÁPSULA DEL TIEMPO)
   // ==========================================================================
-  const passportData = calculateSoundArchetype(currentArtists, currentTracks, perfilSpotify);
+  const passportData = calculateSoundArchetype(currentArtists, currentTracks, perfilSpotify, true, userAuthName);
+  const spotifyError = getLastSpotifyError();
 
   return (
     <section style={{ marginBottom: '3.5rem' }}>
+      {/* AVISO MODO DESARROLLO (403 FORBIDDEN - USUARIO NO REGISTRADO EN DASHBOARD) */}
+      {spotifyError?.status === 403 && (
+        <div style={{
+          background: 'linear-gradient(90deg, rgba(255, 77, 77, 0.15), rgba(255, 170, 0, 0.15))',
+          border: '1px solid rgba(255, 77, 77, 0.5)',
+          borderRadius: '14px',
+          padding: '14px 20px',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          boxShadow: '0 4px 20px rgba(255, 77, 77, 0.2)'
+        }}>
+          <i className="fa-solid fa-triangle-exclamation" style={{ color: '#ff4d4d', fontSize: '1.4rem', flexShrink: 0 }} />
+          <div style={{ fontSize: '0.85rem', color: '#fff', lineHeight: '1.5' }}>
+            <strong style={{ color: '#ff4d4d', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '2px' }}>
+              ⚠️ Aplicación en Modo Desarrollo de Spotify (Error 403)
+            </strong>
+            <span>
+              Spotify requiere que el correo de este usuario sea añadido a la lista blanca de la aplicación. El creador de la app debe ir a{' '}
+              <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ color: '#00F0FF', textDecoration: 'underline' }}>
+                Spotify Developer Dashboard
+              </a>
+              {' '}➔ <strong>Settings</strong> ➔ <strong>User Management</strong> y agregar el nombre y correo de Spotify de este usuario.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 1. PASAPORTE HOLOGRÁFICO 3D EN LA CIMA */}
       <HolographicPassport passportData={passportData} />
 

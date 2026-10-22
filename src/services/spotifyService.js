@@ -389,21 +389,47 @@ export function isSpotifyConnected() {
 // 3. CONSULTAS DEL USUARIO (ADN SONORO Y CONTROLES PREMIUM)
 // ----------------------------------------------------------------------------
 
+let lastUserFetchError = null;
+
+export function getLastSpotifyError() {
+  return lastUserFetchError;
+}
+
+export function clearLastSpotifyError() {
+  lastUserFetchError = null;
+}
+
 async function userFetch(endpoint, options = {}) {
   const token = await getUserAccessToken();
   if (!token) return null;
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (response.status === 204) return true; // Respuestas sin contenido (ej: pause/play)
-  if (!response.ok) return null;
-  return await response.json();
+    if (response.status === 204) return true; // Respuestas sin contenido (ej: pause/play)
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      lastUserFetchError = {
+        status: response.status,
+        message: errData?.error?.message || response.statusText,
+        endpoint
+      };
+      console.warn(`[Spotify API] HTTP ${response.status} en ${endpoint}:`, lastUserFetchError.message);
+      return null;
+    }
+
+    lastUserFetchError = null;
+    return await response.json();
+  } catch (err) {
+    console.error(`[Spotify API Error] en ${endpoint}:`, err);
+    return null;
+  }
 }
 
 /**

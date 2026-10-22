@@ -167,10 +167,13 @@ const GENRE_RULES = [
 /**
  * Calcula el arquetipo sonoro a partir de los artistas y canciones favoritas del usuario.
  */
-export function calculateSoundArchetype(topArtists = [], topTracks = [], profile = {}) {
-  // Si no hay artistas disponibles, retornar el arquetipo demo
+export function calculateSoundArchetype(topArtists = [], topTracks = [], profile = {}, isConnected = false, userAuthName = '') {
+  // Si no hay artistas disponibles pero el usuario sí está conectado (cuenta nueva sin historial o sincronizando)
   if (!topArtists || topArtists.length === 0) {
-    return getDemoArchetype(profile?.display_name || 'Agente de Bóveda');
+    if (isConnected) {
+      return getNewUserArchetype(profile, userAuthName);
+    }
+    return getDemoArchetype(userAuthName || profile?.display_name || 'Agente de Bóveda');
   }
 
   // 1. Ponderar géneros de los artistas
@@ -280,6 +283,39 @@ export function calculateSoundArchetype(topArtists = [], topTracks = [], profile
     topTrackName: topTrack?.name || '',
     topTrackArtist: topTrack?.artists?.map(a => a.name).join(', ') || '',
     isDemo: false
+  };
+}
+
+/**
+ * Retorna un arquetipo en fase de calibración para usuarios conectados cuya cuenta de Spotify
+ * es reciente o aún no cuenta con historial de reproducción suficiente para calcular afinidad.
+ */
+export function getNewUserArchetype(profile = {}, userAuthName = '') {
+  const archetypeConfig = ARCHETYPES.ECLECTIC_EXPLORER;
+  const holderName = profile?.display_name || userAuthName || 'Agente de Bóveda';
+  const nameHash = Math.abs(holderName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 7794)) % 9000 + 1000;
+
+  return {
+    archetype: archetypeConfig,
+    topGenres: [
+      { name: 'Calibrando Frecuencias...', percent: 75 },
+      { name: 'Sintonizando Hábitos...', percent: 55 },
+      { name: 'Primeras Escuchas...', percent: 40 }
+    ],
+    affinityScore: 92,
+    serialNumber: `ARC-INIT-${nameHash}-${new Date().getFullYear()}`,
+    issueDate: new Date().toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }).toUpperCase(),
+    holderName,
+    holderPhoto: profile?.images?.[0]?.url || null,
+    accountType: profile?.product === 'premium' ? 'PREMIUM SONIC VIP' : 'STANDARD VAULT PASS',
+    isPremium: profile?.product === 'premium',
+    topArtistName: 'Sintonizando Frecuencia...',
+    topArtistImage: null,
+    topArtistGenres: 'Reproduce canciones en Spotify para calibrar tu ADN',
+    topTrackName: 'Frecuencia Inicial en Espera',
+    topTrackArtist: 'The Sonic Vault Neural Link',
+    isDemo: false,
+    isCalibrating: true
   };
 }
 

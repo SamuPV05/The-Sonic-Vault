@@ -25,7 +25,8 @@ export default function HolographicPassport({ passportData, onConnectSpotify }) 
     topArtistName = 'Varios Artistas',
     topArtistImage = null,
     topTrackName = '',
-    isDemo = false
+    isDemo = false,
+    isCalibrating = false
   } = passportData;
 
   // 3D Gyroscope/Tilt Effect
@@ -543,6 +544,27 @@ export default function HolographicPassport({ passportData, onConnectSpotify }) 
                   Sincronizar mi Cuenta
                 </button>
               )}
+            </div>
+          )}
+
+          {/* BANNER EN CALIBRACIÓN (CUENTA NUEVA / POCO HISTORIAL) */}
+          {isCalibrating && (
+            <div style={{
+              position: 'relative',
+              zIndex: 4,
+              background: 'linear-gradient(90deg, rgba(0, 240, 255, 0.15), rgba(29, 185, 84, 0.15))',
+              border: '1px solid rgba(0, 240, 255, 0.4)',
+              borderRadius: '12px',
+              padding: '10px 16px',
+              marginBottom: '1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <i className="fa-solid fa-satellite-dish" style={{ color: '#00F0FF', fontSize: '1rem', flexShrink: 0 }} />
+              <span style={{ color: '#e0f7fa', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                <strong>ENLACE VERIFICADO // CALIBRANDO FRECUENCIAS:</strong> Tu cuenta de Spotify está conectada. Como es una cuenta nueva o con poco historial reciente, reproduce tus canciones favoritas en la app de Spotify para que tu Pasaporte sintonice tus Top Artistas y Arquetipo sonoro.
+              </span>
             </div>
           )}
 
