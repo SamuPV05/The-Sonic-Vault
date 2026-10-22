@@ -1025,10 +1025,79 @@
   .echosafe-gauge-number {
     font-size: 4.2rem;
   }
-  .echosafe-legend-items {
-    gap: 10px;
-  }
   .echosafe-map-viewport-wrap {
     height: 400px;
   }
 }
+
+/* --- BOTÓN Y TARJETAS DE RECUPERACIÓN AUDITIVA (FASE 2) --- */
+.echosafe-recovery-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #10B981;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+
+.echosafe-recovery-hero-btn:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10B981;
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+}
+
+.echosafe-recovery-tag {
+  background: #1db954;
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.echosafe-recovery-recommendation-card {
+  background: linear-gradient(135deg, rgba(255, 0, 122, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border: 1px solid rgba(255, 0, 122, 0.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  animation: fadeIn 0.3s ease;
+}
+
+.echosafe-btn-recovery-launch {
+  background: linear-gradient(135deg, #10B981 0%, #00F0FF 100%);
+  color: #000;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+.echosafe-btn-recovery-launch:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
+

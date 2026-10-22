@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
+import NavbarSpotifyPlayer from './NavbarSpotifyPlayer';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -53,7 +54,11 @@ export default function Navbar() {
             <Link to="/beat-it" style={{ fontSize: esMovil ? '0.9rem' : '1rem', textDecoration: 'none' }}>Beat It</Link>
             <Link to="/echo-safe" style={{ fontSize: esMovil ? '0.9rem' : '1rem', textDecoration: 'none' }}>Echo Safe</Link>
 
+            {/* MINI REPRODUCTOR NOW PLAYING SPOTIFY (FASE 3) */}
+            <NavbarSpotifyPlayer />
+
             {/* --- ZONA DE SEGURIDAD FIREBASE --- */}
+
             <div style={{ 
               marginLeft: '0', 
               paddingLeft: '0', 

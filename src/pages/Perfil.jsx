@@ -258,7 +258,7 @@ export default function Perfil() {
       </section>
 
       {/* ENLACE NEURAL SPOTIFY // ADN SONORO & REPRODUCTOR */}
-      <SpotifyProfileWidget />
+      <SpotifyProfileWidget userAuthName={user?.displayName} />
 
       {/* MIS CINTAS Y ECHO-SAFE */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>

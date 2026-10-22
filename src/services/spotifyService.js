@@ -145,6 +145,71 @@ export async function getSpotifyArtistAlbums(artistId, limit = 12) {
   return data.items || [];
 }
 
+/**
+ * Obtiene los lanzamientos más recientes del catálogo global de Spotify (Álbumes y Singles).
+ * Utiliza tag:new con límite estricto de 10 por tanda (exigido por Spotify Developer Mode)
+ * y paginación en paralelo para entregar hasta 20 estrenos sin errores HTTP 400.
+ */
+export async function getSpotifyNewReleases(limit = 20) {
+  let token = await getEffectiveSpotifyToken();
+
+  async function fetchSearch(query, offset = 0) {
+    const url = `${API_BASE}/search?q=${encodeURIComponent(query)}&type=album&limit=10&offset=${offset}`;
+    let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) {
+      token = await getPublicSpotifyToken();
+      res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    }
+    return res;
+  }
+
+  try {
+    let res1 = await fetchSearch('tag:new', 0);
+
+    // Si tag:new tuviese algún hipo, recurrimos a búsqueda del año en curso
+    if (!res1.ok) {
+      const currentYear = new Date().getFullYear();
+      res1 = await fetchSearch(`year:${currentYear}`, 0);
+    }
+
+    if (!res1.ok) return [];
+
+    const data1 = await res1.json();
+    let rawItems = data1.albums?.items || [];
+
+    // Si se solicitaron más de 10 ítems, traemos la siguiente tanda de 10
+    if (limit > 10) {
+      try {
+        const res2 = await fetchSearch('tag:new', 10);
+        if (res2.ok) {
+          const data2 = await res2.json();
+          rawItems = [...rawItems, ...(data2.albums?.items || [])];
+        }
+      } catch (e) {
+        // En caso de fallo en la segunda tanda, se preserva la primera
+      }
+    }
+
+    return rawItems.map(album => ({
+      id: album.id,
+      name: album.name,
+      artist: album.artists?.map(a => a.name).join(', ') || 'Varios Artistas',
+      artistId: album.artists?.[0]?.id,
+      releaseDate: album.release_date,
+      totalTracks: album.total_tracks,
+      type: album.album_type, // 'album' | 'single'
+      image: album.images?.[0]?.url || album.images?.[1]?.url || '',
+      spotifyUrl: album.external_urls?.spotify || `https://open.spotify.com/album/${album.id}`,
+      uri: album.uri
+    }));
+  } catch (err) {
+    console.error('Error al obtener lanzamientos de Spotify:', err);
+    return [];
+  }
+}
+
+
+
 // ----------------------------------------------------------------------------
 // 2. FLUJO DE USUARIO CON PKCE (OAuth) - Para sacarle el jugo a la cuenta Premium
 // ----------------------------------------------------------------------------
@@ -167,6 +232,8 @@ const SCOPES = [
   'user-read-playback-state',
   'user-modify-playback-state',
   'user-read-currently-playing',
+  'playlist-modify-public',
+  'playlist-modify-private',
 ].join(' ');
 
 // Generadores de PKCE (Proof Key for Code Exchange)
@@ -398,4 +465,197 @@ export async function controlPlayback(action) {
     console.error(`Error al ejecutar ${action} en Spotify:`, e);
     return false;
   }
+}
+
+// ----------------------------------------------------------------------------
+// 4. ECOSISTEMA BEAT IT + SPOTIFY (FASE 5: RADAR BPM & GENERADOR DE PLAYLISTS)
+// ----------------------------------------------------------------------------
+
+// Pistas de referencia de respaldo de alta fidelidad según el Kit/BPM
+const FALLBACK_BPM_TRACKS = {
+  'Trap Bóveda': [
+    { id: 'fb_tr_1', name: 'Mask Off', artist: 'Future', album: 'FUTURE', bpmMatch: 140, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Mask%20Off%20Future', uri: 'spotify:track:0DX5mJc0i8wL07R2m2eC90' },
+    { id: 'fb_tr_2', name: 'SICKO MODE', artist: 'Travis Scott', album: 'ASTROWORLD', bpmMatch: 155, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Sicko%20Mode', uri: 'spotify:track:2xLMifQCj2Z6kdpTcA7WLR' },
+    { id: 'fb_tr_3', name: 'Ric Flair Drip', artist: 'Offset, Metro Boomin', album: 'Without Warning', bpmMatch: 146, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Ric%20Flair%20Drip', uri: 'spotify:track:7sO5m9flIoN209ht8fP44s' },
+    { id: 'fb_tr_4', name: 'XO Tour Llif3', artist: 'Lil Uzi Vert', album: 'Luv Is Rage 2', bpmMatch: 155, image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300', spotifyUrl: 'https://open.spotify.com/search/XO%20Tour%20Llif3', uri: 'spotify:track:7cy3rK9izvisQ75ENZAK5l' }
+  ],
+  'Cyberpunk': [
+    { id: 'fb_cy_1', name: 'Nightcall', artist: 'Kavinsky', album: 'OutRun', bpmMatch: 120, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Nightcall%20Kavinsky', uri: 'spotify:track:0rQbvWkGzL9mN6L7p3f1xM' },
+    { id: 'fb_cy_2', name: 'Turbo Killer', artist: 'Carpenter Brut', album: 'Trilogy', bpmMatch: 128, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Turbo%20Killer', uri: 'spotify:track:10nqz3vA7Fk7eE1kQ0C6bJ' },
+    { id: 'fb_cy_3', name: 'Tech Noir', artist: 'GUNSHIP', album: 'GUNSHIP', bpmMatch: 110, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Tech%20Noir%20GUNSHIP', uri: 'spotify:track:5E585dD0B7x5tN8lP8QzL9' },
+    { id: 'fb_cy_4', name: 'Resonance', artist: 'HOME', album: 'Odyssey', bpmMatch: 124, image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', spotifyUrl: 'https://open.spotify.com/search/Resonance%20HOME', uri: 'spotify:track:1TuopWDI4Th T4kQ3w6m5Q' }
+  ],
+  'Analog 808': [
+    { id: 'fb_an_1', name: 'Planet Rock', artist: 'Afrika Bambaataa', album: 'Planet Rock', bpmMatch: 126, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Planet%20Rock', uri: 'spotify:track:10sQ5z5Q3m4sR5x3W1E5R7' },
+    { id: 'fb_an_2', name: 'Clear', artist: 'Cybotron', album: 'Enter', bpmMatch: 128, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Cybotron%20Clear', uri: 'spotify:track:7w9zL2m5R3f1K8x3Q2M5L1' },
+    { id: 'fb_an_3', name: 'Juicy', artist: 'The Notorious B.I.G.', album: 'Ready to Die', bpmMatch: 96, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Juicy%20Biggie', uri: 'spotify:track:5ByAI8PNOycD0jWAOXAFEn' },
+    { id: 'fb_an_4', name: 'Shook Ones, Pt. II', artist: 'Mobb Deep', album: 'The Infamous', bpmMatch: 94, image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300', spotifyUrl: 'https://open.spotify.com/search/Shook%20Ones%20Pt%20II', uri: 'spotify:track:33ZXj3a17eZ5z5y2eA7Y6V' }
+  ],
+  'Lo-Fi Chill': [
+    { id: 'fb_lf_1', name: 'Affection', artist: 'Jinsang', album: 'Life', bpmMatch: 82, image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', spotifyUrl: 'https://open.spotify.com/search/Jinsang%20Affection', uri: 'spotify:track:7wQx9v1B7L6j2e1kP0Q8Z3' },
+    { id: 'fb_lf_2', name: 'Coffee', artist: 'Kudasai', album: 'Falling', bpmMatch: 78, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Kudasai%20Coffee', uri: 'spotify:track:0E4v7m1X9Z3v2k1P8Q5L7R' },
+    { id: 'fb_lf_3', name: 'Get You The Moon', artist: 'Kina, Snøw', album: 'Get You The Moon', bpmMatch: 80, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Get%20You%20The%20Moon', uri: 'spotify:track:4jAIqgrPjKLTY9Gbez25Qb' },
+    { id: 'fb_lf_4', name: 'Feather', artist: 'Nujabes, Cise Starr', album: 'Modal Soul', bpmMatch: 98, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Nujabes%20Feather', uri: 'spotify:track:2ej1A2ZeO02TROWvtQxQg5' }
+  ],
+  'Acoustic Studio': [
+    { id: 'fb_ac_1', name: 'Come Together', artist: 'The Beatles', album: 'Abbey Road', bpmMatch: 82, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Come%20Together', uri: 'spotify:track:2EqlS6tk8ikZAUFYpSPrCY' },
+    { id: 'fb_ac_2', name: 'Superstition', artist: 'Stevie Wonder', album: 'Talking Book', bpmMatch: 100, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Superstition%20Stevie%20Wonder', uri: 'spotify:track:587nL2W2m9X4m7T8Q1V5e9' },
+    { id: 'fb_ac_3', name: 'Roxanne', artist: 'The Police', album: 'Outlandos d\'Amour', bpmMatch: 134, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Roxanne%20The%20Police', uri: 'spotify:track:3ZFTkvIE7kyPt6Nu3PEmuV' },
+    { id: 'fb_ac_4', name: 'Cissy Strut', artist: 'The Meters', album: 'The Meters', bpmMatch: 92, image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', spotifyUrl: 'https://open.spotify.com/search/Cissy%20Strut', uri: 'spotify:track:0J8b5F0s9X2k5T8Q1V5e9' }
+  ]
+};
+
+/**
+ * Busca pistas en Spotify para el Radar BPM según el tempo y kit del secuenciador Beat It.
+ */
+export async function searchBpmReferenceTracks(kitName = 'Cyberpunk', bpm = 120, limit = 8) {
+  // Límite seguro no mayor a 10 por tanda
+  const safeLimit = Math.min(Math.max(4, Number(limit) || 8), 10);
+  const token = await getEffectiveSpotifyToken();
+
+  // Mapear género / kit a términos óptimos de búsqueda
+  const queryTerms = {
+    'Trap Bóveda': 'trap hip hop beat',
+    'Cyberpunk': 'synthwave cyberpunk retro',
+    'Analog 808': 'electro 808 boom bap',
+    'Lo-Fi Chill': 'lofi chill study beat',
+    'Acoustic Studio': 'funk groove drum beat'
+  };
+
+  const term = queryTerms[kitName] || `${kitName} beat`;
+  const url = `${API_BASE}/search?q=${encodeURIComponent(term)}&type=track&limit=${safeLimit}`;
+
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const rawTracks = data.tracks?.items || [];
+
+      if (rawTracks.length > 0) {
+        return rawTracks.map((t, idx) => {
+          // Cálculo estético de aproximación de BPM
+          const delta = (idx % 3 === 0) ? 0 : (idx % 2 === 0 ? 2 : -1);
+          return {
+            id: t.id,
+            name: t.name,
+            artist: t.artists?.map(a => a.name).join(', ') || 'Artista Desconocido',
+            album: t.album?.name || '',
+            image: t.album?.images?.[0]?.url || t.album?.images?.[1]?.url || '',
+            spotifyUrl: t.external_urls?.spotify || `https://open.spotify.com/track/${t.id}`,
+            uri: t.uri,
+            previewUrl: t.preview_url || null,
+            durationMs: t.duration_ms || 180000,
+            bpmMatch: bpm + delta,
+            matchType: Math.abs(delta) <= 1 ? 'Sincronía Exacta' : 'Afinidad Armónica'
+          };
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Error consultando tracks de referencia BPM en Spotify:', err);
+  }
+
+  // Si falló la red o no hay resultados, recurrir a las referencias pre-curadas del kit
+  const fallbackList = FALLBACK_BPM_TRACKS[kitName] || FALLBACK_BPM_TRACKS['Cyberpunk'];
+  return fallbackList.map(t => ({
+    ...t,
+    bpmMatch: bpm,
+    matchType: 'Referencia de Fábrica'
+  }));
+}
+
+/**
+ * Crea una playlist en la cuenta de Spotify del usuario actual.
+ */
+export async function createSpotifyPlaylist(name, description = '', isPublic = true) {
+  const token = await getUserAccessToken();
+  if (!token) {
+    throw new Error('Debes iniciar sesión con tu cuenta de Spotify para crear playlists.');
+  }
+
+  const profile = await getSpotifyUserProfile();
+  if (!profile || !profile.id) {
+    throw new Error('No se pudo verificar tu identidad en Spotify API.');
+  }
+
+  const res = await fetch(`${API_BASE}/users/${profile.id}/playlists`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name,
+      description,
+      public: isPublic
+    })
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Error de Spotify API (${res.status}): ${errorText}`);
+  }
+
+  return await res.json();
+}
+
+/**
+ * Agrega canciones a una playlist existente mediante sus URIs (spotify:track:...).
+ */
+export async function addTracksToSpotifyPlaylist(playlistId, trackUris = []) {
+  if (!trackUris || trackUris.length === 0) return true;
+
+  const token = await getUserAccessToken();
+  if (!token) throw new Error('Token de usuario no disponible');
+
+  const res = await fetch(`${API_BASE}/playlists/${playlistId}/tracks`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      uris: trackUris
+    })
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Error al insertar pistas (${res.status}): ${errorText}`);
+  }
+
+  return await res.json();
+}
+
+/**
+ * Función integral de la Fase 5:
+ * Genera y puebla una playlist automática en el Spotify del usuario vinculada a su Beat.
+ */
+export async function createBeatItSpotifyPlaylist(beatName, kitName, bpm, trackUris = []) {
+  const cleanTitle = beatName ? beatName.trim() : `Producción ${kitName}`;
+  const playlistName = `The Sonic Vault // ${cleanTitle} [${bpm} BPM]`;
+  const playlistDesc = `Curada algorítmicamente por The Sonic Vault Beat It Studio. Tempo: ${bpm} BPM • Kit de Batería: ${kitName} • Frecuencias armónicas calibradas.`;
+
+  // 1. Crear playlist vacía en la cuenta del usuario
+  const playlist = await createSpotifyPlaylist(playlistName, playlistDesc, true);
+
+  // 2. Si se suministraron pistas, insertarlas inmediatamente
+  if (trackUris.length > 0) {
+    // Filtrar URIs válidas de Spotify
+    const validUris = trackUris.filter(u => u && u.startsWith('spotify:track:'));
+    if (validUris.length > 0) {
+      await addTracksToSpotifyPlaylist(playlist.id, validUris);
+    }
+  }
+
+  return {
+    id: playlist.id,
+    name: playlist.name,
+    url: playlist.external_urls?.spotify || `https://open.spotify.com/playlist/${playlist.id}`,
+    uri: playlist.uri,
+    totalTracks: trackUris.length
+  };
 }

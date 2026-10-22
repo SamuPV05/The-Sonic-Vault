@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import SpotifyNewReleases from '../components/SpotifyNewReleases';
+
 
 export default function Inicio() {
   const { user } = useAuth();
@@ -243,8 +245,14 @@ export default function Inicio() {
       </section>
 
       {/* =========================================
+          BLOQUE 3.5: RADAR DE ESTRENOS SPOTIFY (FASE 1)
+          ========================================= */}
+      <SpotifyNewReleases />
+
+      {/* =========================================
           NUEVO BLOQUE 4: MANIFIESTO VISUAL (Storytelling)
           ========================================= */}
+
       <section style={{ maxWidth: '1100px', margin: '0 auto 6rem auto', padding: '0 2rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4rem' }}>
         <div style={{ flex: '1 1 400px' }}>
           <h2 style={{ color: '#fff', fontSize: '2.5rem', marginBottom: '1rem', lineHeight: '1.2' }}>MÁS QUE UN <br/><span style={{ color: 'var(--accent-color)' }}>REPRODUCTOR</span></h2>

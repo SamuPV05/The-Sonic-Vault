@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext'; // <-- Añadido useAuth
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { SpotifyPlayerProvider } from './context/SpotifyPlayerContext';
 import Login from './pages/Login';
 import Perfil from './pages/Perfil';
 import Navbar from './components/Navbar';
@@ -24,8 +25,10 @@ const RutaProtegida = ({ children }) => {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Navbar />
+      <SpotifyPlayerProvider>
+        <BrowserRouter>
+          <Navbar />
+
         <Routes>
           {/* == RUTA PRIVADA == */}
           <Route 
@@ -50,6 +53,7 @@ export default function App() {
           <Route path="/beat-it" element={<BeatIt />} />
         </Routes>
       </BrowserRouter>
+      </SpotifyPlayerProvider>
     </AuthProvider>
   );
-}
+}

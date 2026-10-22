@@ -11,7 +11,9 @@ import useAudioMeter from '../hooks/useAudioMeter';
 import EchoHeatLayer from '../components/EchoHeatLayer';
 import EchoReportMarkers from '../components/EchoReportMarkers';
 import { ACOUSTIC_LEVELS, HEAT_CONFIG, SOUND_CATEGORIES, getAcousticClassification } from '../constants/echoSafeConfig';
+import EchoRecoveryModal from '../components/EchoRecoveryModal';
 import './EchoSafe.css';
+
 
 // --- ICONOS LIMPIOS Y MARCADORES TÁCTICOS ---
 const userIcon = L.divIcon({
@@ -79,6 +81,11 @@ export default function EchoSafe() {
   // Estados de filtros para el mapa y las consultas
   const [filtroCategoria, setFiltroCategoria] = useState('all');
   const [filtroNivel, setFiltroNivel] = useState('all');
+
+  // Estado del Protocolo de Descompresión Auditiva (Fase 2)
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [recoveryInitialDb, setRecoveryInitialDb] = useState(null);
+
 
   const showToast = (type, title, message, duration = 4000) => {
     const id = Date.now() + Math.random();
@@ -184,7 +191,11 @@ export default function EchoSafe() {
   const handleScanComplete = (result) => {
     setFinalAverage(result.avg);
     setScanSummary({ avg: result.avg, peak: result.peak, min: result.min });
+    if (result.avg >= 76) {
+      showToast('warning', 'Alerta de Fatiga Auditiva', `Exposición elevada (${result.avg} dB). Te sugerimos iniciar el Protocolo de Descompresión para proteger tu audición.`, 7000);
+    }
   };
+
 
   const handleScanError = ({ code }) => {
     const messages = {
@@ -302,11 +313,24 @@ export default function EchoSafe() {
       
       {/* CABECERA FUTURISTA Y BADGE EN VIVO */}
       <section className="echosafe-hero">
-        <div className="echosafe-badge-pill">
-          <span className="echosafe-beacon-dot"></span>
-          Red de Telemetría Acústica Urbana // Nodo Activo
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
+          <div className="echosafe-badge-pill" style={{ margin: 0 }}>
+            <span className="echosafe-beacon-dot"></span>
+            Red de Telemetría Acústica Urbana // Nodo Activo
+          </div>
+          <button
+            type="button"
+            onClick={() => { setRecoveryInitialDb(dbLevel > 0 ? dbLevel : null); setShowRecoveryModal(true); }}
+            className="echosafe-recovery-hero-btn"
+            title="Iniciar sesión de recuperación acústica con frecuencias curativas y ruido marrón"
+          >
+            <i className="fa-solid fa-heart-pulse"></i>
+            <span>DESCOMPRESIÓN AUDITIVA</span>
+            <span className="echosafe-recovery-tag">SPOTIFY</span>
+          </button>
         </div>
         <h1 className="echosafe-title">
+
           Echo <span className="accent">Safe</span>
         </h1>
         <p className="echosafe-subtitle">
@@ -504,6 +528,28 @@ export default function EchoSafe() {
                   </div>
                 )}
 
+                {/* Alerta de Fatiga Auditiva y Recomendación de Descompresión Sónica */}
+                {scanSummary && scanSummary.avg >= 76 && (
+                  <div className="echosafe-recovery-recommendation-card">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <i className="fa-solid fa-heart-pulse" style={{ color: '#FF007A', fontSize: '1.4rem' }}></i>
+                      <div>
+                        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.84rem' }}>Fatiga Auditiva Inminente ({scanSummary.avg} dB)</span>
+                        <p style={{ margin: '2px 0 0 0', color: '#94a3b8', fontSize: '0.75rem' }}>
+                          Nivel de riesgo acústico. La OMS sugiere una sesión de reposo para recuperar los receptores auditivos.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setRecoveryInitialDb(scanSummary.avg); setShowRecoveryModal(true); }}
+                      className="echosafe-btn-recovery-launch"
+                    >
+                      <i className="fa-solid fa-spa"></i> TERAPIA SÓNICA
+                    </button>
+                  </div>
+                )}
+
                 {/* Selector de Categoría de Fuente Sonora */}
                 <div>
                   <label className="echosafe-form-label">
@@ -697,6 +743,15 @@ export default function EchoSafe() {
 
       {/* SISTEMA DE NOTIFICACIONES TOAST CYBERPUNK */}
       <EchoToast toasts={toasts} onDismiss={dismissToast} />
+
+      {/* MODAL PROTOCOLO DE DESCOMPRESIÓN AUDITIVA & SOUND HEALING (FASE 2) */}
+      {showRecoveryModal && (
+        <EchoRecoveryModal 
+          onClose={() => setShowRecoveryModal(false)} 
+          initialDb={recoveryInitialDb} 
+        />
+      )}
     </main>
   );
-}
+}
+
