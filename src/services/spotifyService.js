@@ -4,7 +4,7 @@
 
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:5173/callback';
+const REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || (typeof window !== 'undefined' ? `${window.location.origin}/callback` : 'http://127.0.0.1:5173/callback');
 
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 const API_BASE = 'https://api.spotify.com/v1';
