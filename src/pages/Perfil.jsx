@@ -60,7 +60,7 @@ export default function Perfil() {
           querySnapshot.forEach((doc) => {
             beatsDescargados.push({ id: doc.id, ...doc.data() });
           });
-          beatsDescargados.sort((a, b) => b.timestamp - a.timestamp);
+          beatsDescargados.sort((a, b) => (b.timestamp?.toMillis?.() ?? 0) - (a.timestamp?.toMillis?.() ?? 0));
           setMisBeats(beatsDescargados);
 
           // 1.5 Cargar Artistas de Firestore
@@ -110,7 +110,7 @@ export default function Perfil() {
         reportesData.push({ id: doc.id, ...doc.data() });
       });
       // Ordenamos para que los más recientes salgan arriba
-      reportesData.sort((a, b) => b.timestamp - a.timestamp);
+      reportesData.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
       setMisReportes(reportesData);
     });
 

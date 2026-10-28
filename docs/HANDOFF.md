@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-28 18:20] T02 — Corregir ordenación de beats y reportes en Perfil — Argon
+- Rama: `fix/T02-perfil-orden`
+- Estado: completada
+- Archivos tocados: `src/pages/Perfil.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se corrigió la ordenación de `beatsDescargados` usando `timestamp?.toMillis?.() ?? 0` (L63) y de `reportesData` usando `createdAt?.toMillis?.() ?? 0` (L113) para evitar resultados `NaN` con objetos `Timestamp` de Firestore.
+- Decisiones tomadas: Se mantuvo el fallback `?? 0` en ambos comparadores para tolerar documentos sin marca temporal.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Abrir `/perfil` con sesión iniciada y comprobar que tanto "Mis Cintas" como los reportes de "Echo-Safe" aparecen ordenados del más reciente al más antiguo.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T03 (Quitar `<AuthProvider>` duplicado entre `main.jsx` y `App.jsx`) con Argon.
+
 ### [2026-10-28 17:21] T01 — Crear rama fix/stabilization y confirmar línea base — Flash
 - Rama: `fix/stabilization`
 - Estado: completada
