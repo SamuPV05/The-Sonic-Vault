@@ -1,6 +1,6 @@
 # 💽 The Sonic Vault & Radar Echo-Safe
 
-**The Sonic Vault** es una plataforma web progresiva de vanguardia diseñada para coleccionistas musicales, audiófilos, productores y exploradores sónicos. Integra catálogo de culto, desensamblado de pistas (*stems*), síntesis e interactividad en tiempo real (Estudio Pro "Beat It"), geolocalización de niveles sonoros ("Radar Echo-Safe"), un ecosistema completo de 5 fases con la **API de Spotify** y un sistema robusto de autenticación y seguridad de nivel empresarial.
+**The Sonic Vault** es una plataforma web progresiva (PWA) de vanguardia diseñada para coleccionistas musicales, audiófilos, productores y exploradores sónicos. Integra catálogo de culto con líneas de tiempo históricas y genealogía musical (*Árbol de Ecos*), síntesis e interactividad en tiempo real (Estudio Pro "Beat It"), geolocalización de niveles sonoros ("Radar Echo-Safe"), un ecosistema completo de 5 fases con la **API de Spotify** y un sistema robusto de autenticación y seguridad de nivel empresarial.
 
 ---
 
@@ -8,20 +8,23 @@
 
 La plataforma incorpora una suite completa de seguridad moderna conforme a los estándares de desarrollo seguro:
 
-1. **Autenticación Multi-Factor (MFA / 2FA con Token):**
-   - Generación de código de verificación numérico de 6 dígitos de un solo uso.
-   - Envío automático y seguro a la bandeja de correo del usuario mediante servicio transaccional.
-   - Ventana de expiración estricta de 5 minutos, sincronizada y auditada en Firestore.
+1. **Autenticación Multi-Factor (MFA / 2FA con Token Ligado a UID):**
+   - Generación de código de verificación numérico de 6 dígitos de un solo uso para accesos con correo y contraseña.
+   - Envío automático y seguro a la bandeja de correo del usuario mediante servicio transaccional (**EmailJS** parametrizado por variables de entorno).
+   - Ventana de expiración estricta de 5 minutos auditada en Firestore y sesión verificada en navegador (`sv_2fa_session`) vinculada criptográficamente al `uid` activo.
    - Bloqueo de rutas protegidas (`/perfil`) hasta la verificación exitosa del token.
 
 2. **Google reCAPTCHA v2 con Validación en Backend:**
    - Desafío *"No soy un robot"* integrado con el tema Cyberpunk oscuro de la interfaz.
-   - Verificación del token del lado del servidor (`/api/verify-captcha`) utilizando la clave secreta oficial contra la API de Google reCAPTCHA.
+   - Verificación del token del lado del servidor (`POST /api/verify-captcha`) utilizando la clave secreta oficial contra la API de Google reCAPTCHA.
    - Prevención de ataques de fuerza bruta y reinicio automático de desafíos ante intentos fallidos.
 
-3. **Single Sign-On (SSO):**
-   - **Google Identity:** Autenticación fluida con cuentas de Google.
+3. **Single Sign-On (SSO) con Verificación Delegada:**
+   - **Google Identity:** Autenticación fluida con cuentas de Google y verificación de identidad delegada en el proveedor OAuth.
    - **Microsoft Entra ID / OAuth:** Autenticación empresarial y personal con cuentas Microsoft (Hotmail, Outlook, Office 365, cuentas educativas).
+
+4. **Blindaje de Secretos en Servidor (`SPOTIFY_CLIENT_SECRET`):**
+   - El secreto de Spotify reside exclusivamente en el entorno Node.js del servidor (`GET /api/spotify-token`), evitando cualquier exposición en el bundle público del navegador.
 
 ---
 
@@ -30,7 +33,8 @@ La plataforma incorpora una suite completa de seguridad moderna conforme a los e
 Estudio de producción de ritmos de alta fidelidad con arquitectura de 7 fases y sincronía estricta:
 
 * **Motor Web Audio API Sin Jitter:** Programación anticipada (*lookahead scheduling*) para una reproducción rítmica con cero latencia y sincronización milimétrica.
-* **8 Canales de Audio:** Kick, Snare, Clap, HiHat Cerrado, OpenHat, Sub 808, Tom y Crash con kits analógicos y futuristas (`Analog 808`, `Cyberpunk`, `Trap Bóveda`, `Lo-Fi Chill`, `Acoustic Studio`).
+* **8 Canales de Audio:** Kick, Snare, Clap, HiHat Cerrado, OpenHat, Sub 808, Tom y Crash con 5 kits analógicos y futuristas (`Analog 808`, `Cyberpunk`, `Trap Bóveda`, `Lo-Fi Chill`, `80s Funk`, con retrocompatibilidad automática para `Acoustic Studio`).
+* **Síntesis Procedural de Vinilo Lo-Fi:** Generador nativo en Web Audio API de textura de vinilo (hiss cálido filtrado + micro-impulsos de aguja aleatorios) 100% autónomo y sin dependencias externas, integrado tanto en tiempo real como en la exportación offline a WAV.
 * **Consola de Mezcla de Estudio:** Faders de ganancia individuales por canal, conmutadores de `Mute` y `Solo` independientes y control de volumen maestro.
 * **Acentos de Velocidad Dinámicos:** Secuenciador por pasos con 3 niveles de energía (`Off` / `Normal` / `Punch con Acento`).
 * **Groove & Swing Micro-temporal:** Desplazamiento rítmico configurable del 50% (Straight) al 75% (Heavy Funk/Shuffle).
@@ -39,8 +43,9 @@ Estudio de producción de ritmos de alta fidelidad con arquitectura de 7 fases y
   - **Filtro Bi-direccional:** Pasabajos para subgraves profundos y pasaaltos para transiciones y caídas (*drops*).
   - **Tape Drive:** Saturación analógica a cinta para calidez armónica y compresión suave.
   - **Dub Delay:** Eco estéreo con feedback resonante y sincronía de tiempo de retardo al tempo musical (1/16, 1/8, 1/8d, 1/4).
+* **Conexión Directa con Bóveda de Perfil:** Hidratación automática de composiciones guardadas en Cloud Firestore al abrirlas desde `/perfil` hacia `/beat-it?beatId=...`.
 * **Presets de Fábrica & Tap Tempo:** Carga instantánea de géneros clásicos (Trap, Boom Bap 90s, Synthwave 80s, Dembow, House, Lo-Fi) y detección de BPM al toque rítmico (*Tap Tempo*).
-* **Exportador de Audio WAV 16-bit:** Renderizado offline de alta calidad en formato WAV PCM a 44.1 kHz sin compresión con opción de exportar el Master estéreo o los 8 Stems por separado.
+* **Exportador de Audio WAV 16-bit:** Renderizado offline de alta calidad en formato WAV PCM a 44.1 kHz sin compresión con opción de exportar el Master estéreo (incluyendo cadena FX y textura Lo-Fi) o los 8 canales individuales por separado.
 
 ---
 
@@ -79,22 +84,24 @@ Integración profunda con Spotify Web API (Flujo público seguro y OAuth PKCE de
 
 ## 🛠️ Stack Tecnológico
 
-* **Frontend:** React 19, JavaScript (ES6+), Vanilla CSS (Diseño Cyberpunk / Glassmorphism)
-* **Build Tool:** Vite
+* **Frontend:** React 19, React Router v7, JavaScript (ES6+), Vanilla CSS (Diseño Cyberpunk / Glassmorphism responsivo)
+* **Build Tool & PWA:** Vite 8 + `vite-plugin-pwa` (Workbox Service Worker)
 * **Base de Datos & Auth:** Firebase Authentication (Google, Microsoft, Email/Password) & Cloud Firestore
-* **Música & Streaming:** Spotify Web API (OAuth PKCE + Client Credentials)
-* **Seguridad:** Google reCAPTCHA v2 (Front & Serverless Backend)
+* **Música & Streaming:** Spotify Web API (OAuth PKCE + Client Credentials Proxy)
+* **Seguridad:** Google reCAPTCHA v2 (Front & Backend Node/Serverless)
 * **Email Service:** EmailJS Transactional API
-* **Mapas & Audio:** Leaflet, React-Leaflet, Web Audio API, Canvas API
-* **Contenedorización & DevOps:** Docker, Dockerfile Multi-Stage, Docker Compose, Nginx Alpine
+* **Mapas & Audio:** Leaflet, React-Leaflet, Web Audio API (Síntesis Procedural + OfflineAudioContext), Canvas API
+* **Contenedorización & DevOps:** Docker, Dockerfile Multi-Stage, Docker Compose, Nginx Alpine + Microservicio API Node 20 Alpine
 
 ---
 
 ## 🚀 Despliegue y Ejecución
 
-### Opción 1: Ejecución con Docker Compose (Recomendado)
+### Opción 1: Ejecución con Docker Compose (Recomendado para Producción)
 
-El proyecto incluye configuración de contenedorización lista para producción con build multi-stage y servidor Nginx:
+El proyecto orquesta dos contenedores aislados mediante `docker-compose.yml`:
+- **`sonic-vault-web` (Nginx Alpine, puerto `3000`):** Sirve el bundle de producción compilado en multi-stage y actúa como *reverse proxy* para `/api/*`.
+- **`sonic-vault-captcha-api` (Node 20 Alpine, puerto interno `3001`):** Microservicio backend que procesa tanto `POST /api/verify-captcha` como `GET /api/spotify-token` manteniendo las llaves secretas fuera del cliente.
 
 1. Clona el repositorio:
    ```bash
@@ -125,11 +132,11 @@ El proyecto incluye configuración de contenedorización lista para producción 
    ```bash
    npm install
    ```
-2. Inicia el servidor de desarrollo Vite:
+2. Inicia el servidor de desarrollo Vite (incluye middleware local para `/api/spotify-token` y `/api/verify-captcha`):
    ```bash
    npm run dev
    ```
-3. Accede a **`http://localhost:5173`**.
+3. Accede a **`http://localhost:5173`** (o **`http://127.0.0.1:5173`** para OAuth de Spotify).
 
 ---
 
@@ -142,14 +149,26 @@ El archivo `.env` requiere las siguientes claves (ver [.env.example](.env.exampl
 | `VITE_FIREBASE_API_KEY` | Clave API de Firebase | Frontend |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Dominio de autenticación de Firebase | Frontend |
 | `VITE_FIREBASE_PROJECT_ID` | Identificador del proyecto Firebase | Frontend |
-| `VITE_FIREBASE_STORAGE_BUCKET`| Bucket de almacenamiento de Firebase | Frontend |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID`| Sender ID de mensajería | Frontend |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Bucket de almacenamiento de Firebase | Frontend |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Sender ID de mensajería de Firebase | Frontend |
 | `VITE_FIREBASE_APP_ID` | Identificador de aplicación de Firebase | Frontend |
 | `VITE_RECAPTCHA_SITE_KEY` | Clave pública del sitio de Google reCAPTCHA v2 | Frontend |
 | `RECAPTCHA_SECRET_KEY` | Clave secreta de Google reCAPTCHA v2 | Backend / Servidor |
-| `VITE_SPOTIFY_CLIENT_ID` | Client ID de Spotify Developer Dashboard | Frontend |
-| `VITE_SPOTIFY_CLIENT_SECRET` | Client Secret de Spotify API | Backend / Proxy seguro |
+| `VITE_SPOTIFY_CLIENT_ID` | Client ID de Spotify Developer Dashboard | Frontend / Backend |
+| `SPOTIFY_CLIENT_SECRET` | Client Secret de Spotify API (jamás usar prefijo `VITE_`) | Backend / Proxy seguro |
 | `VITE_SPOTIFY_REDIRECT_URI` | URI de redirección OAuth (ej: `http://127.0.0.1:5173/callback`) | Frontend |
+| `VITE_EMAILJS_SERVICE_ID` | Service ID para el envío de tokens 2FA en EmailJS | Frontend |
+| `VITE_EMAILJS_TEMPLATE_ID` | Template ID de la plantilla de correo 2FA en EmailJS | Frontend |
+| `VITE_EMAILJS_PUBLIC_KEY` | Public Key de la cuenta EmailJS | Frontend |
+
+---
+
+## 🧪 Scripts de Verificación y Calidad
+
+* `npm run dev` — Levanta el entorno de desarrollo con HMR y middlewares locales `/api/*`.
+* `npm run lint` — Ejecuta ESLint 9 sobre todo el repositorio (`0 errors`, `0 warnings`).
+* `npm run build` — Genera el bundle optimizado de producción y el Service Worker PWA en `dist/`.
+* `npm run preview` — Previsualiza localmente el build de producción.
 
 ---
 

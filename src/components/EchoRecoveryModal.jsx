@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 // Canales oficiales de Spotify científicamente seleccionados para regeneración auditiva y reducción de fatiga acústica
 const RECOVERY_CHANNELS = [
@@ -66,17 +66,19 @@ export default function EchoRecoveryModal({ onClose, initialDb = null }) {
   };
 
   useEffect(() => {
-    let interval = null;
-    if (isTimerRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isTimerRunning) {
-      setIsTimerRunning(false);
-      setTimerFinished(true);
-    }
+    if (!isTimerRunning) return;
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setIsTimerRunning(false);
+          setTimerFinished(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [isTimerRunning, timeLeft]);
+  }, [isTimerRunning]);
 
   const toggleTimer = () => {
     if (timerFinished) {
@@ -100,8 +102,6 @@ export default function EchoRecoveryModal({ onClose, initialDb = null }) {
     const s = secs % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
-
-  const progressPct = ((selectedMinutes * 60 - timeLeft) / (selectedMinutes * 60)) * 100;
 
   return (
     <div 

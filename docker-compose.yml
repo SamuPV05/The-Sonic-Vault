@@ -14,6 +14,11 @@ services:
         VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID}
         VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID}
         VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY}
+        VITE_SPOTIFY_CLIENT_ID: ${VITE_SPOTIFY_CLIENT_ID}
+        VITE_SPOTIFY_REDIRECT_URI: ${VITE_SPOTIFY_REDIRECT_URI}
+        VITE_EMAILJS_SERVICE_ID: ${VITE_EMAILJS_SERVICE_ID}
+        VITE_EMAILJS_TEMPLATE_ID: ${VITE_EMAILJS_TEMPLATE_ID}
+        VITE_EMAILJS_PUBLIC_KEY: ${VITE_EMAILJS_PUBLIC_KEY}
     ports:
       - "3000:80"
     depends_on:
@@ -25,6 +30,9 @@ services:
       context: .
       dockerfile: Dockerfile.api
     environment:
-      # La llave secreta solo existe aquí, en el servidor. Nunca llega al navegador.
+      # Las llaves secretas solo existen aquí, en el servidor. Nunca llegan al navegador.
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
+      SPOTIFY_CLIENT_ID: ${VITE_SPOTIFY_CLIENT_ID}
+      VITE_SPOTIFY_CLIENT_ID: ${VITE_SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
     restart: unless-stopped

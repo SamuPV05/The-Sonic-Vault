@@ -6,8 +6,50 @@ import { db } from '../firebase/config';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import emailjs from '@emailjs/browser';
 
+// --- CONFIGURACIÓN DE EMAILJS (desde variables de entorno) ---
+// Son llaves públicas del navegador, pero se centralizan en .env para no quedar
+// incrustadas en el código y poder cambiarlas por entorno sin tocar el repositorio.
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+const EMAILJS_CONFIGURADO = !!(EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY);
+// Modo prueba solo en desarrollo: sin EmailJS configurado, el código se muestra en pantalla.
+const MODO_PRUEBA_2FA = !EMAILJS_CONFIGURADO && import.meta.env.DEV;
+
+const generarCodigo2FA = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+/**
+ * Guarda un código nuevo en Firestore y lo envía por correo.
+ * Devuelve el código si está en modo prueba (para mostrarlo), o null si se envió por email.
+ */
+async function emitirCodigo2FA(user) {
+  const code = generarCodigo2FA();
+  const expiration = Date.now() + 5 * 60 * 1000;
+  await setDoc(doc(db, '2fa_codes', user.uid), { code, expiration });
+
+  if (MODO_PRUEBA_2FA) {
+    console.info(`[MODO PRUEBA 2FA] Código generado: ${code}`);
+    return code;
+  }
+  if (!EMAILJS_CONFIGURADO) {
+    throw new Error('El servicio de correo (EmailJS) no está configurado. Contacta al administrador.');
+  }
+
+  await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+    codigo: code,
+    passcode: code,
+    time: '5 minutos',
+    to_email: user.email,
+    email: user.email,
+    user_email: user.email,
+    reply_to: user.email,
+    to_name: user.displayName || 'Explorador'
+  }, EMAILJS_PUBLIC_KEY);
+  return null;
+}
+
 export default function Login() {
-  const { login, signup, loginWithGoogle, loginWithMicrosoft, cancelarRegistroPendiente, user, is2FAPassed, verify2FA } = useAuth();
+  const { login, signup, loginWithGoogle, loginWithMicrosoft, cancelarRegistroPendiente, user, is2FAPassed, oauthEnCurso, verify2FA } = useAuth();
   const navigate = useNavigate();
 
   // Estados del formulario
@@ -27,47 +69,32 @@ export default function Login() {
   // Estados del 2FA
   const [codigo2FA, setCodigo2FA] = useState('');
   const [codigoEnviado, setCodigoEnviado] = useState(false);
+  const [codigoPrueba, setCodigoPrueba] = useState(null); // Solo en desarrollo sin EmailJS
+  const [aviso2FA, setAviso2FA] = useState(null);
+  const envioEnCursoRef = useRef(false);
 
-  // Lógica de Envío 2FA Automático
+  // Lógica de Envío 2FA Automático (solo para correo/contraseña; OAuth ya viene verificado)
   useEffect(() => {
     if (user && is2FAPassed) {
       navigate('/perfil');
-    } else if (user && !is2FAPassed && !codigoEnviado) {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiration = Date.now() + 5 * 60 * 1000;
-
-      setDoc(doc(db, '2fa_codes', user.uid), { code, expiration })
-        .then(() => {
-          // --- CONFIGURACIÓN DE EMAILJS ---
-          const serviceId = 'service_646g536';
-          const templateId = 'template_v1y1eqv';
-          const publicKey = 'lKQxjVBugaWWx4W6Z';
-
-          if (serviceId === 'YOUR_SERVICE_ID') {
-            console.log(`[MODO PRUEBA] Código 2FA generado: ${code}`);
-            alert(`[MODO PRUEBA SIMULADO]\n\nSe acaba de enviar este código a tu correo: ${code}`);
-            setCodigoEnviado(true);
-            return;
-          }
-
-          emailjs.send(serviceId, templateId, {
-            codigo: code,
-            passcode: code,
-            time: '5 minutos',
-            to_email: user.email,
-            email: user.email,
-            user_email: user.email,
-            reply_to: user.email,
-            to_name: user.displayName || 'Explorador'
-          }, publicKey).then(() => {
-            setCodigoEnviado(true);
-          }).catch(err => {
-            console.error('Error EmailJS:', err);
-            setError('Error al intentar enviar el correo con el código.');
-          });
-        });
+      return;
     }
-  }, [user, is2FAPassed, codigoEnviado, navigate]);
+    if (!user || is2FAPassed || oauthEnCurso || codigoEnviado || envioEnCursoRef.current) return;
+
+    envioEnCursoRef.current = true;
+    emitirCodigo2FA(user)
+      .then((codigoMostrado) => {
+        setCodigoPrueba(codigoMostrado);
+        setCodigoEnviado(true);
+      })
+      .catch((err) => {
+        console.error('Error enviando código 2FA:', err);
+        setError(err?.message?.includes('EmailJS') ? err.message : 'Error al intentar enviar el correo con el código.');
+      })
+      .finally(() => {
+        envioEnCursoRef.current = false;
+      });
+  }, [user, is2FAPassed, oauthEnCurso, codigoEnviado, navigate]);
 
   const handleVerificar2FA = async () => {
     setIsLoading(true);
@@ -87,6 +114,7 @@ export default function Login() {
         setError('No hay códigos registrados.');
       }
     } catch (err) {
+      console.error('Error verificando código 2FA:', err);
       setError('Error al verificar en la base de datos.');
     }
     setIsLoading(false);
@@ -95,39 +123,21 @@ export default function Login() {
   const handleReenviarCodigo = async () => {
     setIsLoading(true);
     setError(null);
+    setAviso2FA(null);
     try {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiration = Date.now() + 5 * 60 * 1000;
-
-      try {
-        await setDoc(doc(db, '2fa_codes', user.uid), { code, expiration });
-      } catch (err) {
-        console.error('Error Firestore:', err);
-        setError(`Error de base de datos (Firestore): ${err.code || err.message}`);
-        return;
-      }
-
-      try {
-        await emailjs.send('service_646g536', 'template_v1y1eqv', {
-          codigo: code,
-          passcode: code,
-          time: '5 minutos',
-          to_email: user.email,
-          email: user.email,
-          user_email: user.email,
-          reply_to: user.email,
-          to_name: user.displayName || 'Explorador'
-        }, 'lKQxjVBugaWWx4W6Z');
-      } catch (err) {
-        console.error('Error EmailJS:', err);
-        setError(`Error de EmailJS (${err.status || '?'}): ${err.text || err.message}`);
-        return;
-      }
-
-      alert('¡Se ha enviado un nuevo código a tu correo!');
+      const codigoMostrado = await emitirCodigo2FA(user);
+      setCodigoPrueba(codigoMostrado);
+      setCodigo2FA('');
+      setAviso2FA(codigoMostrado ? 'Nuevo código de prueba generado.' : '¡Se ha enviado un nuevo código a tu correo!');
     } catch (err) {
       console.error('Error al reenviar código:', err);
-      setError(`No se pudo reenviar el código: ${err.message}`);
+      if (err?.code) {
+        setError(`Error de base de datos (Firestore): ${err.code}`);
+      } else if (err?.status) {
+        setError(`Error de EmailJS (${err.status}): ${err.text || err.message}`);
+      } else {
+        setError(`No se pudo reenviar el código: ${err.message}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -135,6 +145,8 @@ export default function Login() {
 
   const handleCancelar2FA = async () => {
     setCodigoEnviado(false);
+    setCodigoPrueba(null);
+    setAviso2FA(null);
     setCodigo2FA('');
     setError(null);
     // Si era un registro sin verificar, la cuenta se elimina; si no, solo cierra sesión
@@ -237,7 +249,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       await loginWithGoogle();
-      // No hacemos navigate(). El useEffect tomará el control.
+      // Google ya verifica la identidad: AuthContext marca la sesión como verificada y el useEffect redirige a /perfil.
     } catch (err) {
       console.error("Error Google Auth:", err.code, err.message);
       if (err.code === 'auth/popup-closed-by-user') {
@@ -262,7 +274,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       await loginWithMicrosoft();
-      // No hacemos navigate(). El useEffect tomará el control del 2FA.
+      // Microsoft ya verifica la identidad: AuthContext marca la sesión como verificada y el useEffect redirige a /perfil.
     } catch (err) {
       console.error("Error Microsoft Auth:", err.code, err.message);
       if (err.code === 'auth/popup-closed-by-user') {
@@ -276,13 +288,26 @@ export default function Login() {
     }
   };
 
-  if (user && !is2FAPassed) {
+  if (user && !is2FAPassed && !oauthEnCurso) {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
         <div style={{ background: 'var(--surface-bg)', backdropFilter: 'blur(20px)', padding: '3rem', borderRadius: '16px', border: '1px solid var(--accent-color)', width: '100%', maxWidth: '450px', textAlign: 'center', boxShadow: '0 0 20px rgba(0,240,255,0.2)' }}>
           <i className="fa-solid fa-shield-halved" style={{ fontSize: '3.5rem', color: 'var(--accent-color)', marginBottom: '1rem', textShadow: '0 0 15px var(--accent-color)' }}></i>
           <h2 style={{ color: '#fff', letterSpacing: '2px', marginBottom: '1rem' }}>VERIFICACIÓN EN DOS PASOS</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Hemos enviado un código numérico a <b>{user.email}</b>. Caducará en 5 minutos.</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+            {codigoEnviado
+              ? <>Hemos enviado un código numérico a <b>{user.email}</b>. Caducará en 5 minutos.</>
+              : <>Enviando un código de verificación a <b>{user.email}</b>...</>}
+          </p>
+
+          {codigoPrueba && (
+            <div style={{ background: 'rgba(255, 170, 0, 0.1)', border: '1px dashed #ffaa00', color: '#ffcc66', borderRadius: '8px', padding: '10px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <i className="fa-solid fa-flask" style={{ marginRight: '6px' }}></i>
+              MODO PRUEBA (EmailJS sin configurar): tu código es <b style={{ letterSpacing: '3px', color: '#fff' }}>{codigoPrueba}</b>
+            </div>
+          )}
+
+          {aviso2FA && !error && <div style={{ color: '#00ffcc', marginBottom: '1rem', fontSize: '0.9rem' }}><i className="fa-solid fa-circle-check"></i> {aviso2FA}</div>}
 
           {error && <div style={{ color: '#ff4444', marginBottom: '1rem' }}><i className="fa-solid fa-triangle-exclamation"></i> {error}</div>}
 

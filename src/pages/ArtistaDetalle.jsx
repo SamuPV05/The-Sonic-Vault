@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { getSpotifyArtist, getSpotifyArtistTopTracks, getSpotifyArtistAlbums } from '../services/spotifyService';
+import { getSpotifyArtist, getSpotifyArtistAlbums } from '../services/spotifyService';
 import ArbolEcos from '../components/ArbolEcos';
+import { useWindowSize } from '../hooks/useWindowSize';
 
 export default function ArtistaDetalle() {
   const { id } = useParams();
   const [artista, setArtista] = useState(null);
   const [esSpotify, setEsSpotify] = useState(false);
   const [spotifyAlbums, setSpotifyAlbums] = useState([]);
-  const [spotifyTracks, setSpotifyTracks] = useState([]);
   const [cargando, setCargando] = useState(true);
   
   useEffect(() => {
@@ -33,13 +33,9 @@ export default function ArtistaDetalle() {
               spotifyId: spotifyId,
             });
 
-            // Cargar álbumes y top tracks
-            const [albums, tracks] = await Promise.all([
-              getSpotifyArtistAlbums(spotifyId, 8),
-              getSpotifyArtistTopTracks(spotifyId, artistData.name, 6)
-            ]);
+            // Cargar álbumes oficiales del artista
+            const albums = await getSpotifyArtistAlbums(spotifyId, 8);
             setSpotifyAlbums(albums);
-            setSpotifyTracks(tracks);
           } else {
             setArtista(null);
           }
@@ -65,8 +61,8 @@ export default function ArtistaDetalle() {
 
   const [erasExpandidas, setErasExpandidas] = useState({});
 
-  // ESTILOS RESPONSIVOS DE EMERGENCIA
-  const esMovil = window.innerWidth < 768; // Usamos 768px para abarcar celulares grandes y tablets
+  // ESTILOS RESPONSIVOS EN TIEMPO REAL
+  const { isMobile: esMovil } = useWindowSize();
 
   if (cargando) return (
     <div style={{ textAlign: 'center', marginTop: '120px', minHeight: '60vh' }}>
@@ -313,7 +309,7 @@ export default function ArtistaDetalle() {
                             >
                                 <h4 style={{ color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '2px', fontSize: esMovil ? '0.75rem' : '0.85rem', margin: 0 }}>
                                     <i className="fa-solid fa-compact-disc" style={{ marginRight: '8px' }}></i>
-                                    Explorar Canciones ({era.stems ? era.stems.length : 0})
+                                    Repertorio Destacado ({(era.canciones || era.stems || []).length})
                                 </h4>
                                 <i 
                                     className="fa-solid fa-chevron-down" 
@@ -326,9 +322,9 @@ export default function ArtistaDetalle() {
                             </div>
 
                             {/* --- LISTA DE CANCIONES --- */}
-                            {erasExpandidas[index] && era.stems && era.stems.length > 0 && (
+                            {erasExpandidas[index] && (era.canciones || era.stems) && (era.canciones || era.stems).length > 0 && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px', animation: 'fadeIn 0.3s ease', width: '100%', boxSizing: 'border-box' }}>
-                                    {era.stems.map((cancion, idx) => {
+                                    {(era.canciones || era.stems).map((cancion, idx) => {
                                         const esObjeto = typeof cancion === 'object';
                                         const titulo = esObjeto ? cancion.titulo : cancion;
                                         

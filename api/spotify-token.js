@@ -10,8 +10,8 @@ export async function obtenerTokenSpotify(clientId, clientSecret) {
     return { access_token: cachedToken };
   }
 
-  const id = clientId || process.env.VITE_SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID;
-  const secret = clientSecret || process.env.VITE_SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
+  const id = clientId || process.env.SPOTIFY_CLIENT_ID || process.env.VITE_SPOTIFY_CLIENT_ID;
+  const secret = clientSecret || process.env.SPOTIFY_CLIENT_SECRET;
 
   if (!id || !secret) {
     throw new Error('Faltan las credenciales de Spotify en las variables de entorno.');

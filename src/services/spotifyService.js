@@ -3,7 +3,7 @@
 // ============================================================================
 
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-const CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
+// El Client Secret NUNCA debe vivir en el cliente: lo gestiona /api/spotify-token en el servidor.
 const REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || (typeof window !== 'undefined' ? `${window.location.origin}/callback` : 'http://127.0.0.1:5173/callback');
 
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
@@ -58,7 +58,7 @@ export async function getEffectiveSpotifyToken() {
     if (userToken) {
       return userToken;
     }
-  } catch (e) {
+  } catch {
     // Si falla la lectura del token de usuario, se recurre al público
   }
   return await getPublicSpotifyToken();
@@ -185,7 +185,7 @@ export async function getSpotifyNewReleases(limit = 20) {
           const data2 = await res2.json();
           rawItems = [...rawItems, ...(data2.albums?.items || [])];
         }
-      } catch (e) {
+      } catch {
         // En caso de fallo en la segunda tanda, se preserva la primera
       }
     }
@@ -261,8 +261,8 @@ function base64encode(input) {
  */
 export async function loginWithSpotify() {
   if (!CLIENT_ID) {
-    alert('Falta configurar VITE_SPOTIFY_CLIENT_ID en el archivo .env');
-    return;
+    console.error('Falta configurar VITE_SPOTIFY_CLIENT_ID en el archivo .env');
+    return false;
   }
 
   const codeVerifier = generateRandomString(64);
@@ -523,6 +523,12 @@ const FALLBACK_BPM_TRACKS = {
     { id: 'fb_lf_3', name: 'Get You The Moon', artist: 'Kina, Snøw', album: 'Get You The Moon', bpmMatch: 80, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Get%20You%20The%20Moon', uri: 'spotify:track:4jAIqgrPjKLTY9Gbez25Qb' },
     { id: 'fb_lf_4', name: 'Feather', artist: 'Nujabes, Cise Starr', album: 'Modal Soul', bpmMatch: 98, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Nujabes%20Feather', uri: 'spotify:track:2ej1A2ZeO02TROWvtQxQg5' }
   ],
+  '80s Funk': [
+    { id: 'fb_ac_1', name: 'Come Together', artist: 'The Beatles', album: 'Abbey Road', bpmMatch: 82, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Come%20Together', uri: 'spotify:track:2EqlS6tk8ikZAUFYpSPrCY' },
+    { id: 'fb_ac_2', name: 'Superstition', artist: 'Stevie Wonder', album: 'Talking Book', bpmMatch: 100, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Superstition%20Stevie%20Wonder', uri: 'spotify:track:587nL2W2m9X4m7T8Q1V5e9' },
+    { id: 'fb_ac_3', name: 'Roxanne', artist: 'The Police', album: 'Outlandos d\'Amour', bpmMatch: 134, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Roxanne%20The%20Police', uri: 'spotify:track:3ZFTkvIE7kyPt6Nu3PEmuV' },
+    { id: 'fb_ac_4', name: 'Cissy Strut', artist: 'The Meters', album: 'The Meters', bpmMatch: 92, image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', spotifyUrl: 'https://open.spotify.com/search/Cissy%20Strut', uri: 'spotify:track:0J8b5F0s9X2k5T8Q1V5e9' }
+  ],
   'Acoustic Studio': [
     { id: 'fb_ac_1', name: 'Come Together', artist: 'The Beatles', album: 'Abbey Road', bpmMatch: 82, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Come%20Together', uri: 'spotify:track:2EqlS6tk8ikZAUFYpSPrCY' },
     { id: 'fb_ac_2', name: 'Superstition', artist: 'Stevie Wonder', album: 'Talking Book', bpmMatch: 100, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Superstition%20Stevie%20Wonder', uri: 'spotify:track:587nL2W2m9X4m7T8Q1V5e9' },
@@ -545,6 +551,7 @@ export async function searchBpmReferenceTracks(kitName = 'Cyberpunk', bpm = 120,
     'Cyberpunk': 'synthwave cyberpunk retro',
     'Analog 808': 'electro 808 boom bap',
     'Lo-Fi Chill': 'lofi chill study beat',
+    '80s Funk': 'funk groove drum beat disco 80s',
     'Acoustic Studio': 'funk groove drum beat'
   };
 

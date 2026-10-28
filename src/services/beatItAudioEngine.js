@@ -34,6 +34,83 @@ function getWhiteNoiseBuffer(ctx) {
   return buffer;
 }
 
+// Síntesis procedural 100% nativa de textura de vinilo Lo-Fi (hiss analógico + polvo superficial + micro-pops de aguja)
+// Elimina cualquier dependencia de red externa (archive.org) y funciona tanto en tiempo real como en exportación WAV offline.
+let cachedVinylBuffer = null;
+function getVinylCrackleBuffer(ctx) {
+  if (cachedVinylBuffer && cachedVinylBuffer.sampleRate === ctx.sampleRate) {
+    return cachedVinylBuffer;
+  }
+
+  const duration = 5.0; // bucle estéreo de 5 segundos sin costuras
+  const sr = ctx.sampleRate;
+  const length = Math.floor(sr * duration);
+  const buffer = ctx.createBuffer(2, length, sr);
+
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+
+    // 1. Cama cálida de ruido rosa / cinta analógica (filtro Paul Kellet + suavizado paso-bajo)
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    let lp = 0;
+    for (let i = 0; i < length; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      const pink = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.04;
+      b6 = white * 0.115926;
+
+      // Suavizado cálido + leve modulación de giro de plato (33.3 RPM = 0.555 Hz)
+      lp = lp * 0.82 + pink * 0.18;
+      const wowFlutter = 0.85 + 0.15 * Math.sin((2 * Math.PI * 0.555 * i) / sr + ch * 0.9);
+      data[i] = lp * 0.22 * wowFlutter;
+    }
+
+    // 2. Micro-crepitación de polvo superficial (impulsos amortiguados de alta frecuencia)
+    const dustCount = Math.floor(duration * 58);
+    for (let d = 0; d < dustCount; d++) {
+      const startIdx = Math.floor(Math.random() * (length - 120));
+      const amp = (0.025 + Math.random() * 0.065) * (Math.random() < 0.5 ? 1 : -1);
+      const freq = 1800 + Math.random() * 2400;
+      const decaySamples = Math.floor(sr * (0.0004 + Math.random() * 0.0009));
+
+      for (let k = 0; k < decaySamples && (startIdx + k) < length; k++) {
+        const env = Math.exp(-k / (decaySamples * 0.32));
+        data[startIdx + k] += amp * env * Math.sin((2 * Math.PI * freq * k) / sr);
+      }
+    }
+
+    // 3. Pops cálidos ocasionales de aguja sobre surco de vinilo
+    const popCount = Math.floor(duration * 4.5);
+    for (let p = 0; p < popCount; p++) {
+      const startIdx = Math.floor(Math.random() * (length - 300));
+      const amp = (0.09 + Math.random() * 0.14) * (Math.random() < 0.5 ? 1 : -1);
+      const freq = 340 + Math.random() * 480;
+      const decaySamples = Math.floor(sr * (0.0018 + Math.random() * 0.0022));
+
+      for (let k = 0; k < decaySamples && (startIdx + k) < length; k++) {
+        const env = Math.exp(-k / (decaySamples * 0.28));
+        data[startIdx + k] += amp * env * Math.cos((2 * Math.PI * freq * k) / sr);
+      }
+    }
+
+    // 4. Crossfade circular en los últimos 2048 samples para bucle infinito sin clic
+    const fadeLen = Math.min(2048, Math.floor(length * 0.05));
+    for (let i = 0; i < fadeLen; i++) {
+      const alpha = i / fadeLen; // 0 -> 1
+      const endIdx = length - fadeLen + i;
+      data[endIdx] = data[endIdx] * (1 - alpha) + data[i] * alpha;
+    }
+  }
+
+  cachedVinylBuffer = buffer;
+  return buffer;
+}
+
 // Soft distortion curve for 808 bass saturation
 function makeDistortionCurve(amount = 20) {
   const n_samples = 44100;
@@ -129,6 +206,9 @@ export const KIT_DEFINITIONS = {
     crash: { filterFreq: 3000, decay: 0.7, vol: 0.6 }
   }
 };
+
+// Alias de compatibilidad hacia atrás
+KIT_DEFINITIONS["Acoustic Studio"] = KIT_DEFINITIONS["80s Funk"];
 
 /**
  * Procedural Drum Synthesizers (Web Audio API)
@@ -451,6 +531,10 @@ export class BeatItScheduler {
     this.delayFeedbackGain = null;
     this.delayFilterNode = null;
     this.delayWetGain = null;
+
+    // Procedural Lo-Fi Vinyl Nodes
+    this.vinylSource = null;
+    this.vinylGain = null;
   }
 
   setupMasterChain() {
@@ -515,6 +599,56 @@ export class BeatItScheduler {
 
       this.applyMixerSettings();
       this.applyFXSettings();
+    }
+  }
+
+  syncVinylTexture(active) {
+    if (!active && !this.vinylSource) return;
+
+    const ctx = getAudioContext();
+    this.setupMasterChain();
+
+    if (active) {
+      if (!this.vinylSource) {
+        const src = ctx.createBufferSource();
+        src.buffer = getVinylCrackleBuffer(ctx);
+        src.loop = true;
+
+        // Filtro paso-banda cálido de giradiscos vintage
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.setValueAtTime(75, ctx.currentTime);
+
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(4200, ctx.currentTime);
+
+        const vGain = ctx.createGain();
+        vGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+
+        src.connect(hp);
+        hp.connect(lp);
+        lp.connect(vGain);
+        vGain.connect(this.masterGain);
+
+        src.start(0);
+        this.vinylSource = src;
+        this.vinylGain = vGain;
+      }
+      this.vinylGain.gain.setTargetAtTime(0.28, ctx.currentTime, 0.06);
+    } else if (this.vinylGain) {
+      this.vinylGain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.04);
+      const srcToStop = this.vinylSource;
+      this.vinylSource = null;
+      this.vinylGain = null;
+      setTimeout(() => {
+        try {
+          srcToStop?.stop();
+          srcToStop?.disconnect();
+        } catch {
+          // Fuente ya detenida
+        }
+      }, 150);
     }
   }
 
@@ -643,7 +777,7 @@ export class BeatItScheduler {
     this.startVisualSync();
   }
 
-  stop() {
+  stop(fullTeardown = false) {
     this.isPlaying = false;
     if (this.timerId) {
       clearTimeout(this.timerId);
@@ -652,6 +786,9 @@ export class BeatItScheduler {
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
+    }
+    if (fullTeardown) {
+      this.syncVinylTexture(false);
     }
     this.currentStep = 0;
     this.notesInQueue = [];
@@ -760,7 +897,8 @@ export class BeatItScheduler {
   }
 
   updateLoFi(isLoFi) {
-    this.isLoFi = isLoFi;
+    this.isLoFi = !!isLoFi;
+    this.syncVinylTexture(this.isLoFi);
   }
 }
 
@@ -960,6 +1098,31 @@ export async function exportPatternToWav({
   });
 
   const kitConfig = KIT_DEFINITIONS[kit] || KIT_DEFINITIONS["Analog 808"];
+
+  // Si el modo Lo-Fi está activo en exportación Master, integramos la textura procedural de vinilo
+  if (isLoFi && !onlyInstrument) {
+    const vinylSrc = ctx.createBufferSource();
+    vinylSrc.buffer = getVinylCrackleBuffer(ctx);
+    vinylSrc.loop = true;
+
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(75, 0);
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(4200, 0);
+
+    const vGain = ctx.createGain();
+    vGain.gain.setValueAtTime(0.24, 0);
+
+    vinylSrc.connect(hp);
+    hp.connect(lp);
+    lp.connect(vGain);
+    vGain.connect(masterGain);
+    vinylSrc.start(0);
+  }
+
   let noteTime = 0.05;
 
   for (let loop = 0; loop < loops; loop++) {

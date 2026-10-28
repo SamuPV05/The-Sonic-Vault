@@ -5,9 +5,27 @@ import { collection, getDocs, query, where, doc, getDoc, setDoc, onSnapshot } fr
 import { onAuthStateChanged } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import SpotifyProfileWidget from '../components/SpotifyProfileWidget';
+import EchoToast from '../components/EchoToast';
+import { useToast } from '../hooks/useToast';
+
+// Avatares temáticos ligeros (SVG en data URI, sin dependencias externas y lo bastante cortos para Firebase Auth)
+const crearAvatarSvg = (c1, c2, forma) => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${c1}'/><stop offset='1' stop-color='${c2}'/></linearGradient></defs><rect width='64' height='64' fill='#0a0a14'/>${forma.replace(/G/g, 'url(#g)')}</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+const AVATARES_PREDEFINIDOS = [
+  { nombre: 'Vinilo Neón', url: crearAvatarSvg('#00ffcc', '#00bfff', "<circle cx='32' cy='32' r='24' fill='G'/><circle cx='32' cy='32' r='8' fill='#0a0a14'/>") },
+  { nombre: 'Onda Synth', url: crearAvatarSvg('#ff0077', '#ffaa00', "<path d='M6 32q8-24 13 0t13 0 13 0 13 0' stroke='G' stroke-width='5' fill='none' stroke-linecap='round'/>") },
+  { nombre: 'Ecualizador', url: crearAvatarSvg('#9945ff', '#00ffcc', "<rect x='10' y='34' width='8' height='20' rx='3' fill='G'/><rect x='22' y='18' width='8' height='36' rx='3' fill='G'/><rect x='34' y='26' width='8' height='28' rx='3' fill='G'/><rect x='46' y='12' width='8' height='42' rx='3' fill='G'/>") },
+  { nombre: 'Pulso', url: crearAvatarSvg('#ff4444', '#ff0077', "<path d='M4 34h14l6-18 10 32 8-24 4 10h14' stroke='G' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/>") },
+  { nombre: 'Diamante', url: crearAvatarSvg('#00bfff', '#9945ff', "<path d='M32 8l22 24-22 24L10 32z' fill='G'/>") },
+  { nombre: 'Rayo', url: crearAvatarSvg('#ffaa00', '#ff4444', "<path d='M36 6L16 36h14l-4 22 22-32H34z' fill='G'/>") }
+];
 
 export default function Perfil() {
   const { updateUserPhoto } = useAuth();
+  const { toasts, showToast, dismissToast } = useToast();
   const [user, setUser] = useState(null);
   const [misBeats, setMisBeats] = useState([]);
   const [misReportes, setMisReportes] = useState([]);
@@ -15,7 +33,7 @@ export default function Perfil() {
   const [artistasDB, setArtistasDB] = useState({});
 
   // PerfilData: bio y vibes (solo guardamos artistId y eraIndex)
-  const [perfilData, setPerfilData] = useState({ bio: '', vibes: [null, null, null] });
+  const [perfilData, setPerfilData] = useState({ bio: '', biografia: '', vibes: [null, null, null] });
   
   const [editandoBio, setEditandoBio] = useState(false);
   const [tempBio, setTempBio] = useState('');
@@ -27,6 +45,7 @@ export default function Perfil() {
   const [editandoFoto, setEditandoFoto] = useState(false);
   const [tempFotoURL, setTempFotoURL] = useState('');
   const [guardandoFoto, setGuardandoFoto] = useState(false);
+  const [errorFoto, setErrorFoto] = useState('');
 
   // Carga inicial (Auth, Beats y Perfil)
   useEffect(() => { 
@@ -58,8 +77,9 @@ export default function Perfil() {
           if (userSnap.exists()) {
             const data = userSnap.data();
             const vibesData = data.vibes || [null, null, null];
-            setPerfilData({ bio: data.bio || '', vibes: vibesData });
-            setTempBio(data.bio || '');
+            const biografiaTexto = data.biografia ?? data.bio ?? '';
+            setPerfilData({ bio: biografiaTexto, biografia: biografiaTexto, vibes: vibesData });
+            setTempBio(biografiaTexto);
             setTempVibes(vibesData);
           }
         } catch (error) {
@@ -114,6 +134,7 @@ export default function Perfil() {
       });
 
       const nuevosDatos = {
+        biografia: tempBio || "",
         bio: tempBio || "",
         vibes: vibesLimpios
       };
@@ -126,11 +147,11 @@ export default function Perfil() {
       setEditandoBio(false);
       setEditandoVibes(false);
       
-      alert("¡Bóveda personal actualizada con éxito!");
+      showToast('success', 'Bóveda Actualizada', '¡Tus preferencias y biografía han sido sincronizadas en la nube!');
       
     } catch (error) {
       console.error("Error al guardar en Firestore:", error);
-      alert("Houston, tenemos un problema: " + error.message);
+      showToast('error', 'Fallo al Guardar', error.message || 'No se pudo actualizar la información en la nube.');
     }
   };
 
@@ -138,6 +159,41 @@ export default function Perfil() {
     const nuevasVibes = [...tempVibes];
     nuevasVibes[slotIndex] = artistId ? { artistId, eraIndex: parseInt(eraIndex) } : null;
     setTempVibes(nuevasVibes);
+  };
+
+  // --- MODAL DE FOTO DE PERFIL ---
+  const abrirModalFoto = () => {
+    setTempFotoURL(user?.photoURL || '');
+    setErrorFoto('');
+    setEditandoFoto(true);
+  };
+
+  const cerrarModalFoto = () => {
+    if (guardandoFoto) return;
+    setEditandoFoto(false);
+    setErrorFoto('');
+  };
+
+  const handleGuardarFoto = async () => {
+    const url = tempFotoURL.trim();
+    const esUrlValida = /^https?:\/\/.+/i.test(url) || url.startsWith('data:image/svg+xml');
+    if (!esUrlValida) {
+      setErrorFoto('Ingresa una URL válida que comience con http:// o https://, o elige un avatar.');
+      return;
+    }
+
+    setGuardandoFoto(true);
+    setErrorFoto('');
+    try {
+      await updateUserPhoto(url);
+      setUser(auth.currentUser ? { ...auth.currentUser } : null);
+      setEditandoFoto(false);
+    } catch (error) {
+      console.error('Error al actualizar la foto de perfil:', error);
+      setErrorFoto('No se pudo guardar la foto: ' + (error.message || 'error desconocido'));
+    } finally {
+      setGuardandoFoto(false);
+    }
   };
 
   if (cargando) {
@@ -174,8 +230,18 @@ export default function Perfil() {
       
       {/* CABECERA Y BIO */}
       <section style={{ display: 'flex', alignItems: 'flex-start', gap: '30px', background: '#111', padding: '2rem', borderRadius: '15px', border: '1px solid #222', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <div style={{ width: '120px', height: '120px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--accent-color)', flexShrink: 0 }}>
+        <div
+          onClick={abrirModalFoto}
+          title="Cambiar foto de perfil"
+          style={{ position: 'relative', width: '120px', height: '120px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--accent-color)', flexShrink: 0, cursor: 'pointer' }}
+          onMouseOver={e => { const o = e.currentTarget.querySelector('.avatar-overlay'); if (o) o.style.opacity = 1; }}
+          onMouseOut={e => { const o = e.currentTarget.querySelector('.avatar-overlay'); if (o) o.style.opacity = 0; }}
+        >
           <img src={user?.photoURL || "https://i.pravatar.cc/150?img=11"} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div className="avatar-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', opacity: 0, transition: 'opacity 0.2s', color: 'var(--accent-color)' }}>
+            <i className="fa-solid fa-camera" style={{ fontSize: '1.4rem' }}></i>
+            <span style={{ fontSize: '0.6rem', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}>Cambiar</span>
+          </div>
         </div>
         
         <div style={{ flex: 1, minWidth: '300px' }}>
@@ -193,7 +259,7 @@ export default function Perfil() {
               </div>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <p style={{ color: '#ddd', margin: 0, lineHeight: '1.5' }}>{perfilData.bio || "Agregue su biografía..."}</p>
+                <p style={{ color: '#ddd', margin: 0, lineHeight: '1.5' }}>{perfilData.biografia || perfilData.bio || "Agregue su biografía..."}</p>
                 <button onClick={() => setEditandoBio(true)} style={{ background: 'transparent', color: 'var(--accent-color)', border: 'none', cursor: 'pointer' }}><i className="fa-solid fa-pen"></i></button>
               </div>
             )}
@@ -275,12 +341,22 @@ export default function Perfil() {
               <p style={{ color: '#444', textAlign: 'center' }}>Aún no has guardado beats.</p>
             ) : (
               misBeats.map(beat => (
-                <Link to="/beat-it" key={beat.id} style={{ textDecoration: 'none', background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: '0.2s' }} onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent-color)'} onMouseOut={e => e.currentTarget.style.borderColor = '#222'}>
+                <Link
+                  to={`/beat-it?beatId=${encodeURIComponent(beat.id)}`}
+                  state={{ beatData: beat }}
+                  key={beat.id}
+                  style={{ textDecoration: 'none', background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: '0.2s' }}
+                  onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent-color)'}
+                  onMouseOut={e => e.currentTarget.style.borderColor = '#222'}
+                >
                   <div>
                     <h4 style={{ color: '#fff', margin: 0 }}>{beat.name}</h4>
                     <span style={{ fontSize: '0.7rem', color: '#666' }}>{beat.kit} • {beat.tempo} BPM</span>
                   </div>
-                  <i className="fa-solid fa-chevron-right" style={{ color: '#333' }}></i>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Abrir</span>
+                    <i className="fa-solid fa-chevron-right" style={{ color: 'var(--accent-color)', fontSize: '0.8rem' }}></i>
+                  </div>
                 </Link>
               ))
             )}
@@ -319,6 +395,86 @@ export default function Perfil() {
         </section>
 
       </div>
+
+      {/* MODAL DE CAMBIO DE FOTO DE PERFIL */}
+      {editandoFoto && (
+        <div
+          onClick={cerrarModalFoto}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#0d0d14', border: '1px solid var(--accent-color)', borderRadius: '16px', padding: '1.8rem', width: '100%', maxWidth: '480px', boxShadow: '0 0 40px rgba(0,255,204,0.15)', maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.15rem', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                <i className="fa-solid fa-camera" style={{ color: 'var(--accent-color)', marginRight: '10px' }}></i>
+                Foto de Perfil
+              </h3>
+              <button onClick={cerrarModalFoto} disabled={guardandoFoto} style={{ background: 'transparent', border: 'none', color: '#888', fontSize: '1.2rem', cursor: guardandoFoto ? 'not-allowed' : 'pointer' }}>✕</button>
+            </div>
+
+            {/* Vista previa */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.2rem' }}>
+              <div style={{ width: '110px', height: '110px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${errorFoto ? '#ff4444' : 'var(--accent-color)'}`, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {tempFotoURL.trim() && !errorFoto ? (
+                  <img
+                    src={tempFotoURL.trim()}
+                    alt="Vista previa"
+                    onError={() => setErrorFoto('No se pudo cargar la imagen. Revisa que la URL sea pública y directa.')}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <i className="fa-solid fa-user" style={{ fontSize: '2.5rem', color: '#333' }}></i>
+                )}
+              </div>
+            </div>
+
+            {/* Avatares predefinidos */}
+            <p style={{ color: '#888', fontSize: '0.72rem', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px 0' }}>Avatares de la Bóveda</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', marginBottom: '1.2rem' }}>
+              {AVATARES_PREDEFINIDOS.map((av) => (
+                <button
+                  key={av.nombre}
+                  type="button"
+                  title={av.nombre}
+                  onClick={() => { setTempFotoURL(av.url); setErrorFoto(''); }}
+                  disabled={guardandoFoto}
+                  style={{ padding: 0, aspectRatio: '1', borderRadius: '50%', overflow: 'hidden', cursor: 'pointer', background: 'none', border: tempFotoURL === av.url ? '2px solid var(--accent-color)' : '2px solid #222', boxShadow: tempFotoURL === av.url ? '0 0 10px var(--accent-color)' : 'none' }}
+                >
+                  <img src={av.url} alt={av.nombre} style={{ width: '100%', height: '100%', display: 'block' }} />
+                </button>
+              ))}
+            </div>
+
+            {/* URL personalizada */}
+            <p style={{ color: '#888', fontSize: '0.72rem', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px 0' }}>O pega la URL de una imagen</p>
+            <input
+              type="url"
+              placeholder="https://ejemplo.com/mi-foto.jpg"
+              value={tempFotoURL.startsWith('data:') ? '' : tempFotoURL}
+              onChange={(e) => { setTempFotoURL(e.target.value); setErrorFoto(''); }}
+              disabled={guardandoFoto}
+              style={{ width: '100%', boxSizing: 'border-box', background: '#111', color: '#fff', border: '1px solid #333', padding: '10px 12px', borderRadius: '6px', outline: 'none', fontSize: '0.85rem' }}
+            />
+
+            {errorFoto && <p style={{ color: '#ff4444', fontSize: '0.78rem', margin: '10px 0 0 0' }}>{errorFoto}</p>}
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '1.4rem' }}>
+              <button onClick={cerrarModalFoto} disabled={guardandoFoto} style={{ background: 'transparent', color: '#888', border: '1px solid #333', padding: '9px 18px', borderRadius: '6px', cursor: guardandoFoto ? 'not-allowed' : 'pointer' }}>Cancelar</button>
+              <button
+                onClick={handleGuardarFoto}
+                disabled={guardandoFoto || !tempFotoURL.trim()}
+                style={{ background: 'var(--accent-color)', color: '#000', border: 'none', padding: '9px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: (guardandoFoto || !tempFotoURL.trim()) ? 'not-allowed' : 'pointer', opacity: (guardandoFoto || !tempFotoURL.trim()) ? 0.5 : 1 }}
+              >
+                {guardandoFoto ? 'GUARDANDO...' : 'GUARDAR FOTO'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <EchoToast toasts={toasts} onDismiss={dismissToast} />
     </main>
   );
 }

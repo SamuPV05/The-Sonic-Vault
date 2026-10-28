@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 
 export default function HolographicPassport({ passportData, onConnectSpotify }) {
@@ -149,7 +149,7 @@ export default function HolographicPassport({ passportData, onConnectSpotify }) 
             img.src = holderPhoto;
             setTimeout(resolve, 800); // timeout de seguridad
           });
-        } catch (e) {
+        } catch {
           // Si falla CORS se usa el avatar cibernético
         }
       }
@@ -277,7 +277,6 @@ export default function HolographicPassport({ passportData, onConnectSpotify }) 
       // Código de barras estético a la derecha
       const barCodeX = width - 240;
       const barCodeY = footerY + 15;
-      const barHeights = [40, 40, 40, 40];
       for (let i = 0; i < 45; i++) {
         ctx.fillStyle = (i % 3 === 0 || i % 7 === 0) ? '#ffffff' : 'rgba(255,255,255,0.4)';
         const barW = (i % 4 === 0) ? 3 : 1.5;

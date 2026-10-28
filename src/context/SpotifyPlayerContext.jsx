@@ -56,7 +56,7 @@ export function SpotifyPlayerProvider({ children }) {
   useEffect(() => {
     if (!connected) return;
 
-    fetchCurrentPlayback();
+    const initialTimer = setTimeout(fetchCurrentPlayback, 0);
 
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -64,7 +64,10 @@ export function SpotifyPlayerProvider({ children }) {
       }
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [connected, fetchCurrentPlayback]);
 
   // Avance suave del progreso segundo a segundo

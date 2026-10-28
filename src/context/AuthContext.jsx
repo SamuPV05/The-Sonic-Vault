@@ -24,22 +24,62 @@ export const useAuth = () => {
 };
 
 // 3. El Proveedor que envuelve toda la app
+
+// --- SESIÓN 2FA LIGADA AL USUARIO ---
+// En lugar de un booleano plano ('true'), guardamos a QUÉ usuario se le verificó la sesión,
+// con qué método y cuándo caduca. Así, si cambia la cuenta activa en la pestaña, la verificación
+// anterior deja de ser válida automáticamente.
+const SESSION_2FA_KEY = 'sv_2fa_session';
+const SESSION_2FA_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
+
+const leerSesion2FA = () => {
+  try {
+    const raw = sessionStorage.getItem(SESSION_2FA_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data?.uid || typeof data.expira !== 'number' || Date.now() > data.expira) {
+      sessionStorage.removeItem(SESSION_2FA_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    sessionStorage.removeItem(SESSION_2FA_KEY);
+    return null;
+  }
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [is2FAPassed, setIs2FAPassed] = useState(() => sessionStorage.getItem('2fa_passed') === 'true');
+  const [sesion2FA, setSesion2FA] = useState(() => leerSesion2FA());
+  // Mientras un popup OAuth está en curso, evitamos que Login dispare el envío del código por correo
+  const [oauthEnCurso, setOauthEnCurso] = useState(false);
+
+  // La sesión solo cuenta como verificada si pertenece al usuario actualmente autenticado
+  const is2FAPassed = !!(user && sesion2FA && sesion2FA.uid === user.uid && Date.now() <= sesion2FA.expira);
+
+  const marcarSesionVerificada = (uid, metodo) => {
+    const data = { uid, metodo, expira: Date.now() + SESSION_2FA_TTL_MS };
+    sessionStorage.setItem(SESSION_2FA_KEY, JSON.stringify(data));
+    sessionStorage.removeItem('2fa_passed'); // Limpieza del formato antiguo
+    setSesion2FA(data);
+  };
+
+  const limpiarSesion2FA = () => {
+    sessionStorage.removeItem(SESSION_2FA_KEY);
+    sessionStorage.removeItem('2fa_passed');
+    setSesion2FA(null);
+  };
 
   const verify2FA = async () => {
-    sessionStorage.setItem('2fa_passed', 'true');
-    setIs2FAPassed(true);
+    if (!auth.currentUser) return;
+    marcarSesionVerificada(auth.currentUser.uid, 'email-code');
 
     // Si era un registro pendiente, el primer código correcto demuestra que el correo existe y es suyo
-    if (auth.currentUser) {
-      try {
-        await setDoc(doc(db, 'users', auth.currentUser.uid), { verificado: true }, { merge: true });
-      } catch (err) {
-        console.error('No se pudo marcar la cuenta como verificada:', err);
-      }
+    try {
+      await setDoc(doc(db, 'users', auth.currentUser.uid), { verificado: true }, { merge: true });
+    } catch (err) {
+      console.error('No se pudo marcar la cuenta como verificada:', err);
     }
   };
 
@@ -62,8 +102,7 @@ export function AuthProvider({ children }) {
         await deleteDoc(doc(db, '2fa_codes', currentUser.uid));
         await deleteDoc(doc(db, 'users', currentUser.uid));
         await deleteUser(currentUser); // También cierra la sesión
-        sessionStorage.removeItem('2fa_passed');
-        setIs2FAPassed(false);
+        limpiarSesion2FA();
         return;
       } catch (err) {
         console.error('No se pudo eliminar la cuenta pendiente:', err);
@@ -92,6 +131,7 @@ export function AuthProvider({ children }) {
       nombre: nombre,
       email: email,
       biografia: "Nuevo explorador sónico...",
+      bio: "Nuevo explorador sónico...",
       ciudad: "",
       verificado: false, // Pasa a true cuando confirma el primer código del correo
       fechaRegistro: new Date().toISOString()
@@ -110,64 +150,79 @@ export function AuthProvider({ children }) {
   };
 
   // C. Iniciar Sesión con GOOGLE
+  // Google ya verifica la identidad y el correo, así que no se exige un segundo código por EmailJS.
   const loginWithGoogle = async () => {
-    const googleProvider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(auth, googleProvider);
-    const firebaseUser = userCredential.user;
+    setOauthEnCurso(true);
+    try {
+      const googleProvider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = userCredential.user;
+      marcarSesionVerificada(firebaseUser.uid, 'google');
 
-    // Revisamos si es la primera vez que entra con Google
-    const docRef = doc(db, 'users', firebaseUser.uid);
-    const docSnap = await getDoc(docRef);
+      // Revisamos si es la primera vez que entra con Google
+      const docRef = doc(db, 'users', firebaseUser.uid);
+      const docSnap = await getDoc(docRef);
 
-    // Si no existe en nuestra base de datos, lo creamos
-    if (!docSnap.exists()) {
-      await setDoc(docRef, {
-        uid: firebaseUser.uid,
-        nombre: firebaseUser.displayName,
-        email: firebaseUser.email,
-        biografia: "Explorador sónico verificado por Google",
-        ciudad: "",
-        foto: firebaseUser.photoURL,
-        verificado: true, // Google ya garantiza que el correo es real
-        fechaRegistro: new Date().toISOString()
-      });
+      // Si no existe en nuestra base de datos, lo creamos
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          uid: firebaseUser.uid,
+          nombre: firebaseUser.displayName,
+          email: firebaseUser.email,
+          biografia: "Explorador sónico verificado por Google",
+          bio: "Explorador sónico verificado por Google",
+          ciudad: "",
+          foto: firebaseUser.photoURL,
+          verificado: true, // Google ya garantiza que el correo es real
+          fechaRegistro: new Date().toISOString()
+        });
+      }
+      return firebaseUser;
+    } finally {
+      setOauthEnCurso(false);
     }
-    return firebaseUser;
   };
 
   // C2. Iniciar Sesión con MICROSOFT
+  // Igual que Google: el proveedor ya verificó la cuenta, se omite el código por correo.
   const loginWithMicrosoft = async () => {
-    const microsoftProvider = new OAuthProvider('microsoft.com');
-    microsoftProvider.setCustomParameters({
-      prompt: 'select_account'
-    });
-    const userCredential = await signInWithPopup(auth, microsoftProvider);
-    const firebaseUser = userCredential.user;
-
-    // Revisamos si es la primera vez que entra con Microsoft
-    const docRef = doc(db, 'users', firebaseUser.uid);
-    const docSnap = await getDoc(docRef);
-
-    // Si no existe en nuestra base de datos, lo creamos
-    if (!docSnap.exists()) {
-      await setDoc(docRef, {
-        uid: firebaseUser.uid,
-        nombre: firebaseUser.displayName || 'Explorador Microsoft',
-        email: firebaseUser.email,
-        biografia: "Explorador sónico verificado por Microsoft",
-        ciudad: "",
-        foto: firebaseUser.photoURL || null,
-        verificado: true, // Microsoft ya garantiza que el correo es real
-        fechaRegistro: new Date().toISOString()
+    setOauthEnCurso(true);
+    try {
+      const microsoftProvider = new OAuthProvider('microsoft.com');
+      microsoftProvider.setCustomParameters({
+        prompt: 'select_account'
       });
+      const userCredential = await signInWithPopup(auth, microsoftProvider);
+      const firebaseUser = userCredential.user;
+      marcarSesionVerificada(firebaseUser.uid, 'microsoft');
+
+      // Revisamos si es la primera vez que entra con Microsoft
+      const docRef = doc(db, 'users', firebaseUser.uid);
+      const docSnap = await getDoc(docRef);
+
+      // Si no existe en nuestra base de datos, lo creamos
+      if (!docSnap.exists()) {
+        await setDoc(docRef, {
+          uid: firebaseUser.uid,
+          nombre: firebaseUser.displayName || 'Explorador Microsoft',
+          email: firebaseUser.email,
+          biografia: "Explorador sónico verificado por Microsoft",
+          bio: "Explorador sónico verificado por Microsoft",
+          ciudad: "",
+          foto: firebaseUser.photoURL || null,
+          verificado: true, // Microsoft ya garantiza que el correo es real
+          fechaRegistro: new Date().toISOString()
+        });
+      }
+      return firebaseUser;
+    } finally {
+      setOauthEnCurso(false);
     }
-    return firebaseUser;
   };
 
   // D. Cerrar Sesión
   const logout = () => {
-    sessionStorage.removeItem('2fa_passed');
-    setIs2FAPassed(false);
+    limpiarSesion2FA();
     return signOut(auth);
   };
 
@@ -191,13 +246,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      // Si no hay sesión, o la verificación guardada pertenece a otra cuenta, se invalida
+      const guardada = leerSesion2FA();
+      if (!currentUser || (guardada && guardada.uid !== currentUser.uid)) {
+        sessionStorage.removeItem(SESSION_2FA_KEY);
+        sessionStorage.removeItem('2fa_passed');
+        setSesion2FA(null);
+      }
       setLoading(false); // Ya terminó de verificar
     });
     return () => unsubscribe();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ signup, login, loginWithGoogle, loginWithMicrosoft, logout, updateUserPhoto, user, loading, is2FAPassed, verify2FA, cancelarRegistroPendiente }}>
+    <AuthContext.Provider value={{ signup, login, loginWithGoogle, loginWithMicrosoft, logout, updateUserPhoto, user, loading, is2FAPassed, oauthEnCurso, verify2FA, cancelarRegistroPendiente }}>
       {!loading && children}
     </AuthContext.Provider>
   );

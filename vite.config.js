@@ -46,8 +46,8 @@ function spotifyDevApi() {
         res.setHeader('Content-Type', 'application/json');
         try {
           const env = loadEnv('development', process.cwd(), '');
-          const clientId = env.VITE_SPOTIFY_CLIENT_ID || process.env.VITE_SPOTIFY_CLIENT_ID;
-          const clientSecret = env.VITE_SPOTIFY_CLIENT_SECRET || process.env.VITE_SPOTIFY_CLIENT_SECRET;
+          const clientId = env.SPOTIFY_CLIENT_ID || env.VITE_SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID || process.env.VITE_SPOTIFY_CLIENT_ID;
+          const clientSecret = env.SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
           const data = await obtenerTokenSpotify(clientId, clientSecret);
           res.statusCode = 200;
           res.end(JSON.stringify(data));

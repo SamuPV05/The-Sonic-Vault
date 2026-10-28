@@ -8,6 +8,7 @@ WORKDIR /app
 RUN echo '{"type":"module"}' > package.json
 
 COPY api/verify-captcha.js ./api/verify-captcha.js
+COPY api/spotify-token.js ./api/spotify-token.js
 COPY server/captcha-server.js ./server/captcha-server.js
 
 # Se ejecuta sin privilegios de root (buena práctica de seguridad)

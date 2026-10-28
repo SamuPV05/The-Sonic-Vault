@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 // IMPORTAMOS FIREBASE
 import { db, auth } from '../firebase/config'; 
-import { collection, addDoc, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 import { 
@@ -13,11 +14,13 @@ import {
   exportPatternToWav 
 } from '../services/beatItAudioEngine';
 import BeatItSpotifyRadarModal from '../components/BeatItSpotifyRadarModal';
+import EchoToast from '../components/EchoToast';
+import { useToast } from '../hooks/useToast';
 
 const TOTAL_MAX_STEPS = 32;
 
 // --- PRESETS DE GÉNERO DE FÁBRICA (FASE 6) ---
-export const GENRE_PRESETS = [
+const GENRE_PRESETS = [
   {
     name: 'Trap Bóveda',
     genre: 'Trap / Drill',
@@ -147,6 +150,7 @@ export const GENRE_PRESETS = [
 ];
 
 export default function BeatIt() {
+  const { toasts, showToast, dismissToast } = useToast();
   const [isPlaying, setIsPlaying] = useState(false);
   const [tempo, setTempo] = useState(120); 
   const [currentStep, setCurrentStep] = useState(0);
@@ -183,7 +187,6 @@ export default function BeatIt() {
   // --- FASE 5 SPOTIFY: RADAR BPM & GENERADOR DE PLAYLISTS ---
   const [showSpotifyRadar, setShowSpotifyRadar] = useState(false);
 
-  const vinylAudio = useRef(null);
   const schedulerRef = useRef(null);
 
   const [grid, setGrid] = useState(() => {
@@ -215,7 +218,12 @@ export default function BeatIt() {
 
   const [masterVolume, setMasterVolume] = useState(0.85);
 
-  // --- ESTADOS PARA FIREBASE ---
+  // --- ESTADOS PARA FIREBASE Y NAVEGACIÓN DESDE PERFIL ---
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const initialBeatLoadedRef = useRef(false);
+  const [loadedBeatNotice, setLoadedBeatNotice] = useState(null);
+
   const [beatName, setBeatName] = useState('');
   const [savedBeats, setSavedBeats] = useState([]); 
   const [user, setUser] = useState(null);
@@ -259,9 +267,10 @@ export default function BeatIt() {
 
     return () => {
       if (schedulerRef.current) {
-        schedulerRef.current.stop();
+        schedulerRef.current.stop(true);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sincronizar cambios de compás, kits, swing y totalSteps
@@ -457,7 +466,7 @@ export default function BeatIt() {
       }
     } catch (err) {
       console.error("Error exportando audio WAV:", err);
-      alert("Hubo un error al exportar el archivo WAV.");
+      showToast('error', 'Error al Exportar', 'Hubo un error al renderizar el archivo WAV digital.');
     } finally {
       setIsExporting(false);
       setExportStatusText('');
@@ -491,19 +500,6 @@ export default function BeatIt() {
 
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (isLoFi) {
-      if (vinylAudio.current) {
-        vinylAudio.current.volume = 0.8;
-        vinylAudio.current.play().catch(e => console.log("Esperando vinilo..."));
-      }
-    } else {
-      if (vinylAudio.current) {
-        vinylAudio.current.pause();
-      }
-    }
-  }, [isLoFi]);
 
   // Ciclo de 3 estados de velocidad: 0 (Off) -> 1 (Normal) -> 2 (Acento) -> 0
   const toggleStep = (instrument, stepIndex) => {
@@ -554,11 +550,11 @@ export default function BeatIt() {
   // --- GUARDAR EL BEAT EN FIREBASE ---
   const handleSaveBeat = async () => {
     if (!user) {
-      alert("¡Debes iniciar sesión para guardar tus beats en The Sonic Vault!");
+      showToast('warning', 'Sesión Requerida', '¡Debes iniciar sesión para guardar tus beats en The Sonic Vault!');
       return;
     }
     if (beatName.trim() === '') {
-      alert("¡Ponle un nombre a tu obra maestra!");
+      showToast('warning', 'Nombre Requerido', '¡Ponle un nombre a tu obra maestra antes de guardar!');
       return;
     }
 
@@ -596,9 +592,10 @@ export default function BeatIt() {
         setIsPlaying(false);
       }
       
+      showToast('success', 'Cinta Guardada', `¡"${newBeat.name}" ha sido guardada con éxito en tu Bóveda!`);
     } catch (error) {
       console.error("Error guardando en la nube: ", error);
-      alert("Hubo un error guardando tu cinta.");
+      showToast('error', 'Fallo al Guardar', 'Hubo un error guardando tu cinta en la nube.');
     } finally {
       setIsSaving(false);
     }
@@ -643,7 +640,49 @@ export default function BeatIt() {
     }
     setActiveBar(0);
     setCurrentStep(0);
+    setBeatName(beatToLoad.name || '');
+    setLoadedBeatNotice({
+      name: beatToLoad.name || 'Composición sin título',
+      kit: validKit,
+      tempo: beatToLoad.tempo || 120
+    });
   };
+
+  // Hidratación automática cuando se navega desde /perfil con un beat seleccionado
+  useEffect(() => {
+    if (initialBeatLoadedRef.current) return;
+
+    const stateBeat = location.state?.beatData;
+    const queryBeatId = searchParams.get('beatId');
+
+    if (stateBeat) {
+      initialBeatLoadedRef.current = true;
+      loadBeat(stateBeat);
+      return;
+    }
+
+    if (queryBeatId) {
+      const fromSaved = savedBeats.find(b => b.id === queryBeatId);
+      if (fromSaved) {
+        initialBeatLoadedRef.current = true;
+        loadBeat(fromSaved);
+        return;
+      }
+
+      // Consulta directa a Firestore si aún no está en savedBeats o se abrió por enlace directo
+      getDoc(doc(db, 'beats', queryBeatId))
+        .then((snap) => {
+          if (snap.exists() && !initialBeatLoadedRef.current) {
+            initialBeatLoadedRef.current = true;
+            loadBeat({ id: snap.id, ...snap.data() });
+          }
+        })
+        .catch((err) => {
+          console.error('Error cargando beat por ID:', err);
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, searchParams, savedBeats]);
 
   const activeKitColor = KIT_DEFINITIONS[currentKit]?.color || 'var(--accent-color, #00ffcc)';
   const hasAnySolo = Object.values(solos).some(Boolean);
@@ -659,11 +698,27 @@ export default function BeatIt() {
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1.5rem', background: 'transparent' }}>
-      
-      <audio ref={vinylAudio} src="https://ia800806.us.archive.org/15/items/VinylScratchAndCrackle/vinyl-scratch-and-crackle.mp3" loop />
-
       <div style={{ background: 'var(--surface-bg)', padding: '1.5rem 2rem', borderRadius: '16px', border: `1px solid ${isPlaying ? activeKitColor : 'var(--border-glow)'}`, width: '100%', maxWidth: '1020px', boxShadow: isLoFi ? '0 0 30px rgba(255, 170, 0, 0.2)' : (isPlaying ? `0 0 25px ${activeKitColor}33` : 'var(--shadow-soft)'), transition: '0.5s', marginBottom: '2rem', backdropFilter: 'blur(15px)' }}>
         
+        {loadedBeatNotice && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0, 255, 204, 0.1)', border: '1px solid rgba(0, 255, 204, 0.35)', borderRadius: '8px', padding: '10px 14px', marginBottom: '1rem', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.82rem', color: '#e2f8f5' }}>
+              <i className="fa-solid fa-compact-disc" style={{ color: '#00ffcc' }}></i>
+              <span>
+                Cinta cargada en el secuenciador: <strong style={{ color: '#00ffcc' }}>{loadedBeatNotice.name}</strong> ({loadedBeatNotice.kit} • {loadedBeatNotice.tempo} BPM)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLoadedBeatNotice(null)}
+              style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: '0.95rem', padding: '2px 6px' }}
+              title="Ocultar aviso"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Visualizador de Ritmo Reactivo (8 Canales con feedback de Mute/Solo/Acento) */}
         <div style={{ background: isLoFi ? 'rgba(255, 170, 0, 0.08)' : 'rgba(0,0,0,0.65)', height: '90px', borderRadius: '10px', marginBottom: '1.2rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', gap: '8px', padding: '12px 20px', border: '1px inset rgba(255,255,255,0.08)', transition: '0.4s' }}>
           {INSTRUMENTS.map((inst) => {
@@ -1644,6 +1699,8 @@ export default function BeatIt() {
         currentKit={currentKit}
         beatName={beatName}
       />
+
+      <EchoToast toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

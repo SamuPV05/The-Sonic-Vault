@@ -41,6 +41,11 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
 
   const [stabilityData, setStabilityData] = useState(null);
   const isMounted = useRef(true);
+  const cacheRef = useRef({
+    perfil: null,
+    artists: { short_term: [], medium_term: [], long_term: [] },
+    tracks: { short_term: [], medium_term: [], long_term: [] }
+  });
 
   useEffect(() => {
     isMounted.current = true;
@@ -58,17 +63,18 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
       setCargando(true);
       try {
         // Si no tenemos el perfil, lo pedimos
-        let perfil = perfilSpotify;
+        let perfil = cacheRef.current.perfil;
         if (!perfil) {
           perfil = await getSpotifyUserProfile();
           if (!cancelado && perfil) {
+            cacheRef.current.perfil = perfil;
             setPerfilSpotify(perfil);
           }
         }
 
         // Consultar artistas y canciones para el rango activo si no están en caché
-        let artistas = artistsByRange[rangoTiempo];
-        let canciones = tracksByRange[rangoTiempo];
+        let artistas = cacheRef.current.artists[rangoTiempo];
+        let canciones = cacheRef.current.tracks[rangoTiempo];
 
         if (!artistas || artistas.length === 0) {
           artistas = await getUserTopArtists(rangoTiempo, 10);
@@ -80,6 +86,8 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
         const actual = await getCurrentlyPlaying();
 
         if (!cancelado) {
+          cacheRef.current.artists[rangoTiempo] = artistas;
+          cacheRef.current.tracks[rangoTiempo] = canciones;
           setArtistsByRange(prev => ({ ...prev, [rangoTiempo]: artistas }));
           setTracksByRange(prev => ({ ...prev, [rangoTiempo]: canciones }));
 
@@ -92,12 +100,16 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
           setTimeout(async () => {
             if (cancelado) return;
             try {
+              const cachedShort = cacheRef.current.artists.short_term;
+              const cachedLong = cacheRef.current.artists.long_term;
               const [shortA, longA] = await Promise.all([
-                artistsByRange.short_term.length ? artistsByRange.short_term : getUserTopArtists('short_term', 10),
-                artistsByRange.long_term.length ? artistsByRange.long_term : getUserTopArtists('long_term', 10)
+                cachedShort.length ? cachedShort : getUserTopArtists('short_term', 10),
+                cachedLong.length ? cachedLong : getUserTopArtists('long_term', 10)
               ]);
 
               if (!cancelado) {
+                cacheRef.current.artists.short_term = shortA;
+                cacheRef.current.artists.long_term = longA;
                 setArtistsByRange(prev => ({
                   ...prev,
                   short_term: shortA,
@@ -133,7 +145,7 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
             setNowPlaying(null);
           }
         }
-      } catch (e) {
+      } catch {
         // Silencioso
       }
     }, 5000);
@@ -146,6 +158,11 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
 
   const handleDesconectar = () => {
     logoutSpotify();
+    cacheRef.current = {
+      perfil: null,
+      artists: { short_term: [], medium_term: [], long_term: [] },
+      tracks: { short_term: [], medium_term: [], long_term: [] }
+    };
     setConectado(false);
     setPerfilSpotify(null);
     setArtistsByRange({ short_term: [], medium_term: [], long_term: [] });

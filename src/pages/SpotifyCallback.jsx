@@ -4,7 +4,10 @@ import { handleSpotifyCallback } from '../services/spotifyService';
 
 export default function SpotifyCallback() {
   const navigate = useNavigate();
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('error') ? 'Acceso denegado o cancelado en Spotify.' : null;
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -13,9 +16,8 @@ export default function SpotifyCallback() {
 
     if (err) {
       console.error('Spotify Auth error:', err);
-      setError('Acceso denegado o cancelado en Spotify.');
-      setTimeout(() => navigate('/perfil'), 3000);
-      return;
+      const timer = setTimeout(() => navigate('/perfil'), 3000);
+      return () => clearTimeout(timer);
     }
 
     if (code) {

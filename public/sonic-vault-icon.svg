@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="svBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#070712"/>
+      <stop offset="100%" stop-color="#121324"/>
+    </linearGradient>
+    <linearGradient id="svGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00f0ff"/>
+      <stop offset="50%" stop-color="#00ffcc"/>
+      <stop offset="100%" stop-color="#ff007a"/>
+    </linearGradient>
+    <filter id="svGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="glow"/>
+      <feComposite in="SourceGraphic" in2="glow" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Fondo Bóveda Oscura -->
+  <rect width="64" height="64" rx="14" fill="url(#svBg)" stroke="#00f0ff" stroke-width="1.2" stroke-opacity="0.35"/>
+
+  <!-- Anillo exterior de vinilo / radar sónico -->
+  <circle cx="32" cy="32" r="22" fill="none" stroke="#22243a" stroke-width="1.5"/>
+  <circle cx="32" cy="32" r="16" fill="none" stroke="rgba(0, 240, 255, 0.25)" stroke-width="1" stroke-dasharray="3 3"/>
+
+  <!-- Barras de ecualizador / espectro sónico central -->
+  <g filter="url(#svGlow)">
+    <rect x="14" y="27" width="3.5" height="10" rx="1.5" fill="#00f0ff"/>
+    <rect x="20" y="20" width="3.5" height="24" rx="1.5" fill="#00ffcc"/>
+    <rect x="26" y="14" width="3.5" height="36" rx="1.5" fill="#00ffcc"/>
+    <rect x="32" y="10" width="3.5" height="44" rx="1.5" fill="url(#svGrad)"/>
+    <rect x="38" y="18" width="3.5" height="28" rx="1.5" fill="#ff007a"/>
+    <rect x="44" y="24" width="3.5" height="16" rx="1.5" fill="#ff007a"/>
+  </g>
+
+  <!-- Pulso de aguja / centro de giro -->
+  <circle cx="32" cy="32" r="2.5" fill="#ffffff" filter="url(#svGlow)"/>
+</svg>

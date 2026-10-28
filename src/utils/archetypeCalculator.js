@@ -351,7 +351,7 @@ export function getDemoArchetype(holderName = 'Agente Sonoro') {
 /**
  * Compara artistas entre épocas para calcular el índice de consistencia temporal de gustos.
  */
-export function calculateTasteStability(shortTerm = [], mediumTerm = [], longTerm = []) {
+export function calculateTasteStability(shortTerm = [], _mediumTerm = [], longTerm = []) {
   if (!shortTerm.length || !longTerm.length) {
     return {
       stabilityPercent: 82,
@@ -362,7 +362,6 @@ export function calculateTasteStability(shortTerm = [], mediumTerm = [], longTer
     };
   }
 
-  const shortNames = new Set(shortTerm.map(a => a.name.toLowerCase()));
   const longNames = new Set(longTerm.map(a => a.name.toLowerCase()));
 
   // Artistas presentes tanto en corto como en largo plazo
