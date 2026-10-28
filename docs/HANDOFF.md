@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-28 18:21] T03 — Eliminar AuthProvider duplicado en main.jsx — Argon
+- Rama: `fix/T03-authprovider-unico`
+- Estado: completada
+- Archivos tocados: `src/main.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se eliminó el envoltorio `<AuthProvider>` duplicado en `src/main.jsx`, conservando una única instancia en `src/App.jsx` para evitar registrar dos observadores `onAuthStateChanged` globales.
+- Decisiones tomadas: Se mantuvo `<AuthProvider>` en `src/App.jsx` junto al resto de proveedores (`<SpotifyPlayerProvider>`, `<BrowserRouter>`).
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Iniciar y cerrar sesión verificando que el estado de autenticación y la redirección de `RutaProtegida` funcionan normalmente.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T04 (`ArbolEcos.jsx`: reemplazar `for…await` por `Promise.all`) con Argon.
+
 ### [2026-10-28 18:20] T02 — Corregir ordenación de beats y reportes en Perfil — Argon
 - Rama: `fix/T02-perfil-orden`
 - Estado: completada
