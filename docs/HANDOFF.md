@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-28 18:24] T05 — Exigir claves reales de reCAPTCHA en producción — Argon
+- Rama: `fix/T05-captcha-produccion`
+- Estado: completada
+- Archivos tocados: `api/verify-captcha.js`, `src/pages/Login.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: En `api/verify-captcha.js`, se restringió el fallback a `TEST_SECRET` únicamente cuando no es producción (`NODE_ENV !== 'production'` y `VERCEL_ENV !== 'production'`), devolviendo error si falta `RECAPTCHA_SECRET_KEY` en producción. En `src/pages/Login.jsx`, se restringió la site key de prueba de Google a `import.meta.env.DEV`, mostrando un aviso explícito y manteniendo bloqueado el acceso si falta `VITE_RECAPTCHA_SITE_KEY` en un build de producción.
+- Decisiones tomadas: Si falta `VITE_RECAPTCHA_SITE_KEY` en producción, no se monta `<ReCAPTCHA>` con cadena vacía para evitar errores del widget, y los botones de inicio de sesión permanecen deshabilitados (`!captchaValido`).
+- Variables de entorno nuevas: Ninguna (usa las existentes `RECAPTCHA_SECRET_KEY` y `VITE_RECAPTCHA_SITE_KEY`).
+- Verificación: lint ✅ · build ✅ · pasos manuales: En `npm run dev` sin variables de reCAPTCHA se usa la clave de prueba; en build de producción (`npm run build && npm run preview`) sin `VITE_RECAPTCHA_SITE_KEY` en `.env` se muestra el aviso de falta de configuración y en el backend con `NODE_ENV=production` sin `RECAPTCHA_SECRET_KEY` responde HTTP 400.
+- Riesgos / pendientes: En `Dockerfile.api` conviene definir `ENV NODE_ENV=production` cuando se toque ese archivo en la Fase D (T11) para que el contenedor Docker también fuerce el modo producción por defecto.
+- Siguiente paso sugerido (y para qué modelo): Fase B — T06 (`React.lazy` + `Suspense` en `App.jsx`) con Argon tras visto bueno del usuario.
+
 ### [2026-10-28 18:22] T04 — Paralelizar lecturas con Promise.all en ArbolEcos.jsx — Argon
 - Rama: `fix/T04-arbol-ecos-promise-all`
 - Estado: completada

@@ -1,13 +1,19 @@
 // Función serverless (Vercel): verifica con Google que el token del Captcha es real.
 // La llave secreta vive SOLO aquí (variable de entorno), nunca en el navegador.
 
-// Llave secreta de PRUEBA oficial de Google. Se usa si aún no configuraste la real.
+// Llave secreta de PRUEBA oficial de Google. Se usa solo en desarrollo si aún no configuraste la real.
 const TEST_SECRET = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
 
 export async function verificarCaptcha(token, secret, ip) {
   if (!token) return { success: false, error: 'Falta el token del Captcha.' };
 
-  const params = new URLSearchParams({ secret: secret || TEST_SECRET, response: token });
+  const esProduccion = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+  const claveSecreta = secret || (!esProduccion ? TEST_SECRET : '');
+  if (!claveSecreta) {
+    return { success: false, error: 'Configuración incompleta: falta RECAPTCHA_SECRET_KEY en el servidor.' };
+  }
+
+  const params = new URLSearchParams({ secret: claveSecreta, response: token });
   if (ip) params.append('remoteip', ip);
 
   const resp = await fetch('https://www.google.com/recaptcha/api/siteverify', {

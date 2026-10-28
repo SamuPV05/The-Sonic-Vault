@@ -63,8 +63,9 @@ export default function Login() {
   const [verificandoCaptcha, setVerificandoCaptcha] = useState(false);
   const recaptchaRef = useRef(null);
 
-  // Llave pública del Captcha. Si no está en .env, usa la de prueba de Google.
-  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+  // Llave pública del Captcha. La clave de prueba de Google solo se permite en desarrollo.
+  const TEST_RECAPTCHA_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || (import.meta.env.DEV ? TEST_RECAPTCHA_SITE_KEY : '');
 
   // Estados del 2FA
   const [codigo2FA, setCodigo2FA] = useState('');
@@ -414,13 +415,20 @@ export default function Login() {
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0', gap: '8px' }}>
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
-              onChange={handleCaptchaChange}
-              onExpired={() => setCaptchaValido(false)}
-              theme="dark"
-            />
+            {RECAPTCHA_SITE_KEY ? (
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={RECAPTCHA_SITE_KEY}
+                onChange={handleCaptchaChange}
+                onExpired={() => setCaptchaValido(false)}
+                theme="dark"
+              />
+            ) : (
+              <span style={{ color: '#ff4444', fontSize: '0.82rem', textAlign: 'center' }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '6px' }}></i>
+                reCAPTCHA no configurado en este entorno (falta VITE_RECAPTCHA_SITE_KEY).
+              </span>
+            )}
             {verificandoCaptcha && (
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }}></i>Verificando con el servidor...
