@@ -18,7 +18,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 - [x] **T01** (1, Flash) Crear rama `fix/stabilization` y confirmar línea base: lint y build pasan.
 - [x] **T02** (1, Flash) `Perfil.jsx`: orden de beats con `b.timestamp?.toMillis?.() ?? 0`; reportes con `createdAt` (L63 y L113).
 - [x] **T03** (1, Flash) Quitar el `<AuthProvider>` duplicado (`main.jsx` / `App.jsx`). Dejar uno solo.
-- [ ] **T04** (1, Flash) `ArbolEcos.jsx`: `for…await` → `Promise.all`.
+- [x] **T04** (1, Flash) `ArbolEcos.jsx`: `for…await` → `Promise.all`.
 - [ ] **T05** (2, Flash) `api/verify-captcha.js` y `Login.jsx`: en producción, fallar si falta el secreto o la site key; clave de prueba solo en desarrollo.
 
 ## Fase B — Rendimiento y limpieza

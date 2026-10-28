@@ -12,17 +12,19 @@ export default function ArbolEcos({ ecos }) {
         const fetchEcos = async () => {
             const data = {};
             // Obtenemos de la nube la info de los artistas conectados
-            for (const eco of ecos) {
-                try {
-                    const docRef = doc(db, 'artistas', eco.id);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        data[eco.id] = docSnap.data();
+            await Promise.all(
+                ecos.map(async (eco) => {
+                    try {
+                        const docRef = doc(db, 'artistas', eco.id);
+                        const docSnap = await getDoc(docRef);
+                        if (docSnap.exists()) {
+                            data[eco.id] = docSnap.data();
+                        }
+                    } catch (error) {
+                        console.error("Error obteniendo eco:", error);
                     }
-                } catch (error) {
-                    console.error("Error obteniendo eco:", error);
-                }
-            }
+                })
+            );
             setArtistasRelacionados(data);
         };
         fetchEcos();

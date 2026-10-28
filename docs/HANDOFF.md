@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-28 18:22] T04 — Paralelizar lecturas con Promise.all en ArbolEcos.jsx — Argon
+- Rama: `fix/T04-arbol-ecos-promise-all`
+- Estado: completada
+- Archivos tocados: `src/components/ArbolEcos.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se reemplazó el bucle `for…await` secuencial en `fetchEcos` por `Promise.all(ecos.map(...))`, manteniendo el bloque `try/catch` individual por cada artista relacionado.
+- Decisiones tomadas: Mantener el `try/catch` dentro del `map` para que el fallo de un documento puntual no invalide la carga del resto de artistas relacionados.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Abrir `/artistas/:id` y verificar que la sección "Árbol de Ecos" renderiza los nodos de artistas relacionados en paralelo.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T05 (`api/verify-captcha.js` y `Login.jsx`: endurecer claves de reCAPTCHA en producción) con Argon.
+
 ### [2026-10-28 18:21] T03 — Eliminar AuthProvider duplicado en main.jsx — Argon
 - Rama: `fix/T03-authprovider-unico`
 - Estado: completada
