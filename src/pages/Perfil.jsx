@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { db, auth } from '../firebase/config';
+import { db } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, query, where, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import SpotifyProfileWidget from '../components/SpotifyProfileWidget';
 import EchoToast from '../components/EchoToast';
@@ -24,9 +23,8 @@ const AVATARES_PREDEFINIDOS = [
 ];
 
 export default function Perfil() {
-  const { updateUserPhoto } = useAuth();
+  const { user, updateUserPhoto } = useAuth();
   const { toasts, showToast, dismissToast } = useToast();
-  const [user, setUser] = useState(null);
   const [misBeats, setMisBeats] = useState([]);
   const [misReportes, setMisReportes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -48,55 +46,54 @@ export default function Perfil() {
   const [errorFoto, setErrorFoto] = useState('');
 
   // Carga inicial (Auth, Beats y Perfil)
-  useEffect(() => { 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        try {
-          // 1. Cargar Beats desde la nube
-          const qBeats = query(collection(db, "beats"), where("userId", "==", currentUser.uid));
-          const querySnapshot = await getDocs(qBeats);
-          const beatsDescargados = [];
-          querySnapshot.forEach((doc) => {
-            beatsDescargados.push({ id: doc.id, ...doc.data() });
-          });
-          beatsDescargados.sort((a, b) => (b.timestamp?.toMillis?.() ?? 0) - (a.timestamp?.toMillis?.() ?? 0));
-          setMisBeats(beatsDescargados);
+  useEffect(() => {
+    const cargarPerfil = async () => {
+      if (!user?.uid) {
+        setCargando(false);
+        return;
+      }
+      try {
+        // 1. Cargar Beats desde la nube
+        const qBeats = query(collection(db, "beats"), where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(qBeats);
+        const beatsDescargados = [];
+        querySnapshot.forEach((doc) => {
+          beatsDescargados.push({ id: doc.id, ...doc.data() });
+        });
+        beatsDescargados.sort((a, b) => (b.timestamp?.toMillis?.() ?? 0) - (a.timestamp?.toMillis?.() ?? 0));
+        setMisBeats(beatsDescargados);
 
-          // 1.5 Cargar Artistas de Firestore
-          const artistasCol = collection(db, "artistas");
-          const artistasSnap = await getDocs(artistasCol);
-          const dictArtistas = {};
-          artistasSnap.forEach(d => { dictArtistas[d.id] = d.data(); });
-          setArtistasDB(dictArtistas);
+        // 1.5 Cargar Artistas de Firestore
+        const artistasCol = collection(db, "artistas");
+        const artistasSnap = await getDocs(artistasCol);
+        const dictArtistas = {};
+        artistasSnap.forEach(d => { dictArtistas[d.id] = d.data(); });
+        setArtistasDB(dictArtistas);
 
-          // 2. Cargar Datos del Perfil (Bio y Vitrina)
-          const userDocRef = doc(db, "users", currentUser.uid);
-          const userSnap = await getDoc(userDocRef);
-          
-          if (userSnap.exists()) {
-            const data = userSnap.data();
-            const vibesData = data.vibes || [null, null, null];
-            const biografiaTexto = data.biografia ?? data.bio ?? '';
-            setPerfilData({ bio: biografiaTexto, biografia: biografiaTexto, vibes: vibesData });
-            setTempBio(biografiaTexto);
-            setTempVibes(vibesData);
-          }
-        } catch (error) {
-          console.error("Error al cargar datos del perfil:", error);
-        } finally {
-          setCargando(false);
+        // 2. Cargar Datos del Perfil (Bio y Vitrina)
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+        
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          const vibesData = data.vibes || [null, null, null];
+          const biografiaTexto = data.biografia ?? data.bio ?? '';
+          setPerfilData({ bio: biografiaTexto, biografia: biografiaTexto, vibes: vibesData });
+          setTempBio(biografiaTexto);
+          setTempVibes(vibesData);
         }
-      } else {
+      } catch (error) {
+        console.error("Error al cargar datos del perfil:", error);
+      } finally {
         setCargando(false);
       }
-    });
-    return () => unsubscribe();
-  }, []);
+    };
+    cargarPerfil();
+  }, [user?.uid]);
 
   // Escuchador en tiempo real para Echo-Safe
   useEffect(() => {
-    if (!user) return; 
+    if (!user?.uid) return; 
 
     // Buscamos en echo_reports DONDE el userId sea igual al del usuario actual
     const q = query(
@@ -115,7 +112,7 @@ export default function Perfil() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user?.uid]);
 
   // --- FUNCIÓN ÚNICA DE GUARDADO (A prueba de balas) ---
   const handleGuardarCambios = async () => {
@@ -186,7 +183,6 @@ export default function Perfil() {
     setErrorFoto('');
     try {
       await updateUserPhoto(url);
-      setUser(auth.currentUser ? { ...auth.currentUser } : null);
       setEditandoFoto(false);
     } catch (error) {
       console.error('Error al actualizar la foto de perfil:', error);

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 // IMPORTAMOS FIREBASE
-import { db, auth } from '../firebase/config'; 
+import { db } from '../firebase/config'; 
 import { collection, addDoc, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuth } from '../context/AuthContext';
 
 import { 
   BeatItScheduler, 
@@ -226,7 +226,7 @@ export default function BeatIt() {
 
   const [beatName, setBeatName] = useState('');
   const [savedBeats, setSavedBeats] = useState([]); 
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
 
   // Cálculo de segundos de retardo sincronizado al tempo
@@ -476,30 +476,29 @@ export default function BeatIt() {
 
   // --- DETECTAR USUARIO LOGUEADO Y TRAER SUS BEATS ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        try {
-          const q = query(
-            collection(db, "beats"), 
-            where("userId", "==", currentUser.uid)
-          );
-          const querySnapshot = await getDocs(q);
-          const beatsNube = [];
-          querySnapshot.forEach((doc) => {
-            beatsNube.push({ id: doc.id, ...doc.data() });
-          });
-          setSavedBeats(beatsNube);
-        } catch (error) {
-          console.error("Error trayendo las cintas de la nube: ", error);
-        }
-      } else {
+    const cargarBeatsUsuario = async () => {
+      if (!user?.uid) {
         setSavedBeats([]);
+        return;
       }
-    });
+      try {
+        const q = query(
+          collection(db, "beats"), 
+          where("userId", "==", user.uid)
+        );
+        const querySnapshot = await getDocs(q);
+        const beatsNube = [];
+        querySnapshot.forEach((doc) => {
+          beatsNube.push({ id: doc.id, ...doc.data() });
+        });
+        setSavedBeats(beatsNube);
+      } catch (error) {
+        console.error("Error trayendo las cintas de la nube: ", error);
+      }
+    };
 
-    return () => unsubscribe();
-  }, []);
+    cargarBeatsUsuario();
+  }, [user?.uid]);
 
   // Ciclo de 3 estados de velocidad: 0 (Off) -> 1 (Normal) -> 2 (Acento) -> 0
   const toggleStep = (instrument, stepIndex) => {

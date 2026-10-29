@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-28 19:21] T07 — Unificar estado de sesión con useAuth() en Perfil y BeatIt — Argon
+- Rama: `fix/T07-useauth-perfil-beatit`
+- Estado: completada
+- Archivos tocados: `src/pages/Perfil.jsx`, `src/pages/BeatIt.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se eliminaron los observadores `onAuthStateChanged` y estados `user` locales en `src/pages/Perfil.jsx` y `src/pages/BeatIt.jsx`, consumiendo directamente `user` desde `useAuth()` y sincronizando efectos por `user?.uid`.
+- Decisiones tomadas: Se usó `user?.uid` como dependencia de los `useEffect` de carga y suscripción para evitar recargas innecesarias de Firestore cuando cambia la referencia del objeto `user` (p. ej., tras `updateUserPhoto`).
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Entrar a `/perfil` y `/beat-it` con y sin sesión iniciada, verificar carga de beats guardados y actualización de foto de perfil sin recargar las colecciones.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T08 (Corregir afirmación de PWA en `README.md` y eliminar carpeta huérfana `dev-dist/`) con Argon.
+
 ### [2026-10-28 19:19] T06 — Code-splitting con React.lazy y Suspense en App.jsx — Argon
 - Rama: `fix/T06-lazy-routes`
 - Estado: completada
