@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-28 19:22] T08 — Limpiar menciones de PWA en README y eliminar dev-dist — Argon
+- Rama: `fix/T08-pwa-limpieza`
+- Estado: completada
+- Archivos tocados: `README.md`, `dev-dist/` (eliminado), `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se corrigieron las referencias en `README.md` que afirmaban que la app incluye PWA / `vite-plugin-pwa` y Service Worker, y se eliminó la carpeta huérfana `dev-dist/`.
+- Decisiones tomadas: Alinear la documentación con el estado real actual (SPA con Vite 8 sin `vite-plugin-pwa`).
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Verificar que `dev-dist/` ya no existe en el directorio raíz y revisar `README.md`.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): Fase C — T09 y T10 (diseño conjunto de contadores de `Inicio.jsx` y reglas `firestore.rules`) con Argon tras visto bueno del usuario y resolución de decisiones abiertas.
+
 ### [2026-10-28 19:21] T07 — Unificar estado de sesión con useAuth() en Perfil y BeatIt — Argon
 - Rama: `fix/T07-useauth-perfil-beatit`
 - Estado: completada

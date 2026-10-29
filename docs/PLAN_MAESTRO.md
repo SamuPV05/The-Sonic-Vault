@@ -24,7 +24,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 ## Fase B — Rendimiento y limpieza
 - [x] **T06** (3, Flash) `React.lazy` + `Suspense` en `App.jsx` para BeatIt, EchoSafe, Perfil, Artistas, ArtistaDetalle. Meta: bundle inicial < 400 kB.
 - [x] **T07** (3, Flash) `Perfil.jsx` y `BeatIt.jsx`: usar `useAuth()` en lugar de `onAuthStateChanged` propio. `AuthProvider` solo renderiza hijos con `loading === false`.
-- [ ] **T08** (3, Flash) Decidir PWA. Recomendado: quitar la afirmación del README ahora; configurar `vite-plugin-pwa` más tarde.
+- [x] **T08** (3, Flash) Decidir PWA. Recomendado: quitar la afirmación del README ahora; configurar `vite-plugin-pwa` más tarde.
 
 ## Fase C — Seguridad de datos (T09 y T10 se diseñan juntas)
 - [ ] **T09** (4, Argon) Contadores de `Inicio.jsx` sin descargar colecciones. Propuesta: documento público `stats/global` con `increment(1)` al registrarse, guardar beat y enviar reporte. Alternativa: `getCountFromServer` (exige lectura abierta de colecciones).

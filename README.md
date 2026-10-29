@@ -1,6 +1,6 @@
 # 💽 The Sonic Vault & Radar Echo-Safe
 
-**The Sonic Vault** es una plataforma web progresiva (PWA) de vanguardia diseñada para coleccionistas musicales, audiófilos, productores y exploradores sónicos. Integra catálogo de culto con líneas de tiempo históricas y genealogía musical (*Árbol de Ecos*), síntesis e interactividad en tiempo real (Estudio Pro "Beat It"), geolocalización de niveles sonoros ("Radar Echo-Safe"), un ecosistema completo de 5 fases con la **API de Spotify** y un sistema robusto de autenticación y seguridad de nivel empresarial.
+**The Sonic Vault** es una aplicación web de página única (SPA) de vanguardia diseñada para coleccionistas musicales, audiófilos, productores y exploradores sónicos. Integra catálogo de culto con líneas de tiempo históricas y genealogía musical (*Árbol de Ecos*), síntesis e interactividad en tiempo real (Estudio Pro "Beat It"), geolocalización de niveles sonoros ("Radar Echo-Safe"), un ecosistema completo de 5 fases con la **API de Spotify** y un sistema robusto de autenticación y seguridad de nivel empresarial.
 
 ---
 
@@ -85,7 +85,7 @@ Integración profunda con Spotify Web API (Flujo público seguro y OAuth PKCE de
 ## 🛠️ Stack Tecnológico
 
 * **Frontend:** React 19, React Router v7, JavaScript (ES6+), Vanilla CSS (Diseño Cyberpunk / Glassmorphism responsivo)
-* **Build Tool & PWA:** Vite 8 + `vite-plugin-pwa` (Workbox Service Worker)
+* **Build Tool:** Vite 8
 * **Base de Datos & Auth:** Firebase Authentication (Google, Microsoft, Email/Password) & Cloud Firestore
 * **Música & Streaming:** Spotify Web API (OAuth PKCE + Client Credentials Proxy)
 * **Seguridad:** Google reCAPTCHA v2 (Front & Backend Node/Serverless)
@@ -167,7 +167,7 @@ El archivo `.env` requiere las siguientes claves (ver [.env.example](.env.exampl
 
 * `npm run dev` — Levanta el entorno de desarrollo con HMR y middlewares locales `/api/*`.
 * `npm run lint` — Ejecuta ESLint 9 sobre todo el repositorio (`0 errors`, `0 warnings`).
-* `npm run build` — Genera el bundle optimizado de producción y el Service Worker PWA en `dist/`.
+* `npm run build` — Genera el bundle optimizado de producción en `dist/`.
 * `npm run preview` — Previsualiza localmente el build de producción.
 
 ---
