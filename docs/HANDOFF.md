@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-28 19:19] T06 — Code-splitting con React.lazy y Suspense en App.jsx — Argon
+- Rama: `fix/T06-lazy-routes`
+- Estado: completada
+- Archivos tocados: `src/App.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se aplicó carga diferida (`React.lazy`) a las páginas `Perfil`, `Artistas`, `ArtistaDetalle`, `EchoSafe` y `BeatIt` en `src/App.jsx`, envolviendo `<Routes>` en un `<Suspense>` con fallback visual consistente.
+- Decisiones tomadas: Se mantuvieron en el bundle de entrada las rutas ligeras (`Inicio`, `Login`, `SpotifyCallback`, `NotFound`). El chunk de entrada `index-*.js` bajó de 1,060.63 kB a 261.83 kB (gzip: 77.42 kB), cumpliendo la meta (< 400 kB) y eliminando la advertencia de chunks > 500 kB de Vite.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ (entry chunk: 261.83 kB) · pasos manuales: Navegar entre `/`, `/artistas`, `/artistas/:id`, `/echo-safe`, `/beat-it` y `/perfil` verificando la carga perezosa de cada módulo sin errores.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T07 (`Perfil.jsx` y `BeatIt.jsx`: usar `useAuth()` en lugar de `onAuthStateChanged` propio) con Argon.
+
 ### [2026-10-28 18:24] T05 — Exigir claves reales de reCAPTCHA en producción — Argon
 - Rama: `fix/T05-captcha-produccion`
 - Estado: completada

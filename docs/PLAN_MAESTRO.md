@@ -22,7 +22,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 - [x] **T05** (2, Flash) `api/verify-captcha.js` y `Login.jsx`: en producción, fallar si falta el secreto o la site key; clave de prueba solo en desarrollo.
 
 ## Fase B — Rendimiento y limpieza
-- [ ] **T06** (3, Flash) `React.lazy` + `Suspense` en `App.jsx` para BeatIt, EchoSafe, Perfil, Artistas, ArtistaDetalle. Meta: bundle inicial < 400 kB.
+- [x] **T06** (3, Flash) `React.lazy` + `Suspense` en `App.jsx` para BeatIt, EchoSafe, Perfil, Artistas, ArtistaDetalle. Meta: bundle inicial < 400 kB.
 - [ ] **T07** (3, Flash) `Perfil.jsx` y `BeatIt.jsx`: usar `useAuth()` en lugar de `onAuthStateChanged` propio. `AuthProvider` solo renderiza hijos con `loading === false`.
 - [ ] **T08** (3, Flash) Decidir PWA. Recomendado: quitar la afirmación del README ahora; configurar `vite-plugin-pwa` más tarde.
 

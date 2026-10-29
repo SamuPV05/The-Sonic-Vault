@@ -1,17 +1,19 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SpotifyPlayerProvider } from './context/SpotifyPlayerContext';
 import Login from './pages/Login';
-import Perfil from './pages/Perfil';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Inicio from './pages/Inicio';
-import Artistas from './pages/Artistas';
-import ArtistaDetalle from './pages/ArtistaDetalle';
-import EchoSafe from './pages/EchoSafe';
-import BeatIt from './pages/BeatIt';
 import SpotifyCallback from './pages/SpotifyCallback';
 import NotFound from './pages/NotFound';
+
+const Perfil = lazy(() => import('./pages/Perfil'));
+const Artistas = lazy(() => import('./pages/Artistas'));
+const ArtistaDetalle = lazy(() => import('./pages/ArtistaDetalle'));
+const EchoSafe = lazy(() => import('./pages/EchoSafe'));
+const BeatIt = lazy(() => import('./pages/BeatIt'));
 
 // Componente guardián para proteger la bóveda
 // Si alguien intenta entrar a /perfil sin llave, lo patea al /login
@@ -33,32 +35,34 @@ export default function App() {
             <Navbar />
 
             <div style={{ flex: 1 }}>
-              <Routes>
-                {/* == RUTA PRIVADA == */}
-                <Route 
-                  path="/perfil" 
-                  element={
-                    <RutaProtegida>
-                      <Perfil />
-                    </RutaProtegida>
-                  } 
-                />
-                
-                {/* == RUTAS PÚBLICAS == */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/callback" element={<SpotifyCallback />} />
-                <Route path="/" element={<Inicio />} />
-                <Route path="/artistas" element={<Artistas />} />
-                
-                {/* RUTA DINÁMICA: El :id puede ser cualquier nombre */}
-                <Route path="/artistas/:id" element={<ArtistaDetalle />} />
-                
-                <Route path="/echo-safe" element={<EchoSafe />} />
-                <Route path="/beat-it" element={<BeatIt />} />
+              <Suspense fallback={<div style={{ color: 'white', textAlign: 'center', marginTop: '50px' }}>Cargando módulo...</div>}>
+                <Routes>
+                  {/* == RUTA PRIVADA == */}
+                  <Route 
+                    path="/perfil" 
+                    element={
+                      <RutaProtegida>
+                        <Perfil />
+                      </RutaProtegida>
+                    } 
+                  />
+                  
+                  {/* == RUTAS PÚBLICAS == */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/callback" element={<SpotifyCallback />} />
+                  <Route path="/" element={<Inicio />} />
+                  <Route path="/artistas" element={<Artistas />} />
+                  
+                  {/* RUTA DINÁMICA: El :id puede ser cualquier nombre */}
+                  <Route path="/artistas/:id" element={<ArtistaDetalle />} />
+                  
+                  <Route path="/echo-safe" element={<EchoSafe />} />
+                  <Route path="/beat-it" element={<BeatIt />} />
 
-                {/* == RUTA 404 (FRECUENCIA FUERA DE RANGO) == */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  {/* == RUTA 404 (FRECUENCIA FUERA DE RANGO) == */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </div>
 
             <Footer />
