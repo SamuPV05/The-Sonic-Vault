@@ -39,9 +39,24 @@ export default function Navbar() {
         <Link to="/" className="logo" style={{ 
           fontSize: isMobile ? '1.25rem' : '1.5rem',
           textDecoration: 'none',
-          letterSpacing: '2px'
+          letterSpacing: '2px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: isMobile ? '10px' : '12px'
         }}>
-          THE SONIC <span className="accent">VAULT</span>
+          <img
+            src="/sonic-vault-logo.png"
+            alt="The Sonic Vault Logo"
+            style={{
+              width: isMobile ? '34px' : '40px',
+              height: isMobile ? '34px' : '40px',
+              borderRadius: '8px',
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 0 8px rgba(0, 240, 255, 0.35))',
+              flexShrink: 0
+            }}
+          />
+          <span>THE SONIC <span className="accent">VAULT</span></span>
         </Link>
 
         {isMobile && (

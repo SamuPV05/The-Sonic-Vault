@@ -39,11 +39,25 @@ export default function Footer() {
               fontSize: '1.25rem',
               textDecoration: 'none',
               letterSpacing: '2px',
-              display: 'inline-block',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
               marginBottom: '0.6rem'
             }}
           >
-            THE SONIC <span className="accent">VAULT</span>
+            <img
+              src="/sonic-vault-logo.png"
+              alt="The Sonic Vault Logo"
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 0 8px rgba(0, 240, 255, 0.35))',
+                flexShrink: 0
+              }}
+            />
+            <span>THE SONIC <span className="accent">VAULT</span></span>
           </Link>
           <p style={{ margin: '0 0 1rem 0', lineHeight: 1.6, color: '#8892b0', fontSize: '0.82rem' }}>
             Archivo interactivo de arqueología musical, síntesis rítmica procedural en tiempo real y cartografía acústica comunitaria.
