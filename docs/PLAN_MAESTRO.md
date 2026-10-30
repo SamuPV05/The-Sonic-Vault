@@ -28,7 +28,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 
 ## Fase C — Seguridad de datos (T09 y T10 se diseñan juntas)
 - [x] **T09** (4, Argon) Contadores de `Inicio.jsx` sin descargar colecciones. Propuesta: documento público `stats/global` con `increment(1)` al registrarse, guardar beat y enviar reporte. Alternativa: `getCountFromServer` (exige lectura abierta de colecciones).
-- [ ] **T10** (4, Argon) `firestore.rules` + `firebase.json` versionados. Colecciones: `users`, `beats`, `echo_reports`, `artistas`, `2fa_codes`, `stats`. Validar con el emulador.
+- [x] **T10** (4, Argon) `firestore.rules` + `firebase.json` versionados. Colecciones: `users`, `beats`, `echo_reports`, `artistas`, `2fa_codes`, `stats`. Validar con el emulador.
 
 ## Fase D — Rediseño del 2FA
 - [ ] **T11** (5, Argon) Mover 2FA y captcha al servidor: verificar ID token con `firebase-admin`, OTP con `crypto.randomInt`, guardar solo el hash, máximo 5 intentos, envío de correo desde servidor, sesión 2FA verificable (claim o cookie firmada), captcha exigido en el envío. Debe funcionar en Vercel y en Docker (`Dockerfile.api` hoy no instala dependencias).

@@ -1,0 +1,117 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- FUNCIONES AUXILIARES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidCounterCreate(field) {
+      return !(field in request.resource.data)
+        || (request.resource.data[field] is int
+            && (request.resource.data[field] == 0 || request.resource.data[field] == 1));
+    }
+
+    function isValidCounterDelta(field) {
+      return !(field in request.resource.data)
+        || (
+          request.resource.data[field] is int
+          && (
+            (!(field in resource.data)
+              && (request.resource.data[field] == 0 || request.resource.data[field] == 1))
+            || ((field in resource.data)
+              && (request.resource.data[field] == resource.data[field]
+                || request.resource.data[field] - resource.data[field] == 1
+                || request.resource.data[field] - resource.data[field] == -1))
+          )
+        );
+    }
+
+    // 1. ESTADÍSTICAS GLOBALES (Portada / Inicio.jsx — T09)
+    // Documento público ligero para mostrar el pulso de la bóveda sin descargar colecciones enteras.
+    match /stats/global {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['users', 'beats', 'echo_reports'])
+        && isValidCounterCreate('users')
+        && isValidCounterCreate('beats')
+        && isValidCounterCreate('echo_reports');
+
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['users', 'beats', 'echo_reports'])
+        && isValidCounterDelta('users')
+        && isValidCounterDelta('beats')
+        && isValidCounterDelta('echo_reports');
+
+      allow delete: if false;
+    }
+
+    // 2. PERFILES DE USUARIO (AuthContext.jsx y Perfil.jsx)
+    // Cada explorador solo puede leer, crear, editar o eliminar su propio documento.
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && (!('uid' in request.resource.data) || request.resource.data.uid == userId);
+      allow delete: if isOwner(userId);
+    }
+
+    // 3. BEATS / CINTAS (BeatIt.jsx y Perfil.jsx)
+    // - get: público para permitir compartir beats mediante enlace directo (?beat=ID).
+    // - list: restringido a los beats cuyo userId coincida con el usuario autenticado.
+    // - create/update/delete: exclusivo del propietario del beat.
+    match /beats/{beatId} {
+      allow get: if true;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120;
+
+      allow update, delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // 4. REPORTES ACÚSTICOS (EchoSafe.jsx y Perfil.jsx)
+    // El mapa comunitario es de lectura pública; la creación exige sesión activa y coordenadas/dB válidos.
+    match /echo_reports/{reportId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.lat is number
+        && request.resource.data.lat >= -90
+        && request.resource.data.lat <= 90
+        && request.resource.data.lng is number
+        && request.resource.data.lng >= -180
+        && request.resource.data.lng <= 180
+        && request.resource.data.db is number
+        && request.resource.data.db >= 0
+        && request.resource.data.db <= 160;
+
+      allow update, delete: if false;
+    }
+
+    // 5. CATÁLOGO DE ARTISTAS (Artistas.jsx, ArtistaDetalle.jsx, ArbolEcos.jsx, Perfil.jsx)
+    // Lectura pública; escritura bloqueada desde clientes (solo consola de Firebase / Admin SDK).
+    match /artistas/{artistaId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 6. CÓDIGOS 2FA (Login.jsx y AuthContext.jsx)
+    // Restringido al propio usuario autenticado.
+    // Nota: En T11 (Fase D), al migrar el 2FA a firebase-admin en el backend, pasará a `allow read, write: if false;`.
+    match /2fa_codes/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

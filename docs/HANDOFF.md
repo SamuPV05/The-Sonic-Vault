@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-29 22:48] T10 — Versionar firestore.rules y firebase.json — Argon
+- Rama: `fix/T10-firestore-rules`
+- Estado: completada
+- Archivos tocados: `firestore.rules`, `firebase.json`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se crearon desde cero y versionaron `firestore.rules` y `firebase.json` cubriendo las 6 colecciones/documentos del proyecto: `stats/global` (lectura pública, creación y actualización autenticada restringida a deltas de `+1`/`-1` sobre `users`, `beats` y `echo_reports`), `users/{userId}` (lectura/escritura/borrado exclusivo del propietario), `beats/{beatId}` (`get` público para compartir enlaces `?beat=ID`, `list` y escritura restringidos al autor), `echo_reports/{reportId}` (lectura pública, creación autenticada validando rangos de `lat`, `lng` y `db`, inmutable tras crearse), `artistas/{artistaId}` (lectura pública, escritura cerrada) y `2fa_codes/{userId}` (acceso del propietario hasta que T11 lo migre a `firebase-admin`).
+- Decisiones tomadas: Separar `allow get: if true;` y `allow list: if isSignedIn() && resource.data.userId == request.auth.uid;` en `beats/{beatId}` para permitir enlaces compartidos individuales sin exponer el listado completo de beats de todos los usuarios.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Copiar el contenido de `firestore.rules` en la pestaña "Reglas" de Firestore en Firebase Console y publicar (o ejecutar `firebase deploy --only firestore:rules` / `firebase emulators:start --only firestore` si se instala `firebase-tools`).
+- Riesgos / pendientes: Las reglas deben publicarse en la consola de Firebase para que entren en vigor en el proyecto en la nube. En T11 se cerrará `2fa_codes/{userId}` a `allow read, write: if false;`.
+- Siguiente paso sugerido (y para qué modelo): Fase D — T11 (Mover 2FA y captcha al servidor con paridad Vercel y Docker) con Argon.
+
 ### [2026-10-29 22:42] T09 — Contadores de Inicio.jsx con stats/global e increment(1) — Argon
 - Rama: `fix/T09-contadores-inicio`
 - Estado: completada
