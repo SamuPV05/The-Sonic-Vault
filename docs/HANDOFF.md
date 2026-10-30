@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 06:52] T14 — Documentar riesgo de tokens Spotify en localStorage y añadir CSP en nginx.conf — Argon
+- Rama: `fix/T14-csp-spotify-docs`
+- Estado: completada
+- Archivos tocados: `src/services/spotifyService.js`, `nginx.conf`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se documentó formalmente en `src/services/spotifyService.js` el modelo de seguridad del flujo OAuth 2.0 con PKCE de Spotify (por qué el usuario almacena `tsv_spotify_user_token` y `tsv_spotify_refresh_token` en `localStorage` mientras que el flujo Client Credentials delega el secreto a `/api/spotify-token`, cuál es el riesgo ante XSS y qué mitigaciones se aplican). Además, se añadieron en `nginx.conf` las cabeceras de seguridad `Content-Security-Policy`, `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin` permitiendo únicamente los orígenes legítimos de la aplicación (Spotify API/Accounts/Embeds/CDN, Firebase Auth/Firestore, Google reCAPTCHA, Google Fonts, FontAwesome CDN y blobs de Web Audio API).
+- Decisiones tomadas: Incluir en la CSP de `nginx.conf` soporte explícito para `blob:` en `media-src` y `worker-src` (necesarios para la exportación WAV de `BeatIt`) y los dominios de OAuth/reCAPTCHA (`apis.google.com`, `*.firebaseapp.com`, `accounts.google.com`, `login.microsoftonline.com`) para no interrumpir ningún flujo de inicio de sesión ni de reproducción.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Levantar contenedor web con `docker compose up --build` y verificar en DevTools → Network la presencia del header `Content-Security-Policy` sin bloqueos en consola.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T15 (Actualizar `README.md` con el estado real del proyecto) con Flash o Argon.
+
 ### [2026-10-30 06:40] T13b — Extraer BeatItTransport, BeatItFXRack, BeatItMixer y BeatItGrid — Flash
 - Rama: `fix/T13b-beatit-components`
 - Estado: completada
