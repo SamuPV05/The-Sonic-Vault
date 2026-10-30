@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 12:53] T17 — Blindaje contra Rollback de intentos en 2fa_codes e inmutabilidad de propietario en beats — Argon
+- Rama: `fix/T17-rules-rollback-guard`
+- Estado: completada
+- Archivos tocados: `firestore.rules`, `api/2fa.js`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se reforzaron las reglas de seguridad de Firestore (`firestore.rules`) en dos colecciones críticas: (1) en `beats/{beatId}`, la regla `allow update` ahora exige inmutabilidad del propietario (`request.resource.data.userId == resource.data.userId`) y valida el tamaño del nombre (`1..120` caracteres), impidiendo transferir cintas a la bóveda de otro usuario; (2) en `2fa_codes/{userId}`, se separaron `create` (exigiendo `attempts == 0`) y `update` (exigiendo que para un mismo `codeHash` el contador `attempts` solo pueda incrementarse exactamente en `+1`, o que al rotar `codeHash` se reinicie `attempts == 0` con `updatedAt` monotónico). Además, en `api/2fa.js` se añadió el mapa en memoria `maxIntentosPorHash` que detecta y bloquea con `HTTP 429` (`locked: true, rollbackDetected: true`) cualquier intento de reinyección o reversión de un snapshot anterior en Firestore (incluso mediante `delete` + `create`).
+- Decisiones tomadas: Al consumirse un código 2FA válido (`coincide === true`), `maxIntentosPorHash` marca inmediatamente ese `uid:codeHash` con `MAX_ATTEMPTS + 1` para inutilizar cualquier intento posterior de reinyectar el documento consumido.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · batería de 10 escenarios (T12 + T16 + T17) ✅.
+- Riesgos / pendientes: Ninguno. Recuerda desplegar o pegar la versión final de `firestore.rules` en la consola de Firebase.
+- Siguiente paso sugerido (y para qué modelo): T18 (Purga de tokens Spotify al cerrar sesión y validación estricta de avatares SVG/URL en `src/context/AuthContext.jsx` y `src/pages/Perfil.jsx`) con Flash.
+
 ### [2026-10-30 08:17] T16 — Falla cerrada de secretos en producción y cooldown anti-bombardeo en /api/2fa — Argon
 - Rama: `fix/T16-2fa-secrets-cooldown`
 - Estado: completada

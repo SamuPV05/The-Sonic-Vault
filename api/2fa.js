@@ -20,6 +20,8 @@ const SEND_COOLDOWN_MS = 60 * 1000; // 60 segundos entre envíos de OTP por usua
 const memoria2FA = new Map();
 // Registro en memoria del último envío de OTP por UID para evitar bypass de cooldown borrando Firestore
 const ultimoEnvio2FA = new Map();
+// Registro monotónico de intentos por (uid:codeHash) para impedir ataques de Rollback (T17)
+const maxIntentosPorHash = new Map();
 
 function esEntornoProduccion(env = process.env) {
   return env.NODE_ENV === 'production' || env.VERCEL_ENV === 'production';
@@ -393,7 +395,8 @@ export async function procesarPeticion2FA({
   env = process.env,
   verifyTokenFn = verificarIdTokenFirebase,
   nowFn = Date.now,
-  cooldownMs = SEND_COOLDOWN_MS
+  cooldownMs = SEND_COOLDOWN_MS,
+  readRecordFn = leerRegistro2FA
 }) {
   const secret = obtenerSecretoServidor(env);
   const esProd = esEntornoProduccion(env);
@@ -557,6 +560,7 @@ export async function procesarPeticion2FA({
     };
 
     ultimoEnvio2FA.set(authCtx.uid, ahora);
+    maxIntentosPorHash.set(`${authCtx.uid}:${codeHash}`, 0);
     await guardarRegistro2FA(authCtx, record);
 
     const origin = headers?.origin || headers?.Origin || 'http://localhost:5173';
@@ -600,7 +604,7 @@ export async function procesarPeticion2FA({
       };
     }
 
-    const record = await leerRegistro2FA(authCtx);
+    const record = await readRecordFn(authCtx);
     if (!record || !verificarFirmaRegistro2FA(authCtx.uid, record, secret)) {
       return {
         status: 400,
@@ -611,7 +615,26 @@ export async function procesarPeticion2FA({
       };
     }
 
-    if (record.attempts >= MAX_ATTEMPTS) {
+    // Guardia anti-Rollback (T17): si el documento leído tiene menos intentos que los ya registrados
+    // por el servidor para este mismo codeHash (p. ej. el cliente reinsertó un snapshot previo con sig_0),
+    // bloqueamos inmediatamente el código.
+    const claveHash = `${authCtx.uid}:${record.codeHash}`;
+    const intentosEnMemoria = maxIntentosPorHash.get(claveHash) ?? 0;
+    if (record.attempts < intentosEnMemoria) {
+      return {
+        status: 429,
+        body: {
+          success: false,
+          locked: true,
+          rollbackDetected: true,
+          attemptsLeft: 0,
+          error: 'Alerta de Seguridad: Se detectó un intento de reversión de contador. El código fue bloqueado; pulsa "Reenviar código".'
+        }
+      };
+    }
+
+    const intentosEfectivos = Math.max(record.attempts, intentosEnMemoria);
+    if (intentosEfectivos >= MAX_ATTEMPTS) {
       return {
         status: 429,
         body: {
@@ -640,7 +663,8 @@ export async function procesarPeticion2FA({
     const coincide = bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
 
     if (!coincide) {
-      const nuevosIntentos = record.attempts + 1;
+      const nuevosIntentos = intentosEfectivos + 1;
+      maxIntentosPorHash.set(claveHash, nuevosIntentos);
       const nuevaSig = firmarRegistro2FA(
         authCtx.uid,
         record.codeHash,
@@ -678,7 +702,8 @@ export async function procesarPeticion2FA({
       };
     }
 
-    // ¡Código correcto! Consumimos el OTP para que no pueda reutilizarse
+    // ¡Código correcto! Consumimos el OTP y marcamos el hash como agotado para que no pueda reinyectarse
+    maxIntentosPorHash.set(claveHash, MAX_ATTEMPTS + 1);
     await eliminarRegistro2FA(authCtx);
 
     if (authCtx.hasServiceAccount) {
