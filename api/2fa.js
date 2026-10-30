@@ -216,8 +216,9 @@ function leerCookies(cookieHeader = '') {
 // --- PERSISTENCIA DE 2fa_codes/{uid} (Admin SDK o Firestore REST + Memoria) ---
 
 async function guardarRegistro2FA(authCtx, record) {
-  const { uid, projectId, idToken, app, hasServiceAccount } = authCtx;
+  const { uid, projectId, idToken, app, hasServiceAccount, skipRest } = authCtx;
   memoria2FA.set(uid, record);
+  if (skipRest) return;
 
   if (hasServiceAccount) {
     await getFirestore(app).collection('2fa_codes').doc(uid).set(record);
@@ -255,7 +256,8 @@ async function guardarRegistro2FA(authCtx, record) {
 }
 
 async function leerRegistro2FA(authCtx) {
-  const { uid, projectId, idToken, app, hasServiceAccount } = authCtx;
+  const { uid, projectId, idToken, app, hasServiceAccount, skipRest } = authCtx;
+  if (skipRest) return memoria2FA.get(uid) || null;
 
   if (hasServiceAccount) {
     const snap = await getFirestore(app).collection('2fa_codes').doc(uid).get();
@@ -292,8 +294,9 @@ async function leerRegistro2FA(authCtx) {
 }
 
 async function eliminarRegistro2FA(authCtx) {
-  const { uid, projectId, idToken, app, hasServiceAccount } = authCtx;
+  const { uid, projectId, idToken, app, hasServiceAccount, skipRest } = authCtx;
   memoria2FA.delete(uid);
+  if (skipRest) return;
 
   if (hasServiceAccount) {
     await getFirestore(app).collection('2fa_codes').doc(uid).delete();
@@ -377,7 +380,15 @@ async function enviarCorreo2FADesdeServidor({ email, name, code, env, origin }) 
 
 // --- LÓGICA PRINCIPAL DE 2FA ---
 
-export async function procesarPeticion2FA({ method, headers, body, ip, env = process.env }) {
+export async function procesarPeticion2FA({
+  method,
+  headers,
+  body,
+  ip,
+  env = process.env,
+  verifyTokenFn = verificarIdTokenFirebase,
+  nowFn = Date.now
+}) {
   const secret = obtenerSecretoServidor(env);
   const esProd = esEntornoProduccion(env);
   const cookies = leerCookies(headers?.cookie || headers?.Cookie || '');
@@ -390,7 +401,7 @@ export async function procesarPeticion2FA({ method, headers, body, ip, env = pro
   if (action === 'logout') {
     if (idToken) {
       try {
-        const authCtx = await verificarIdTokenFirebase(idToken, env);
+        const authCtx = await verifyTokenFn(idToken, env);
         await eliminarRegistro2FA(authCtx);
       } catch {
         // Ignorar si el token ya expiró al cerrar sesión
@@ -406,7 +417,7 @@ export async function procesarPeticion2FA({ method, headers, body, ip, env = pro
   // Todas las demás acciones exigen un ID token válido verificado con firebase-admin
   let authCtx;
   try {
-    authCtx = await verificarIdTokenFirebase(idToken, env);
+    authCtx = await verifyTokenFn(idToken, env);
   } catch (err) {
     return {
       status: 401,
@@ -574,7 +585,7 @@ export async function procesarPeticion2FA({ method, headers, body, ip, env = pro
       };
     }
 
-    if (Date.now() > record.expiration) {
+    if (nowFn() > record.expiration) {
       return {
         status: 400,
         body: {

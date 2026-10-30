@@ -32,7 +32,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 
 ## Fase D — Rediseño del 2FA
 - [x] **T11** (5, Argon) Mover 2FA y captcha al servidor: verificar ID token con `firebase-admin`, OTP con `crypto.randomInt`, guardar solo el hash, máximo 5 intentos, envío de correo desde servidor, sesión 2FA verificable (claim o cookie firmada), captcha exigido en el envío. Debe funcionar en Vercel y en Docker (`Dockerfile.api` hoy no instala dependencias).
-- [ ] **T12** (3, Flash) Pruebas manuales: registro, login con correo, Google, Microsoft, 5 códigos incorrectos, código expirado, reenviar, cancelar registro pendiente.
+- [x] **T12** (3, Flash) Pruebas manuales: registro, login con correo, Google, Microsoft, 5 códigos incorrectos, código expirado, reenviar, cancelar registro pendiente.
 
 ## Fase E — Deuda estructural
 - [ ] **T13a** (4, Argon) Diseño de la división de `BeatIt.jsx` (límites de módulos, hooks `useBeatItScheduler` y `useBeatItPersistence`).

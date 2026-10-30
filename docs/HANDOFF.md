@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-29 23:05] T12 — Verificación y pruebas de flujos 2FA y autenticación — Argon
+- Rama: `fix/T12-pruebas-2fa`
+- Estado: completada
+- Archivos tocados: `api/2fa.js`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se parametrizó `procesarPeticion2FA` en `api/2fa.js` (`verifyTokenFn`, `nowFn`, `skipRest`) para permitir pruebas deterministas de reloj y autenticación, y se ejecutó la batería completa de pruebas de extremo a extremo cubriendo los 8 escenarios de T12: bloqueo de envío sin Captcha, emisión de OTP tras Captcha, 5 códigos incorrectos seguidos con bloqueo `HTTP 429` (`locked: true`), reenvío de código (`resend: true`), rechazo de código expirado (> 5 min), verificación exitosa con cookie `HttpOnly` firmada y consumo de OTP de un solo uso, inicio de sesión OAuth (Google y Microsoft) con rechazo de suplantación (`403`), y cancelación de registro pendiente / cierre de sesión (`Max-Age=0`).
+- Decisiones tomadas: Mantener la inyección opcional de `verifyTokenFn` y `nowFn` en `procesarPeticion2FA` con valores por defecto de producción (`verificarIdTokenFirebase` y `Date.now`) para no alterar el comportamiento en producción y facilitar auditorías futuras.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · batería de 8 escenarios T12 ✅ · pasos manuales en navegador: `npm run dev` → `/login` para confirmar visualmente la interfaz en vivo con tu cuenta real.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): Fase E — T13a (Diseño de la división de `BeatIt.jsx`: límites de módulos y hooks `useBeatItScheduler` y `useBeatItPersistence`) con Argon.
+
 ### [2026-10-29 22:58] T11 — Mover 2FA y Captcha al servidor con firebase-admin y cookie firmada — Argon
 - Rama: `fix/T11-2fa-servidor`
 - Estado: completada
