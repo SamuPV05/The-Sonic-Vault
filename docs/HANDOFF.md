@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 13:10] T21 — Consolidación y versionado de activos de identidad visual y logos — Flash
+- Rama: `fix/T21-branding-assets-consolidation`
+- Estado: completada
+- Archivos tocados: `public/sonic-vault-logo.png`, `public/icon.svg`, `public/pwa-192x192.png`, `public/pwa-512x512.png`, `public/sonic-vault-icon.svg`, `src/components/Navbar.jsx`, `src/components/Footer.jsx`, `index.html`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se consolidaron y versionaron formalmente en el repositorio los nuevos activos de identidad visual de The Sonic Vault: (1) Inclusión de la insignia de marca oficial `public/sonic-vault-logo.png` con renderizado optimizado en `Navbar.jsx` y `Footer.jsx` con efecto neón glassmorphism; (2) Configuración en `index.html` del favicon principal (`/sonic-vault-logo.png`), favicon alternativo vectorial (`/sonic-vault-icon.svg`) y etiqueta OpenGraph `og:image`; (3) Actualización de los iconos PWA (`pwa-192x192.png` y `pwa-512x512.png`) y vectores SVG (`icon.svg` y `sonic-vault-icon.svg`).
+- Decisiones tomadas: Mantener `flexShrink: 0`, `borderRadius: 8px` y `objectFit: contain` en los logos del Navbar y Footer para garantizar responsividad impecable en dispositivos móviles y de escritorio.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Inspección visual del Navbar, Footer y favicon en el navegador.
+- Riesgos / pendientes: Ninguno. Todo el Plan Maestro (Fases A a F, T01 a T21) está 100% completado.
+- Siguiente paso sugerido: El repositorio se encuentra en estado óptimo, libre de vulnerabilidades y completamente listo para fusionar `fix/stabilization` en `main` y sincronizar con el remoto.
+
 ### [2026-10-30 13:08] T20 — Herencia de cabeceras en nginx.conf y control de payload en Docker API — Flash
 - Rama: `fix/T20-nginx-and-server-hardening`
 - Estado: completada
