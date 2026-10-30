@@ -65,7 +65,7 @@ service cloud.firestore {
     // 3. BEATS / CINTAS (BeatIt.jsx y Perfil.jsx)
     // - get: público para permitir compartir beats mediante enlace directo (?beat=ID).
     // - list: restringido a los beats cuyo userId coincida con el usuario autenticado.
-    // - create/update/delete: exclusivo del propietario del beat.
+    // - create/update/delete: exclusivo del propietario del beat (userId inmutable en update — T17).
     match /beats/{beatId} {
       allow get: if true;
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
@@ -76,7 +76,14 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 120;
 
-      allow update, delete: if isSignedIn()
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120;
+
+      allow delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
     }
 
@@ -107,21 +114,43 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 6. CÓDIGOS 2FA (Gestionados por el backend /api/2fa — T11)
+    // 6. CÓDIGOS 2FA (Gestionados por el backend /api/2fa — T11 y T17)
     // Prohíbe guardar códigos en texto plano ('code'); exige hash HMAC-SHA256 ('codeHash')
     // y firma de integridad del servidor ('sig') sobre intentos y expiración.
+    // En update (T17): impide ataques de Rollback exigiendo que para un mismo codeHash
+    // el contador attempts solo pueda incrementarse de 1 en 1.
+    function isValid2FARecord(data) {
+      return !('code' in data)
+        && data.codeHash is string
+        && data.codeHash.size() == 64
+        && data.sig is string
+        && data.sig.size() == 64
+        && data.attempts is int
+        && data.attempts >= 0
+        && data.attempts <= 5
+        && data.expiration is int
+        && (!('updatedAt' in data) || data.updatedAt is int);
+    }
+
     match /2fa_codes/{userId} {
       allow read, delete: if isOwner(userId);
-      allow create, update: if isOwner(userId)
-        && !('code' in request.resource.data)
-        && request.resource.data.codeHash is string
-        && request.resource.data.codeHash.size() == 64
-        && request.resource.data.sig is string
-        && request.resource.data.sig.size() == 64
-        && request.resource.data.attempts is int
-        && request.resource.data.attempts >= 0
-        && request.resource.data.attempts <= 5
-        && request.resource.data.expiration is int;
+
+      allow create: if isOwner(userId)
+        && isValid2FARecord(request.resource.data)
+        && request.resource.data.attempts == 0;
+
+      allow update: if isOwner(userId)
+        && isValid2FARecord(request.resource.data)
+        && (
+          (request.resource.data.codeHash == resource.data.codeHash
+            && request.resource.data.expiration == resource.data.expiration
+            && request.resource.data.attempts == resource.data.attempts + 1)
+          || (request.resource.data.codeHash != resource.data.codeHash
+            && request.resource.data.attempts == 0
+            && (!('updatedAt' in resource.data)
+              || !('updatedAt' in request.resource.data)
+              || request.resource.data.updatedAt >= resource.data.updatedAt))
+        );
     }
   }
 }
