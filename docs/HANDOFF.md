@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 08:17] T16 — Falla cerrada de secretos en producción y cooldown anti-bombardeo en /api/2fa — Argon
+- Rama: `fix/T16-2fa-secrets-cooldown`
+- Estado: completada
+- Archivos tocados: `api/2fa.js`, `api/verify-captcha.js`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se eliminó en `api/2fa.js` y `api/verify-captcha.js` cualquier fallback a claves estáticas de desarrollo (`sv-dev-2fa-hmac-secret-key-2026` y `TEST_SECRET`) cuando `NODE_ENV === 'production'` o `VERCEL_ENV === 'production'`, haciendo que el servidor falle cerrado (`HTTP 500` / rechazo de firma) si no existen secretos reales configurados. Además, se implementó en `/api/2fa` (`action === 'send'`) un enfriamiento (cooldown) obligatorio de 60 segundos por usuario (respaldado tanto en `updatedAt` de Firestore como en `ultimoEnvio2FA` en memoria del servidor) que bloquea con `HTTP 429` (`cooldown: true, retryAfterSeconds`) cualquier intento de bombardeo de correos o agotamiento de la cuota mensual de EmailJS.
+- Decisiones tomadas: Al fallar un intento de verificación (`action === 'verify'`), se preserva el `updatedAt` original de emisión del código para que los intentos fallidos no reinicien artificialmente el reloj de enfriamiento de 60s para el usuario legítimo.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · batería de 9 escenarios (T12 + T16) ✅.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T17 (Blindaje contra Rollback de intentos en `2fa_codes` e inmutabilidad de propietario en `beats` en `firestore.rules` y `api/2fa.js`) con Argon.
+
 ### [2026-10-30 06:58] T15 — Actualizar README con el estado real del proyecto — Flash
 - Rama: `fix/T15-actualizar-readme`
 - Estado: completada

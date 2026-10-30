@@ -14,22 +14,27 @@ const COOKIE_NAME = 'sv_2fa_session';
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutos
 const MAX_ATTEMPTS = 5;
+const SEND_COOLDOWN_MS = 60 * 1000; // 60 segundos entre envíos de OTP por usuario (anti-spam EmailJS)
 
 // Respaldo en memoria del proceso para entornos sin cuenta de servicio o con Firestore inaccesible
 const memoria2FA = new Map();
+// Registro en memoria del último envío de OTP por UID para evitar bypass de cooldown borrando Firestore
+const ultimoEnvio2FA = new Map();
+
+function esEntornoProduccion(env = process.env) {
+  return env.NODE_ENV === 'production' || env.VERCEL_ENV === 'production';
+}
 
 function obtenerSecretoServidor(env = process.env) {
-  return (
+  const secretoReal =
     env.SESSION_2FA_SECRET ||
     env.RECAPTCHA_SECRET_KEY ||
     env.SPOTIFY_CLIENT_SECRET ||
     env.EMAILJS_PRIVATE_KEY ||
-    'sv-dev-2fa-hmac-secret-key-2026'
-  );
-}
-
-function esEntornoProduccion(env = process.env) {
-  return env.NODE_ENV === 'production' || env.VERCEL_ENV === 'production';
+    '';
+  if (secretoReal) return secretoReal;
+  // En producción nunca caemos en una clave estática conocida; falla cerrado (HTTP 500).
+  return esEntornoProduccion(env) ? '' : 'sv-dev-2fa-hmac-secret-key-2026';
 }
 
 function extraerProjectIdDeJwt(idToken) {
@@ -387,10 +392,20 @@ export async function procesarPeticion2FA({
   ip,
   env = process.env,
   verifyTokenFn = verificarIdTokenFirebase,
-  nowFn = Date.now
+  nowFn = Date.now,
+  cooldownMs = SEND_COOLDOWN_MS
 }) {
   const secret = obtenerSecretoServidor(env);
   const esProd = esEntornoProduccion(env);
+  if (!secret) {
+    return {
+      status: 500,
+      body: {
+        success: false,
+        error: 'Configuración incompleta en el servidor: falta configurar SESSION_2FA_SECRET en producción.'
+      }
+    };
+  }
   const cookies = leerCookies(headers?.cookie || headers?.Cookie || '');
   const authHeader = headers?.authorization || headers?.Authorization || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
@@ -476,22 +491,22 @@ export async function procesarPeticion2FA({
     };
   }
 
-  // 4. Emitir y enviar código OTP de 6 dígitos por correo (exige Captcha verificado)
+  // 4. Emitir y enviar código OTP de 6 dígitos por correo (exige Captcha verificado y respeta cooldown de 60s)
   if (action === 'send') {
     const captchaSecret = env.RECAPTCHA_SECRET_KEY || process.env.RECAPTCHA_SECRET_KEY;
+    const previo = await leerRegistro2FA(authCtx);
+    const previoValido = Boolean(previo && verificarFirmaRegistro2FA(authCtx.uid, previo, secret));
+
     let captchaOk = false;
 
-    if (body?.captchaPass && verificarPaseCaptcha(body.captchaPass, captchaSecret)) {
+    if (body?.captchaPass && verificarPaseCaptcha(body.captchaPass, captchaSecret, env)) {
       captchaOk = true;
     } else if (body?.captchaToken) {
-      const resCaptcha = await verificarCaptcha(body.captchaToken, captchaSecret, ip);
+      const resCaptcha = await verificarCaptcha(body.captchaToken, captchaSecret, ip, env);
       captchaOk = Boolean(resCaptcha.success);
-    } else if (body?.resend) {
+    } else if (body?.resend && previoValido) {
       // Si es un reenvío dentro de un flujo 2FA ya abierto tras pasar Captcha
-      const previo = await leerRegistro2FA(authCtx);
-      if (previo && verificarFirmaRegistro2FA(authCtx.uid, previo, secret)) {
-        captchaOk = true;
-      }
+      captchaOk = true;
     }
 
     if (!captchaOk) {
@@ -504,8 +519,30 @@ export async function procesarPeticion2FA({
       };
     }
 
+    // Cooldown anti-bombardeo (T16): impide agotar la cuota de EmailJS aunque se reutilice captchaPass o resend
+    const ahora = nowFn();
+    const ultimoEnvio = Math.max(
+      previoValido ? Number(previo.updatedAt || 0) : 0,
+      ultimoEnvio2FA.get(authCtx.uid) || 0
+    );
+    if (cooldownMs > 0 && ultimoEnvio > 0) {
+      const transcurridoMs = ahora - ultimoEnvio;
+      if (transcurridoMs >= 0 && transcurridoMs < cooldownMs) {
+        const retryAfterSeconds = Math.ceil((cooldownMs - transcurridoMs) / 1000);
+        return {
+          status: 429,
+          body: {
+            success: false,
+            cooldown: true,
+            retryAfterSeconds,
+            error: `Por seguridad, espera ${retryAfterSeconds} segundo${retryAfterSeconds === 1 ? '' : 's'} antes de solicitar otro código.`
+          }
+        };
+      }
+    }
+
     const code = crypto.randomInt(100000, 1000000).toString();
-    const expiration = Date.now() + OTP_TTL_MS;
+    const expiration = ahora + OTP_TTL_MS;
     const attempts = 0;
     const codeHash = hashCodigo2FA(authCtx.uid, code, expiration, secret);
     const sig = firmarRegistro2FA(authCtx.uid, codeHash, expiration, attempts, secret);
@@ -515,10 +552,11 @@ export async function procesarPeticion2FA({
       expiration,
       attempts,
       maxAttempts: MAX_ATTEMPTS,
-      updatedAt: Date.now(),
+      updatedAt: ahora,
       sig
     };
 
+    ultimoEnvio2FA.set(authCtx.uid, ahora);
     await guardarRegistro2FA(authCtx, record);
 
     const origin = headers?.origin || headers?.Origin || 'http://localhost:5173';
@@ -537,7 +575,7 @@ export async function procesarPeticion2FA({
           success: true,
           sent: mailResult.sent,
           devCode: mailResult.devCode || null,
-          captchaPass: emitirPaseCaptcha(captchaSecret)
+          captchaPass: emitirPaseCaptcha(captchaSecret, env)
         }
       };
     } catch (err) {
@@ -613,7 +651,7 @@ export async function procesarPeticion2FA({
       await guardarRegistro2FA(authCtx, {
         ...record,
         attempts: nuevosIntentos,
-        updatedAt: Date.now(),
+        updatedAt: record.updatedAt || nowFn(),
         sig: nuevaSig
       });
 
