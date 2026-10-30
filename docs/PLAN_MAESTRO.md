@@ -43,7 +43,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 ## Fase F — Blindaje avanzado ("What If?") y cierre de producción
 - [x] **T16** (4, Argon) Falla cerrada de secretos en producción y cooldown anti-bombardeo de 60s en `/api/2fa` (`api/2fa.js`, `api/verify-captcha.js`).
 - [x] **T17** (4, Argon) Blindaje contra Rollback de intentos en `2fa_codes` e inmutabilidad de propietario en `beats` (`firestore.rules`, `api/2fa.js`).
-- [ ] **T18** (2, Flash) Purga de tokens Spotify al cerrar sesión y validación estricta de avatares SVG/URL (`src/context/AuthContext.jsx`, `src/pages/Perfil.jsx`).
+- [x] **T18** (2, Flash) Purga de tokens Spotify al cerrar sesión y validación estricta de avatares SVG/URL (`src/context/AuthContext.jsx`, `src/pages/Perfil.jsx`).
 - [ ] **T19** (2, Flash) Protección anti-CSRF en Spotify OAuth con parámetro `state` (`src/services/spotifyService.js`, `src/pages/SpotifyCallback.jsx`).
 - [ ] **T20** (2, Flash) Herencia de cabeceras de seguridad en `nginx.conf` (`/assets/`) y control de payload `413` en `server/captcha-server.js`.
 - [ ] **T21** (1, Flash) Consolidación y versionado de activos de identidad visual, iconos y logos.

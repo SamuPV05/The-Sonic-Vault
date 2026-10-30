@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 13:00] T18 — Purga de tokens Spotify al cerrar sesión y validación estricta de avatares — Flash
+- Rama: `fix/T18-session-cleanup-avatar-validation`
+- Estado: completada
+- Archivos tocados: `src/context/AuthContext.jsx`, `src/pages/Perfil.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: (1) Se conectó la purga automática de tokens de Spotify (`logoutSpotify()` desde `src/services/spotifyService.js`) en todos los flujos de terminación de sesión de `AuthContext.jsx` (`logout()`, `cancelarRegistroPendiente()` y en `onAuthStateChanged` cuando `!currentUser`), evitando fugas de tokens PKCE y controles de reproducción en navegadores o computadores compartidos. (2) Se blindó la actualización de la foto de perfil en `Perfil.jsx` (`handleGuardarFoto`): ahora solo se admiten URIs `data:image/svg+xml` si coinciden exactamente con la lista blanca de los 6 avatares predefinidos (`AVATARES_PREDEFINIDOS`), y para URLs externas se exige obligatoriamente protocolo seguro `https://` con longitud máxima de 512 caracteres sin caracteres de inyección (`[\s<>"'`]`), bloqueando cualquier payload malicioso de SVG o JavaScript.
+- Decisiones tomadas: Mantener la experiencia de avatares predefinidos intacta y validar la URL antes de llamar a `updateUserPhoto`, mostrando un mensaje claro al usuario si el enlace no cumple los criterios de seguridad.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Probar cambio de avatar en `/perfil` con avatares predefinidos y URL https://, y cerrar sesión verificando la limpieza de claves `tsv_spotify_*` en localStorage.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T19 (Protección anti-CSRF en Spotify OAuth con parámetro `state` en `src/services/spotifyService.js` y `src/pages/SpotifyCallback.jsx`) con Flash.
+
 ### [2026-10-30 12:53] T17 — Blindaje contra Rollback de intentos en 2fa_codes e inmutabilidad de propietario en beats — Argon
 - Rama: `fix/T17-rules-rollback-guard`
 - Estado: completada
