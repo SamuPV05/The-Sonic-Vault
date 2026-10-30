@@ -13,6 +13,9 @@ La plataforma incorpora una suite completa de seguridad moderna conforme a los e
    - **Almacenamiento seguro sin texto plano:** En Cloud Firestore (`2fa_codes/{userId}`) solo se almacena el hash HMAC-SHA256 (`codeHash`) y una firma de integridad (`sig`).
    - **Rate Limiting y ventana estricta:** Límite estricto de 5 intentos fallidos antes de bloquear la cuenta por fuerza bruta (`locked: true`, HTTP 429) y expiración automática tras 5 minutos.
    - **Pase anti-automatización:** Emisión de OTP condicionada a la presentación de un `captchaPass` válido y firmado criptográficamente por `/api/verify-captcha`.
+   - **Cooldown anti-bombardeo:** Ventana obligatoria de enfriamiento de 60 segundos por usuario que previene el agotamiento abusivo de la cuota transaccional de EmailJS.
+   - **Guardia anti-Rollback:** Control de versiones monotónico en Firestore y memoria que neutraliza cualquier intento de reinyectar estados previos con `attempts: 0`.
+   - **Falla cerrada en producción:** Bloqueo automático de claves de respaldo estáticas si faltan secretos en entornos de producción (`HTTP 500`).
    - **Sesión verificada:** Cookie segura `HttpOnly` (`sv_2fa_session`) firmada con HMAC-SHA256 o token de sesión que desbloquea rutas protegidas (`/perfil`) y resiste intentos de suplantación.
    - **Despacho transaccional:** Envío del OTP mediante API REST de EmailJS desde el servidor, con modo de prueba en desarrollo.
 
@@ -21,17 +24,19 @@ La plataforma incorpora una suite completa de seguridad moderna conforme a los e
    - Verificación del token del lado del servidor (`POST /api/verify-captcha`) utilizando la clave secreta oficial contra la API de Google reCAPTCHA.
    - Emisión de un pase efímero firmado (`captchaPass`) que previene el bypass de formularios y reinicio automático ante desafíos fallidos.
 
-3. **Single Sign-On (SSO) con Verificación Delegada:**
+3. **Single Sign-On (SSO) y Protección OAuth:**
    - **Google Identity:** Autenticación fluida con cuentas de Google y verificación de ID tokens en backend con `firebase-admin`.
    - **Microsoft Entra ID / OAuth:** Autenticación empresarial y personal con cuentas Microsoft (Hotmail, Outlook, Office 365, cuentas educativas).
+   - **Protección anti-CSRF en Spotify OAuth:** Generación y validación de parámetro criptográfico `state` (RFC 6749) y purga de tokens al cerrar sesión en The Sonic Vault.
 
 4. **Reglas de Seguridad Declarativas en Firestore (`firestore.rules`):**
    - Control de acceso por colección versionado en el repositorio (`firestore.rules` y `firebase.json`).
-   - Protección estricta: usuarios solo pueden leer y escribir su propio perfil y beats; reportes de ruido protegidos con validación de esquema; contadores globales de solo lectura pública y actualización atómica; colección `2fa_codes` restringida exclusivamente al backend de administración.
+   - Protección estricta: usuarios solo pueden leer y escribir su propio perfil; los beats tienen inmutabilidad de propietario (`userId`) y límites de nombre; reportes de ruido protegidos con validación de esquema; contadores globales de solo lectura pública y actualización atómica; colección `2fa_codes` con reglas anti-Rollback de intentos.
 
 5. **Defensa en Profundidad y Cabeceras HTTP (`nginx.conf`):**
    - **Content-Security-Policy (CSP):** Restricción de orígenes permitidos para scripts, estilos, fuentes, conexiones de red, frames y multimedia (Spotify API/Embeds, Firebase Auth/Firestore, Google reCAPTCHA, Google Fonts, FontAwesome CDN y blobs de audio).
-   - Cabeceras `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin`.
+   - Cabeceras `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin` replicadas en estáticos (`/assets/`) con `server_tokens off;`.
+   - Control de payload en microservicio API: límite estricto de 100 KB (`HTTP 413 Payload Too Large`) y rechazo de JSON malformado (`HTTP 400`).
    - Aislamiento estricto de secretos: `SPOTIFY_CLIENT_SECRET`, `RECAPTCHA_SECRET_KEY`, `EMAILJS_PRIVATE_KEY` y `SESSION_2FA_SECRET` jamás se exponen en el bundle del cliente.
 
 ---
