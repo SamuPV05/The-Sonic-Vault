@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 06:40] T13b — Extraer BeatItTransport, BeatItFXRack, BeatItMixer y BeatItGrid — Flash
+- Rama: `fix/T13b-beatit-components`
+- Estado: completada
+- Archivos tocados: `src/components/beatit/BeatItTransport.jsx`, `src/components/beatit/BeatItFXRack.jsx`, `src/components/beatit/BeatItMixer.jsx`, `src/components/beatit/BeatItGrid.jsx`, `src/pages/BeatIt.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se extrajeron los 4 subcomponentes visuales de `BeatIt.jsx` a la carpeta `src/components/beatit/`: `BeatItTransport` (visualizador reactivo, controles principales de BPM, Swing, Master Volume, selector de kit, presets y botones de modo), `BeatItFXRack` (filtro DJ bidireccional, tape drive y dub delay sincronizado), `BeatItMixer` (channel strip de audición, mute, solo y fader por pista) y `BeatItGrid` (barra de compases 16/32 pasos, duplicador y matriz de acentos de 8 pistas). `BeatIt.jsx` se redujo de ~1,100 líneas a menos de 460 líneas, actuando como orquestador limpio.
+- Decisiones tomadas: Se mantuvieron exactamente los mismos estilos en línea y comportamientos interactivos para garantizar cero regresiones visuales o de audio.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Navegar a `/beat-it`, probar reproducción, audición de instrumentos, solos, mutes, selector de kit, cambio de tempo, rack FX y exportación WAV.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T14 (Tokens de Spotify en `localStorage`: documentar riesgo y añadir CSP en `nginx.conf`) con Argon o T15 con Flash.
+
 ### [2026-10-30 06:35] T13a — Diseño modular de BeatIt.jsx y extracción de hooks useBeatItScheduler y useBeatItPersistence — Argon
 - Rama: `fix/T13a-beatit-hooks`
 - Estado: completada

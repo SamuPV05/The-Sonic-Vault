@@ -36,7 +36,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 
 ## Fase E — Deuda estructural
 - [x] **T13a** (4, Argon) Diseño de la división de `BeatIt.jsx` (límites de módulos, hooks `useBeatItScheduler` y `useBeatItPersistence`).
-- [ ] **T13b** (3, Flash) Extraer `BeatItGrid`, `BeatItMixer`, `BeatItFXRack`, `BeatItTransport`. Sin cambios de comportamiento; verificar audio antes y después.
+- [x] **T13b** (3, Flash) Extraer `BeatItGrid`, `BeatItMixer`, `BeatItFXRack`, `BeatItTransport`. Sin cambios de comportamiento; verificar audio antes y después.
 - [ ] **T14** (4, Argon, opcional) Tokens de Spotify en `localStorage`: aceptar y documentar el riesgo, añadir CSP en `nginx.conf`.
 - [ ] **T15** (1, Flash) Actualizar README con el estado real.
 
