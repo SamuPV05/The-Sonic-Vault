@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import SpotifyNewReleases from '../components/SpotifyNewReleases';
 
@@ -14,28 +14,30 @@ export default function Inicio() {
   const [beats, setBeats] = useState(0);
   const [decibelios, setDecibelios] = useState(0);
 
-  // Conexión en tiempo real a Firebase
+  // Conexión en tiempo real al documento público de estadísticas globales
   useEffect(() => {
-    // 1. Escuchar la colección de Usuarios (Exploradores)
-    const unsubUsuarios = onSnapshot(collection(db, 'users'), (snapshot) => {
-      setExploradores(snapshot.size);
-    });
+    const unsubStats = onSnapshot(
+      doc(db, 'stats', 'global'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          setExploradores(Math.max(0, Number(data.users) || 0));
+          setBeats(Math.max(0, Number(data.beats) || 0));
+          setDecibelios(Math.max(0, Number(data.echo_reports) || 0));
+        } else {
+          setExploradores(0);
+          setBeats(0);
+          setDecibelios(0);
+        }
+      },
+      (err) => {
+        console.error('Error leyendo contadores globales:', err);
+      }
+    );
 
-    // 2. Escuchar la colección de Beats
-    const unsubBeats = onSnapshot(collection(db, 'beats'), (snapshot) => {
-      setBeats(snapshot.size);
-    });
-
-    // 3. Escuchar la colección de Echo-Safe (Puntos mapeados)
-    const unsubEcho = onSnapshot(collection(db, 'echo_reports'), (snapshot) => {
-      setDecibelios(snapshot.size);
-    });
-
-    // Limpieza de las conexiones al salir del componente
+    // Limpieza de la conexión al salir del componente
     return () => {
-      unsubUsuarios();
-      unsubBeats();
-      unsubEcho();
+      unsubStats();
     };
   }, []);
 

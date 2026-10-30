@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 // IMPORTAMOS FIREBASE
 import { db } from '../firebase/config'; 
-import { collection, addDoc, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 import { 
@@ -580,6 +580,11 @@ export default function BeatIt() {
 
     try {
       const docRef = await addDoc(collection(db, "beats"), newBeat);
+      try {
+        await setDoc(doc(db, 'stats', 'global'), { beats: increment(1) }, { merge: true });
+      } catch (statsErr) {
+        console.error('No se pudo actualizar el contador de beats:', statsErr);
+      }
       setSavedBeats([...savedBeats, { id: docRef.id, ...newBeat }]);
       setBeatName(''); 
       

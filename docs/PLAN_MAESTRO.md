@@ -27,7 +27,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 - [x] **T08** (3, Flash) Decidir PWA. Recomendado: quitar la afirmación del README ahora; configurar `vite-plugin-pwa` más tarde.
 
 ## Fase C — Seguridad de datos (T09 y T10 se diseñan juntas)
-- [ ] **T09** (4, Argon) Contadores de `Inicio.jsx` sin descargar colecciones. Propuesta: documento público `stats/global` con `increment(1)` al registrarse, guardar beat y enviar reporte. Alternativa: `getCountFromServer` (exige lectura abierta de colecciones).
+- [x] **T09** (4, Argon) Contadores de `Inicio.jsx` sin descargar colecciones. Propuesta: documento público `stats/global` con `increment(1)` al registrarse, guardar beat y enviar reporte. Alternativa: `getCountFromServer` (exige lectura abierta de colecciones).
 - [ ] **T10** (4, Argon) `firestore.rules` + `firebase.json` versionados. Colecciones: `users`, `beats`, `echo_reports`, `artistas`, `2fa_codes`, `stats`. Validar con el emulador.
 
 ## Fase D — Rediseño del 2FA

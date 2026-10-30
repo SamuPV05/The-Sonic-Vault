@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-29 22:42] T09 — Contadores de Inicio.jsx con stats/global e increment(1) — Argon
+- Rama: `fix/T09-contadores-inicio`
+- Estado: completada
+- Archivos tocados: `src/pages/Inicio.jsx`, `src/context/AuthContext.jsx`, `src/pages/BeatIt.jsx`, `src/pages/EchoSafe.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se reemplazaron las tres suscripciones `onSnapshot` a colecciones completas (`users`, `beats`, `echo_reports`) en `Inicio.jsx` por una única suscripción ligera al documento público `stats/global`. Se añadieron actualizaciones atómicas con `increment(1)` sobre `stats/global` al registrar usuario (email, Google, Microsoft) en `AuthContext.jsx`, al guardar un beat en `BeatIt.jsx` y al publicar un reporte en `EchoSafe.jsx`, así como `increment(-1)` al cancelar un registro pendiente sin verificar en `AuthContext.jsx`.
+- Decisiones tomadas: Se envolvieron las escrituras de `stats/global` en bloques `try/catch` independientes para no interrumpir la operación principal si el contador falla temporalmente, y en `cancelarRegistroPendiente` se ejecuta `increment(-1)` antes de `deleteUser(currentUser)` mientras la sesión sigue autenticada.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Abrir `/` sin sesión y comprobar que escucha `stats/global` sin descargar las colecciones completas; crear un beat o reporte y comprobar que el contador en `/` sube en tiempo real.
+- Riesgos / pendientes: Si la base de datos ya tiene documentos previos y `stats/global` aún no existe, empezará desde 0 hasta que se inicialice en la consola de Firebase con el conteo actual de `users`, `beats` y `echo_reports`.
+- Siguiente paso sugerido (y para qué modelo): T10 (`firestore.rules` + `firebase.json` versionados) con Argon.
+
 ### [2026-10-28 19:22] T08 — Limpiar menciones de PWA en README y eliminar dev-dist — Argon
 - Rama: `fix/T08-pwa-limpieza`
 - Estado: completada

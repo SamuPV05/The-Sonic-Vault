@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '../firebase/config';
-import { collection, addDoc, onSnapshot, query, limit, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, limit, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -256,6 +256,11 @@ export default function EchoSafe() {
         createdAt: serverTimestamp(),
         fecha: new Date().toLocaleString()
       });
+      try {
+        await setDoc(doc(db, 'stats', 'global'), { echo_reports: increment(1) }, { merge: true });
+      } catch (statsErr) {
+        console.error('No se pudo actualizar el contador de reportes:', statsErr);
+      }
       setFinalAverage(null);
       setScanSummary(null);
       setIsTracking(false);

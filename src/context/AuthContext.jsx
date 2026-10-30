@@ -10,7 +10,7 @@ import {
   updateProfile,
   deleteUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 
 // 1. Creamos el contexto
@@ -101,6 +101,11 @@ export function AuthProvider({ children }) {
       try {
         await deleteDoc(doc(db, '2fa_codes', currentUser.uid));
         await deleteDoc(doc(db, 'users', currentUser.uid));
+        try {
+          await setDoc(doc(db, 'stats', 'global'), { users: increment(-1) }, { merge: true });
+        } catch (statsErr) {
+          console.error('No se pudo descontar el contador de usuarios:', statsErr);
+        }
         await deleteUser(currentUser); // También cierra la sesión
         limpiarSesion2FA();
         return;
@@ -136,6 +141,11 @@ export function AuthProvider({ children }) {
       verificado: false, // Pasa a true cuando confirma el primer código del correo
       fechaRegistro: new Date().toISOString()
     });
+    try {
+      await setDoc(doc(db, 'stats', 'global'), { users: increment(1) }, { merge: true });
+    } catch (statsErr) {
+      console.error('No se pudo actualizar el contador de usuarios:', statsErr);
+    }
 
     // Forzamos que onAuthStateChanged recoja el displayName actualizado
     await auth.currentUser.reload();
@@ -176,6 +186,11 @@ export function AuthProvider({ children }) {
           verificado: true, // Google ya garantiza que el correo es real
           fechaRegistro: new Date().toISOString()
         });
+        try {
+          await setDoc(doc(db, 'stats', 'global'), { users: increment(1) }, { merge: true });
+        } catch (statsErr) {
+          console.error('No se pudo actualizar el contador de usuarios:', statsErr);
+        }
       }
       return firebaseUser;
     } finally {
@@ -213,6 +228,11 @@ export function AuthProvider({ children }) {
           verificado: true, // Microsoft ya garantiza que el correo es real
           fechaRegistro: new Date().toISOString()
         });
+        try {
+          await setDoc(doc(db, 'stats', 'global'), { users: increment(1) }, { merge: true });
+        } catch (statsErr) {
+          console.error('No se pudo actualizar el contador de usuarios:', statsErr);
+        }
       }
       return firebaseUser;
     } finally {
