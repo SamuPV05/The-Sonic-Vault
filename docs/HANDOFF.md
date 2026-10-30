@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 13:08] T20 — Herencia de cabeceras en nginx.conf y control de payload en Docker API — Flash
+- Rama: `fix/T20-nginx-and-server-hardening`
+- Estado: completada
+- Archivos tocados: `nginx.conf`, `server/captcha-server.js`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: (1) Se añadió `server_tokens off;` en `nginx.conf` para evitar revelar la versión exacta de Nginx en cabeceras de respuesta, y se replicaron explícitamente `X-Content-Type-Options "nosniff"` y `Referrer-Policy "strict-origin-when-cross-origin"` dentro del bloque `location /assets/` (ya que en Nginx la presencia de `add_header` en un bloque location descarta la herencia del bloque server padre). (2) En `server/captcha-server.js`, se robusteció `leerBodyJson` para abortar limpiamente peticiones con cuerpos mayores a 100 KB devolviendo `HTTP 413 Payload Too Large` con mensaje JSON estructurado, y devolviendo `HTTP 400 Bad Request` ante cuerpos JSON malformados en lugar de colgar el socket o disparar excepciones no controladas `500`.
+- Decisiones tomadas: Mantener el límite de payload en 100 KB (`1e5` bytes), suficiente para tokens de Captcha y 2FA sin permitir abuso de memoria.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Comprobar respuesta de `/api/2fa` y `/api/verify-captcha` con payloads válidos e inválidos.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T21 (Consolidación y versionado de activos de identidad visual, iconos y logos) con Flash.
+
 ### [2026-10-30 13:05] T19 — Protección anti-CSRF en Spotify OAuth con parámetro state — Flash
 - Rama: `fix/T19-spotify-oauth-csrf`
 - Estado: completada

@@ -13,22 +13,40 @@ const responder = (res, status, body, extraHeaders = {}) => {
   res.end(JSON.stringify(body));
 };
 
+const MAX_BODY_BYTES = 1e5; // 100 KB
+
 const leerBodyJson = (req) =>
   new Promise((resolve, reject) => {
     if (req.method === 'GET') return resolve({});
     let raw = '';
+    let abortado = false;
+
     req.on('data', (chunk) => {
+      if (abortado) return;
       raw += chunk;
-      if (raw.length > 1e5) req.destroy(); // Evita cuerpos gigantes
-    });
-    req.on('end', () => {
-      try {
-        resolve(raw ? JSON.parse(raw) : {});
-      } catch (err) {
+      if (raw.length > MAX_BODY_BYTES) {
+        abortado = true;
+        const err = new Error('Payload demasiado grande (máximo 100 KB).');
+        err.statusCode = 413;
+        req.destroy();
         reject(err);
       }
     });
-    req.on('error', reject);
+
+    req.on('end', () => {
+      if (abortado) return;
+      try {
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch (err) {
+        err.statusCode = 400;
+        err.message = 'JSON malformado en el cuerpo de la petición.';
+        reject(err);
+      }
+    });
+
+    req.on('error', (err) => {
+      if (!abortado) reject(err);
+    });
   });
 
 const server = http.createServer(async (req, res) => {
@@ -60,6 +78,9 @@ const server = http.createServer(async (req, res) => {
       const result = await verificarCaptcha(token, process.env.RECAPTCHA_SECRET_KEY, ip);
       return responder(res, result.success ? 200 : 400, result);
     } catch (err) {
+      if (err.statusCode) {
+        return responder(res, err.statusCode, { success: false, error: err.message });
+      }
       console.error('Error verificando Captcha:', err);
       return responder(res, 500, { success: false, error: 'Error interno al verificar el Captcha.' });
     }
@@ -84,6 +105,9 @@ const server = http.createServer(async (req, res) => {
       const extraHeaders = result.setCookie ? { 'Set-Cookie': result.setCookie } : {};
       return responder(res, result.status, result.body, extraHeaders);
     } catch (err) {
+      if (err.statusCode) {
+        return responder(res, err.statusCode, { success: false, error: err.message });
+      }
       console.error('Error en /api/2fa:', err);
       return responder(res, 500, { success: false, error: 'Error interno en el servidor 2FA.' });
     }
