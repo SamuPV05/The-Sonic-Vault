@@ -240,6 +240,7 @@ const USER_TOKEN_KEY = 'tsv_spotify_user_token';
 const REFRESH_TOKEN_KEY = 'tsv_spotify_refresh_token';
 const TOKEN_EXPIRY_KEY = 'tsv_spotify_token_expiry';
 const CODE_VERIFIER_KEY = 'tsv_spotify_code_verifier';
+const STATE_KEY = 'tsv_spotify_oauth_state';
 
 // Permisos que solicitamos a la cuenta de Spotify:
 // - Leer perfil y correo
@@ -288,10 +289,17 @@ export async function loginWithSpotify() {
   }
 
   const codeVerifier = generateRandomString(64);
+  const state = generateRandomString(32);
   const hashed = await sha256(codeVerifier);
   const codeChallenge = base64encode(hashed);
 
   window.localStorage.setItem(CODE_VERIFIER_KEY, codeVerifier);
+  window.localStorage.setItem(STATE_KEY, state);
+  try {
+    window.sessionStorage.setItem(STATE_KEY, state);
+  } catch {
+    // Ignorar en entornos sin sessionStorage
+  }
 
   const authUrl = new URL('https://accounts.spotify.com/authorize');
   authUrl.search = new URLSearchParams({
@@ -301,6 +309,7 @@ export async function loginWithSpotify() {
     code_challenge_method: 'S256',
     code_challenge: codeChallenge,
     redirect_uri: REDIRECT_URI,
+    state: state,
   }).toString();
 
   window.location.href = authUrl.toString();
@@ -308,9 +317,29 @@ export async function loginWithSpotify() {
 
 /**
  * Procesa el callback de Spotify con el código de autorización y obtiene los tokens de usuario.
+ * Valida el parámetro state contra CSRF y la existencia del code_verifier antes del canje.
  */
-export async function handleSpotifyCallback(code) {
+export async function handleSpotifyCallback(code, state = null) {
   const codeVerifier = window.localStorage.getItem(CODE_VERIFIER_KEY);
+  const storedState =
+    window.localStorage.getItem(STATE_KEY) ||
+    (typeof window !== 'undefined' ? window.sessionStorage?.getItem(STATE_KEY) : null);
+
+  // Limpiar el estado OAuth de inmediato para prevenir ataques de repetición
+  window.localStorage.removeItem(STATE_KEY);
+  try {
+    window.sessionStorage.removeItem(STATE_KEY);
+  } catch {
+    // Ignorar en entornos sin sessionStorage
+  }
+
+  if (state && storedState && state !== storedState) {
+    throw new Error('Alerta de Seguridad: Validación de estado OAuth fallida (posible ataque CSRF).');
+  }
+
+  if (!codeVerifier) {
+    throw new Error('No se encontró el verificador PKCE en este navegador. Por favor inicia la conexión nuevamente.');
+  }
 
   const response = await fetch(TOKEN_ENDPOINT, {
     method: 'POST',
@@ -398,6 +427,12 @@ export function logoutSpotify() {
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.localStorage.removeItem(TOKEN_EXPIRY_KEY);
   window.localStorage.removeItem(CODE_VERIFIER_KEY);
+  window.localStorage.removeItem(STATE_KEY);
+  try {
+    window.sessionStorage.removeItem(STATE_KEY);
+  } catch {
+    // Ignorar en entornos sin sessionStorage
+  }
 }
 
 /**

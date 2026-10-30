@@ -12,6 +12,7 @@ export default function SpotifyCallback() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
+    const state = params.get('state');
     const err = params.get('error');
 
     if (err) {
@@ -21,13 +22,13 @@ export default function SpotifyCallback() {
     }
 
     if (code) {
-      handleSpotifyCallback(code)
+      handleSpotifyCallback(code, state)
         .then(() => {
           navigate('/perfil?spotify=connected');
         })
         .catch((e) => {
           console.error('Error al procesar callback de Spotify:', e);
-          setError('Error sincronizando con la API de Spotify.');
+          setError(e.message || 'Error sincronizando con la API de Spotify.');
           setTimeout(() => navigate('/perfil'), 3500);
         });
     } else {

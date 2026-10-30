@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 13:05] T19 — Protección anti-CSRF en Spotify OAuth con parámetro state — Flash
+- Rama: `fix/T19-spotify-oauth-csrf`
+- Estado: completada
+- Archivos tocados: `src/services/spotifyService.js`, `src/pages/SpotifyCallback.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se blindó el flujo de autorización OAuth 2.0 PKCE de Spotify contra ataques de Login CSRF: (1) `loginWithSpotify()` ahora genera una cadena criptográficamente aleatoria de 32 caracteres para el parámetro `state`, la persiste temporalmente en el cliente (`tsv_spotify_oauth_state`) y la incluye en la URL de autorización; (2) `handleSpotifyCallback(code, state)` valida que el `state` devuelto coincida exactamente con el guardado, purgando inmediatamente la clave para evitar reusos; (3) se verifica la existencia obligatoria del verificador PKCE (`codeVerifier`) antes de solicitar el canje del token a Spotify, impidiendo peticiones vacías o manipuladas; (4) `logoutSpotify()` limpia cualquier estado residual del flujo OAuth.
+- Decisiones tomadas: Guardar el `state` con fallback redundante en `localStorage` y `sessionStorage` para soportar navegadores con restricciones de almacenamiento entre redirecciones de ventana.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Probar conexión con Spotify verificando la inclusión del parámetro `state` en la URL y la correcta redirección a `/perfil?spotify=connected`.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T20 (Herencia de cabeceras de seguridad en `nginx.conf` y control de payload 413 en `server/captcha-server.js`) con Flash.
+
 ### [2026-10-30 13:00] T18 — Purga de tokens Spotify al cerrar sesión y validación estricta de avatares — Flash
 - Rama: `fix/T18-session-cleanup-avatar-validation`
 - Estado: completada
