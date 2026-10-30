@@ -2,54 +2,39 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ReCAPTCHA from 'react-google-recaptcha';
-import { db } from '../firebase/config';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import emailjs from '@emailjs/browser';
 
-// --- CONFIGURACIÓN DE EMAILJS (desde variables de entorno) ---
-// Son llaves públicas del navegador, pero se centralizan en .env para no quedar
-// incrustadas en el código y poder cambiarlas por entorno sin tocar el repositorio.
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-const EMAILJS_CONFIGURADO = !!(EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY);
-// Modo prueba solo en desarrollo: sin EmailJS configurado, el código se muestra en pantalla.
-const MODO_PRUEBA_2FA = !EMAILJS_CONFIGURADO && import.meta.env.DEV;
+const CAPTCHA_PASS_KEY = 'sv_captcha_pass';
 
-const generarCodigo2FA = () => Math.floor(100000 + Math.random() * 900000).toString();
-
-/**
- * Guarda un código nuevo en Firestore y lo envía por correo.
- * Devuelve el código si está en modo prueba (para mostrarlo), o null si se envió por email.
- */
-async function emitirCodigo2FA(user) {
-  const code = generarCodigo2FA();
-  const expiration = Date.now() + 5 * 60 * 1000;
-  await setDoc(doc(db, '2fa_codes', user.uid), { code, expiration });
-
-  if (MODO_PRUEBA_2FA) {
-    console.info(`[MODO PRUEBA 2FA] Código generado: ${code}`);
-    return code;
+const guardarPaseCaptcha = (pase) => {
+  try {
+    if (pase) sessionStorage.setItem(CAPTCHA_PASS_KEY, pase);
+    else sessionStorage.removeItem(CAPTCHA_PASS_KEY);
+  } catch {
+    // Ignorar errores de sessionStorage
   }
-  if (!EMAILJS_CONFIGURADO) {
-    throw new Error('El servicio de correo (EmailJS) no está configurado. Contacta al administrador.');
-  }
+};
 
-  await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-    codigo: code,
-    passcode: code,
-    time: '5 minutos',
-    to_email: user.email,
-    email: user.email,
-    user_email: user.email,
-    reply_to: user.email,
-    to_name: user.displayName || 'Explorador'
-  }, EMAILJS_PUBLIC_KEY);
-  return null;
-}
+const leerPaseCaptcha = () => {
+  try {
+    return sessionStorage.getItem(CAPTCHA_PASS_KEY);
+  } catch {
+    return null;
+  }
+};
 
 export default function Login() {
-  const { login, signup, loginWithGoogle, loginWithMicrosoft, cancelarRegistroPendiente, user, is2FAPassed, oauthEnCurso, verify2FA } = useAuth();
+  const {
+    login,
+    signup,
+    loginWithGoogle,
+    loginWithMicrosoft,
+    cancelarRegistroPendiente,
+    user,
+    is2FAPassed,
+    oauthEnCurso,
+    send2FACode,
+    verify2FA
+  } = useAuth();
   const navigate = useNavigate();
 
   // Estados del formulario
@@ -60,6 +45,7 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [captchaValido, setCaptchaValido] = useState(false);
+  const [captchaPass, setCaptchaPass] = useState(() => leerPaseCaptcha());
   const [verificandoCaptcha, setVerificandoCaptcha] = useState(false);
   const recaptchaRef = useRef(null);
 
@@ -67,58 +53,60 @@ export default function Login() {
   const TEST_RECAPTCHA_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
   const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || (import.meta.env.DEV ? TEST_RECAPTCHA_SITE_KEY : '');
 
-  // Estados del 2FA
+  // Estados del 2FA (generado y verificado exclusivamente en el servidor /api/2fa)
   const [codigo2FA, setCodigo2FA] = useState('');
   const [codigoEnviado, setCodigoEnviado] = useState(false);
-  const [codigoPrueba, setCodigoPrueba] = useState(null); // Solo en desarrollo sin EmailJS
+  const [codigoPrueba, setCodigoPrueba] = useState(null); // Solo en desarrollo si el servidor está en modo prueba
+  const [bloqueado2FA, setBloqueado2FA] = useState(false);
   const [aviso2FA, setAviso2FA] = useState(null);
   const envioEnCursoRef = useRef(false);
 
-  // Lógica de Envío 2FA Automático (solo para correo/contraseña; OAuth ya viene verificado)
+  // Lógica de Envío 2FA Automático desde servidor (solo para correo/contraseña; OAuth ya viene verificado)
   useEffect(() => {
     if (user && is2FAPassed) {
+      guardarPaseCaptcha(null);
       navigate('/perfil');
       return;
     }
     if (!user || is2FAPassed || oauthEnCurso || codigoEnviado || envioEnCursoRef.current) return;
 
+    const paseActivo = captchaPass || leerPaseCaptcha();
     envioEnCursoRef.current = true;
-    emitirCodigo2FA(user)
-      .then((codigoMostrado) => {
-        setCodigoPrueba(codigoMostrado);
+    send2FACode({ captchaPass: paseActivo, resend: false })
+      .then((res) => {
+        if (res.captchaPass) {
+          setCaptchaPass(res.captchaPass);
+          guardarPaseCaptcha(res.captchaPass);
+        }
+        setCodigoPrueba(res.devCode || null);
+        setBloqueado2FA(false);
         setCodigoEnviado(true);
       })
       .catch((err) => {
         console.error('Error enviando código 2FA:', err);
-        setError(err?.message?.includes('EmailJS') ? err.message : 'Error al intentar enviar el correo con el código.');
+        setError(err?.message || 'Error al intentar enviar el correo con el código desde el servidor.');
       })
       .finally(() => {
         envioEnCursoRef.current = false;
       });
-  }, [user, is2FAPassed, oauthEnCurso, codigoEnviado, navigate]);
+  }, [user, is2FAPassed, oauthEnCurso, codigoEnviado, captchaPass, send2FACode, navigate]);
 
   const handleVerificar2FA = async () => {
     setIsLoading(true);
     setError(null);
+    setAviso2FA(null);
     try {
-      const docSnap = await getDoc(doc(db, '2fa_codes', user.uid));
-      if (docSnap.exists()) {
-        const { code, expiration } = docSnap.data();
-        if (Date.now() > expiration) {
-          setError('El código expiró (pasaron 5 minutos). Pulsa "Reenviar código" para recibir uno nuevo.');
-        } else if (code === codigo2FA) {
-          await verify2FA(); // ¡Pasa el 2FA!
-        } else {
-          setError('Código incorrecto.');
-        }
-      } else {
-        setError('No hay códigos registrados.');
-      }
+      await verify2FA(codigo2FA);
+      guardarPaseCaptcha(null);
     } catch (err) {
       console.error('Error verificando código 2FA:', err);
-      setError('Error al verificar en la base de datos.');
+      if (err?.locked) {
+        setBloqueado2FA(true);
+      }
+      setError(err?.message || 'Error al verificar el código con el servidor.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleReenviarCodigo = async () => {
@@ -126,19 +114,20 @@ export default function Login() {
     setError(null);
     setAviso2FA(null);
     try {
-      const codigoMostrado = await emitirCodigo2FA(user);
-      setCodigoPrueba(codigoMostrado);
+      const paseActivo = captchaPass || leerPaseCaptcha();
+      const res = await send2FACode({ captchaPass: paseActivo, resend: true });
+      if (res.captchaPass) {
+        setCaptchaPass(res.captchaPass);
+        guardarPaseCaptcha(res.captchaPass);
+      }
+      setCodigoPrueba(res.devCode || null);
+      setBloqueado2FA(false);
+      setCodigoEnviado(true);
       setCodigo2FA('');
-      setAviso2FA(codigoMostrado ? 'Nuevo código de prueba generado.' : '¡Se ha enviado un nuevo código a tu correo!');
+      setAviso2FA(res.devCode ? 'Nuevo código de prueba generado en el servidor.' : '¡Se ha enviado un nuevo código a tu correo!');
     } catch (err) {
       console.error('Error al reenviar código:', err);
-      if (err?.code) {
-        setError(`Error de base de datos (Firestore): ${err.code}`);
-      } else if (err?.status) {
-        setError(`Error de EmailJS (${err.status}): ${err.text || err.message}`);
-      } else {
-        setError(`No se pudo reenviar el código: ${err.message}`);
-      }
+      setError(err?.message || 'No se pudo reenviar el código.');
     } finally {
       setIsLoading(false);
     }
@@ -147,16 +136,22 @@ export default function Login() {
   const handleCancelar2FA = async () => {
     setCodigoEnviado(false);
     setCodigoPrueba(null);
+    setBloqueado2FA(false);
     setAviso2FA(null);
     setCodigo2FA('');
     setError(null);
+    setCaptchaValido(false);
+    setCaptchaPass(null);
+    guardarPaseCaptcha(null);
     // Si era un registro sin verificar, la cuenta se elimina; si no, solo cierra sesión
     await cancelarRegistroPendiente();
   };
 
-  // Cuando el usuario resuelve el Captcha, el servidor lo confirma con Google usando la llave secreta
+  // Cuando el usuario resuelve el Captcha, el servidor lo confirma con Google y emite un pase firmado
   const handleCaptchaChange = async (token) => {
     setCaptchaValido(false);
+    setCaptchaPass(null);
+    guardarPaseCaptcha(null);
     if (!token) return; // Expiró o se reinició
 
     setVerificandoCaptcha(true);
@@ -170,6 +165,10 @@ export default function Login() {
       const data = await resp.json();
       if (data.success) {
         setCaptchaValido(true);
+        if (data.captchaPass) {
+          setCaptchaPass(data.captchaPass);
+          guardarPaseCaptcha(data.captchaPass);
+        }
       } else {
         console.error('Captcha rechazado:', data);
         setError('El servidor rechazó el Captcha. Inténtalo de nuevo.');
@@ -187,6 +186,8 @@ export default function Login() {
   // Tras un intento fallido se exige un Captcha nuevo (frena ataques de fuerza bruta)
   const reiniciarCaptcha = () => {
     setCaptchaValido(false);
+    setCaptchaPass(null);
+    guardarPaseCaptcha(null);
     recaptchaRef.current?.reset();
   };
 
@@ -229,7 +230,7 @@ export default function Login() {
       } else {
         await login(email, password);
       }
-      // No hacemos navigate() aquí. El useEffect detectará al 'user' y activará el 2FA.
+      // No hacemos navigate() aquí. El useEffect detectará al 'user' y solicitará el 2FA al servidor.
     } catch (err) {
       console.error("Error de autenticación:", err.code, err.message);
       setError(getFirebaseErrorMessage(err.code));
@@ -250,13 +251,13 @@ export default function Login() {
     setIsLoading(true);
     try {
       await loginWithGoogle();
-      // Google ya verifica la identidad: AuthContext marca la sesión como verificada y el useEffect redirige a /perfil.
+      // Google ya verifica la identidad: el servidor emite la cookie firmada y el useEffect redirige a /perfil.
     } catch (err) {
       console.error("Error Google Auth:", err.code, err.message);
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Cerraste la ventana antes de completar el acceso.');
       } else {
-        setError('Error al conectar con los servidores de Google.');
+        setError(err.message || 'Error al conectar con los servidores de Google.');
       }
       reiniciarCaptcha();
     } finally {
@@ -275,13 +276,13 @@ export default function Login() {
     setIsLoading(true);
     try {
       await loginWithMicrosoft();
-      // Microsoft ya verifica la identidad: AuthContext marca la sesión como verificada y el useEffect redirige a /perfil.
+      // Microsoft ya verifica la identidad: el servidor emite la cookie firmada y el useEffect redirige a /perfil.
     } catch (err) {
       console.error("Error Microsoft Auth:", err.code, err.message);
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Cerraste la ventana antes de completar el acceso con Microsoft.');
       } else {
-        setError(getFirebaseErrorMessage(err.code) || 'Error al conectar con los servidores de Microsoft.');
+        setError(getFirebaseErrorMessage(err.code) || err.message || 'Error al conectar con los servidores de Microsoft.');
       }
       reiniciarCaptcha();
     } finally {
@@ -297,14 +298,14 @@ export default function Login() {
           <h2 style={{ color: '#fff', letterSpacing: '2px', marginBottom: '1rem' }}>VERIFICACIÓN EN DOS PASOS</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
             {codigoEnviado
-              ? <>Hemos enviado un código numérico a <b>{user.email}</b>. Caducará en 5 minutos.</>
-              : <>Enviando un código de verificación a <b>{user.email}</b>...</>}
+              ? <>Hemos enviado un código numérico a <b>{user.email}</b>. Caducará en 5 minutos (máximo 5 intentos).</>
+              : <>Solicitando al servidor un código de verificación para <b>{user.email}</b>...</>}
           </p>
 
           {codigoPrueba && (
             <div style={{ background: 'rgba(255, 170, 0, 0.1)', border: '1px dashed #ffaa00', color: '#ffcc66', borderRadius: '8px', padding: '10px', marginBottom: '1rem', fontSize: '0.85rem' }}>
               <i className="fa-solid fa-flask" style={{ marginRight: '6px' }}></i>
-              MODO PRUEBA (EmailJS sin configurar): tu código es <b style={{ letterSpacing: '3px', color: '#fff' }}>{codigoPrueba}</b>
+              MODO PRUEBA (Servidor local): tu código es <b style={{ letterSpacing: '3px', color: '#fff' }}>{codigoPrueba}</b>
             </div>
           )}
 
@@ -316,12 +317,13 @@ export default function Login() {
             type="text"
             placeholder="0 0 0 0 0 0"
             value={codigo2FA}
+            disabled={bloqueado2FA}
             onChange={(e) => setCodigo2FA(e.target.value.replace(/\D/g, ''))}
             maxLength={6}
-            style={{ ...inputStyle, textAlign: 'center', letterSpacing: '8px', fontSize: '1.5rem', fontWeight: 'bold' }}
+            style={{ ...inputStyle, textAlign: 'center', letterSpacing: '8px', fontSize: '1.5rem', fontWeight: 'bold', opacity: bloqueado2FA ? 0.5 : 1 }}
           />
 
-          <button onClick={handleVerificar2FA} disabled={isLoading || codigo2FA.length < 6} style={{ ...submitBtnStyle, marginTop: '1.5rem', opacity: isLoading || codigo2FA.length < 6 ? 0.5 : 1 }}>
+          <button onClick={handleVerificar2FA} disabled={isLoading || bloqueado2FA || codigo2FA.length < 6} style={{ ...submitBtnStyle, marginTop: '1.5rem', opacity: isLoading || bloqueado2FA || codigo2FA.length < 6 ? 0.5 : 1 }}>
             {isLoading ? <><i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>VERIFICANDO...</> : 'CONFIRMAR CÓDIGO'}
           </button>
 
@@ -420,7 +422,11 @@ export default function Login() {
                 ref={recaptchaRef}
                 sitekey={RECAPTCHA_SITE_KEY}
                 onChange={handleCaptchaChange}
-                onExpired={() => setCaptchaValido(false)}
+                onExpired={() => {
+                  setCaptchaValido(false);
+                  setCaptchaPass(null);
+                  guardarPaseCaptcha(null);
+                }}
                 theme="dark"
               />
             ) : (

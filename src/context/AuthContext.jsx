@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -24,63 +24,125 @@ export const useAuth = () => {
 };
 
 // 3. El Proveedor que envuelve toda la app
+// --- SESIÓN 2FA VERIFICADA EN SERVIDOR (Cookie firmada HttpOnly + /api/2fa) ---
+// Ya no se confía en valores planos de sessionStorage. La sesión 2FA se valida contra el
+// servidor (/api/2fa) usando el ID token de Firebase y la cookie firmada HttpOnly sv_2fa_session.
 
-// --- SESIÓN 2FA LIGADA AL USUARIO ---
-// En lugar de un booleano plano ('true'), guardamos a QUÉ usuario se le verificó la sesión,
-// con qué método y cuándo caduca. Así, si cambia la cuenta activa en la pestaña, la verificación
-// anterior deja de ser válida automáticamente.
-const SESSION_2FA_KEY = 'sv_2fa_session';
-const SESSION_2FA_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas
-
-const leerSesion2FA = () => {
+const limpiarStorageLegado = () => {
   try {
-    const raw = sessionStorage.getItem(SESSION_2FA_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!data?.uid || typeof data.expira !== 'number' || Date.now() > data.expira) {
-      sessionStorage.removeItem(SESSION_2FA_KEY);
-      return null;
-    }
-    return data;
+    sessionStorage.removeItem('sv_2fa_session');
+    sessionStorage.removeItem('2fa_passed');
   } catch {
-    sessionStorage.removeItem(SESSION_2FA_KEY);
-    return null;
+    // Ignorar en entornos sin sessionStorage
   }
 };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sesion2FA, setSesion2FA] = useState(() => leerSesion2FA());
+  const [sesion2FA, setSesion2FA] = useState(null);
+  const sesion2FARef = useRef(null);
   // Mientras un popup OAuth está en curso, evitamos que Login dispare el envío del código por correo
   const [oauthEnCurso, setOauthEnCurso] = useState(false);
 
-  // La sesión solo cuenta como verificada si pertenece al usuario actualmente autenticado
-  const is2FAPassed = !!(user && sesion2FA && sesion2FA.uid === user.uid && Date.now() <= sesion2FA.expira);
-
-  const marcarSesionVerificada = (uid, metodo) => {
-    const data = { uid, metodo, expira: Date.now() + SESSION_2FA_TTL_MS };
-    sessionStorage.setItem(SESSION_2FA_KEY, JSON.stringify(data));
-    sessionStorage.removeItem('2fa_passed'); // Limpieza del formato antiguo
+  const actualizarSesion2FA = (data) => {
+    sesion2FARef.current = data;
     setSesion2FA(data);
   };
 
-  const limpiarSesion2FA = () => {
-    sessionStorage.removeItem(SESSION_2FA_KEY);
-    sessionStorage.removeItem('2fa_passed');
-    setSesion2FA(null);
+  // La sesión solo cuenta como verificada si el servidor la emitió para el UID autenticado y no ha expirado
+  const is2FAPassed = !!(user && sesion2FA && sesion2FA.uid === user.uid && Date.now() <= sesion2FA.expira);
+
+  const limpiarSesion2FA = async (currentUser = auth.currentUser) => {
+    limpiarStorageLegado();
+    actualizarSesion2FA(null);
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (currentUser) {
+        const idToken = await currentUser.getIdToken().catch(() => null);
+        if (idToken) headers.Authorization = `Bearer ${idToken}`;
+      }
+      await fetch('/api/2fa', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ action: 'logout' })
+      });
+    } catch {
+      // Ignorar errores de red al limpiar la cookie de sesión
+    }
   };
 
-  const verify2FA = async () => {
-    if (!auth.currentUser) return;
-    marcarSesionVerificada(auth.currentUser.uid, 'email-code');
+  // Solicita al servidor (/api/2fa) generar y enviar el código OTP por correo (exige Captcha válido)
+  const send2FACode = async ({ captchaPass, captchaToken, resend = false } = {}) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No hay una sesión activa para enviar el código 2FA.');
+
+    const idToken = await currentUser.getIdToken();
+    const resp = await fetch('/api/2fa', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        action: 'send',
+        captchaPass,
+        captchaToken,
+        resend
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      throw new Error(data.error || 'Error al solicitar el código 2FA al servidor.');
+    }
+    return data;
+  };
+
+  // Verifica el código OTP de 6 dígitos en el servidor (/api/2fa, máximo 5 intentos)
+  const verify2FA = async (code) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No hay una sesión activa.');
+
+    const idToken = await currentUser.getIdToken();
+    const resp = await fetch('/api/2fa', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        action: 'verify',
+        code
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      const err = new Error(data.error || 'Código 2FA inválido.');
+      err.locked = Boolean(data.locked);
+      err.expired = Boolean(data.expired);
+      err.attemptsLeft = data.attemptsLeft;
+      throw err;
+    }
+
+    actualizarSesion2FA({
+      uid: data.uid,
+      metodo: data.metodo || 'email-code',
+      expira: data.expira
+    });
 
     // Si era un registro pendiente, el primer código correcto demuestra que el correo existe y es suyo
     try {
-      await setDoc(doc(db, 'users', auth.currentUser.uid), { verificado: true }, { merge: true });
+      await setDoc(doc(db, 'users', currentUser.uid), { verificado: true }, { merge: true });
     } catch (err) {
       console.error('No se pudo marcar la cuenta como verificada:', err);
     }
+
+    return data;
   };
 
   // Cancela el 2FA. Si la cuenta nunca fue verificada (registro con correo falso o ajeno), se borra por completo.
@@ -99,7 +161,8 @@ export function AuthProvider({ children }) {
 
     if (pendiente) {
       try {
-        await deleteDoc(doc(db, '2fa_codes', currentUser.uid));
+        await limpiarSesion2FA(currentUser);
+        await deleteDoc(doc(db, '2fa_codes', currentUser.uid)).catch(() => {});
         await deleteDoc(doc(db, 'users', currentUser.uid));
         try {
           await setDoc(doc(db, 'stats', 'global'), { users: increment(-1) }, { merge: true });
@@ -107,7 +170,6 @@ export function AuthProvider({ children }) {
           console.error('No se pudo descontar el contador de usuarios:', statsErr);
         }
         await deleteUser(currentUser); // También cierra la sesión
-        limpiarSesion2FA();
         return;
       } catch (err) {
         console.error('No se pudo eliminar la cuenta pendiente:', err);
@@ -115,6 +177,29 @@ export function AuthProvider({ children }) {
     }
 
     await logout();
+  };
+
+  // Registra en el servidor la sesión verificada tras autenticar con Google o Microsoft
+  const registrarSesionOAuthEnServidor = async (firebaseUser, metodoFallback) => {
+    const idToken = await firebaseUser.getIdToken();
+    const resp = await fetch('/api/2fa', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`
+      },
+      credentials: 'include',
+      body: JSON.stringify({ action: 'oauth-session' })
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      throw new Error(data.error || 'No se pudo establecer la sesión verificada en el servidor.');
+    }
+    actualizarSesion2FA({
+      uid: data.uid || firebaseUser.uid,
+      metodo: data.metodo || metodoFallback,
+      expira: data.expira
+    });
   };
 
   // Funciones Mágicas
@@ -160,14 +245,14 @@ export function AuthProvider({ children }) {
   };
 
   // C. Iniciar Sesión con GOOGLE
-  // Google ya verifica la identidad y el correo, así que no se exige un segundo código por EmailJS.
+  // Google ya verifica la identidad y el correo; el servidor valida el proveedor en el ID token y emite la cookie firmada.
   const loginWithGoogle = async () => {
     setOauthEnCurso(true);
     try {
       const googleProvider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, googleProvider);
       const firebaseUser = userCredential.user;
-      marcarSesionVerificada(firebaseUser.uid, 'google');
+      await registrarSesionOAuthEnServidor(firebaseUser, 'google');
 
       // Revisamos si es la primera vez que entra con Google
       const docRef = doc(db, 'users', firebaseUser.uid);
@@ -199,7 +284,7 @@ export function AuthProvider({ children }) {
   };
 
   // C2. Iniciar Sesión con MICROSOFT
-  // Igual que Google: el proveedor ya verificó la cuenta, se omite el código por correo.
+  // Igual que Google: el proveedor ya verificó la cuenta y el servidor emite la cookie firmada tras validar el token.
   const loginWithMicrosoft = async () => {
     setOauthEnCurso(true);
     try {
@@ -209,7 +294,7 @@ export function AuthProvider({ children }) {
       });
       const userCredential = await signInWithPopup(auth, microsoftProvider);
       const firebaseUser = userCredential.user;
-      marcarSesionVerificada(firebaseUser.uid, 'microsoft');
+      await registrarSesionOAuthEnServidor(firebaseUser, 'microsoft');
 
       // Revisamos si es la primera vez que entra con Microsoft
       const docRef = doc(db, 'users', firebaseUser.uid);
@@ -241,8 +326,8 @@ export function AuthProvider({ children }) {
   };
 
   // D. Cerrar Sesión
-  const logout = () => {
-    limpiarSesion2FA();
+  const logout = async () => {
+    await limpiarSesion2FA(auth.currentUser);
     return signOut(auth);
   };
 
@@ -262,24 +347,55 @@ export function AuthProvider({ children }) {
     setUser({ ...auth.currentUser });
   };
 
-  // Observador: Está vigilando todo el tiempo si alguien entra o sale
+  // Observador: verifica el usuario en Firebase y valida la cookie de sesión 2FA contra el servidor
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      // Si no hay sesión, o la verificación guardada pertenece a otra cuenta, se invalida
-      const guardada = leerSesion2FA();
-      if (!currentUser || (guardada && guardada.uid !== currentUser.uid)) {
-        sessionStorage.removeItem(SESSION_2FA_KEY);
-        sessionStorage.removeItem('2fa_passed');
-        setSesion2FA(null);
+    limpiarStorageLegado();
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        setUser(null);
+        actualizarSesion2FA(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false); // Ya terminó de verificar
+
+      setUser(currentUser);
+
+      // Si ya tenemos en memoria una sesión 2FA válida para este mismo UID, no repetimos la consulta
+      const actual = sesion2FARef.current;
+      if (actual && actual.uid === currentUser.uid && Date.now() <= actual.expira) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const idToken = await currentUser.getIdToken();
+        const resp = await fetch('/api/2fa', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: 'include'
+        });
+        const data = await resp.json();
+        if (resp.ok && data.verified && data.uid === currentUser.uid) {
+          actualizarSesion2FA({
+            uid: data.uid,
+            metodo: data.metodo,
+            expira: data.expira
+          });
+        } else {
+          actualizarSesion2FA(null);
+        }
+      } catch (err) {
+        console.error('Error verificando sesión 2FA con el servidor:', err);
+        actualizarSesion2FA(null);
+      } finally {
+        setLoading(false);
+      }
     });
     return () => unsubscribe();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ signup, login, loginWithGoogle, loginWithMicrosoft, logout, updateUserPhoto, user, loading, is2FAPassed, oauthEnCurso, verify2FA, cancelarRegistroPendiente }}>
+    <AuthContext.Provider value={{ signup, login, loginWithGoogle, loginWithMicrosoft, logout, updateUserPhoto, user, loading, is2FAPassed, oauthEnCurso, send2FACode, verify2FA, cancelarRegistroPendiente }}>
       {!loading && children}
     </AuthContext.Provider>
   );

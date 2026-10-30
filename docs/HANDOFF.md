@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-29 22:58] T11 — Mover 2FA y Captcha al servidor con firebase-admin y cookie firmada — Argon
+- Rama: `fix/T11-2fa-servidor`
+- Estado: completada
+- Archivos tocados: `api/2fa.js`, `api/verify-captcha.js`, `server/captcha-server.js`, `Dockerfile.api`, `docker-compose.yml`, `vite.config.js`, `src/context/AuthContext.jsx`, `src/pages/Login.jsx`, `firestore.rules`, `.env.example`, `package.json`, `package-lock.json`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se creó el endpoint `/api/2fa` (`api/2fa.js`) compartido entre Vercel, Docker (`server/captcha-server.js`) y Vite (`vite.config.js`). Verifica los ID tokens de Firebase con `firebase-admin`, genera códigos OTP de 6 dígitos con `crypto.randomInt`, almacena únicamente el hash HMAC-SHA256 (`codeHash`) y una firma de integridad (`sig`) en `2fa_codes/{uid}` con máximo 5 intentos, exige un pase firmado de Captcha (`captchaPass` emitido por `/api/verify-captcha`) antes de emitir el OTP, envía el correo desde el servidor vía API REST de EmailJS y gestiona la sesión verificada mediante una cookie firmada `HttpOnly` (`sv_2fa_session`). En `Dockerfile.api` se añadió `ENV NODE_ENV=production` y la instalación de dependencias de producción (`npm ci --omit=dev`).
+- Decisiones tomadas: `firebase-admin` verifica los ID tokens usando `VITE_FIREBASE_PROJECT_ID` sin exigir cuenta de servicio, y si se configura `FIREBASE_SERVICE_ACCOUNT_KEY` utiliza además `admin.firestore()` y `setCustomUserClaims`. Si en EmailJS aún no está activada la opción "Allow EmailJS API for non-browser applications", en desarrollo hace fallback al modo prueba en consola/pantalla para no bloquear las pruebas locales.
+- Variables de entorno nuevas: Opcionales en `.env.example`: `EMAILJS_PRIVATE_KEY`, `SESSION_2FA_SECRET`, `FIREBASE_SERVICE_ACCOUNT_KEY`.
+- Verificación: lint ✅ · build ✅ · pruebas unitarias de criptografía/flujo `/api/2fa` ✅ · pasos manuales: Ejecutar T12 (registro, login con correo, Google, Microsoft, 5 códigos incorrectos, código expirado, reenviar, cancelar registro pendiente).
+- Riesgos / pendientes: Para el envío en producción con EmailJS desde el backend, asegurarse de activar la casilla "Allow EmailJS API for non-browser applications" (y opcionalmente copiar `EMAILJS_PRIVATE_KEY`) en EmailJS Dashboard -> Account -> Security.
+- Siguiente paso sugerido (y para qué modelo): T12 (Pruebas manuales completas del flujo 2FA y autenticación) con Flash o Argon.
+
 ### [2026-10-29 22:48] T10 — Versionar firestore.rules y firebase.json — Argon
 - Rama: `fix/T10-firestore-rules`
 - Estado: completada

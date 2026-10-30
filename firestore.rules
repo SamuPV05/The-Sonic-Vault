@@ -107,11 +107,21 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // 6. CÓDIGOS 2FA (Login.jsx y AuthContext.jsx)
-    // Restringido al propio usuario autenticado.
-    // Nota: En T11 (Fase D), al migrar el 2FA a firebase-admin en el backend, pasará a `allow read, write: if false;`.
+    // 6. CÓDIGOS 2FA (Gestionados por el backend /api/2fa — T11)
+    // Prohíbe guardar códigos en texto plano ('code'); exige hash HMAC-SHA256 ('codeHash')
+    // y firma de integridad del servidor ('sig') sobre intentos y expiración.
     match /2fa_codes/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && !('code' in request.resource.data)
+        && request.resource.data.codeHash is string
+        && request.resource.data.codeHash.size() == 64
+        && request.resource.data.sig is string
+        && request.resource.data.sig.size() == 64
+        && request.resource.data.attempts is int
+        && request.resource.data.attempts >= 0
+        && request.resource.data.attempts <= 5
+        && request.resource.data.expiration is int;
     }
   }
 }

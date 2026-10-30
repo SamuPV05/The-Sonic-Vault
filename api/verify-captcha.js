@@ -1,8 +1,60 @@
-// Función serverless (Vercel): verifica con Google que el token del Captcha es real.
+// Función serverless (Vercel / Docker / Vite): verifica con Google que el token del Captcha es real.
 // La llave secreta vive SOLO aquí (variable de entorno), nunca en el navegador.
+import crypto from 'node:crypto';
 
 // Llave secreta de PRUEBA oficial de Google. Se usa solo en desarrollo si aún no configuraste la real.
 const TEST_SECRET = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
+const CAPTCHA_PASS_TTL_MS = 10 * 60 * 1000; // 10 minutos para completar login y envío de 2FA
+
+function obtenerClaveHmac(secret) {
+  return (
+    process.env.SESSION_2FA_SECRET ||
+    secret ||
+    process.env.RECAPTCHA_SECRET_KEY ||
+    process.env.SPOTIFY_CLIENT_SECRET ||
+    TEST_SECRET
+  );
+}
+
+export function emitirPaseCaptcha(secret) {
+  const payload = Buffer.from(
+    JSON.stringify({
+      exp: Date.now() + CAPTCHA_PASS_TTL_MS,
+      nonce: crypto.randomBytes(8).toString('hex')
+    })
+  ).toString('base64url');
+
+  const sig = crypto
+    .createHmac('sha256', obtenerClaveHmac(secret))
+    .update(payload)
+    .digest('base64url');
+
+  return `${payload}.${sig}`;
+}
+
+export function verificarPaseCaptcha(pase, secret) {
+  if (!pase || typeof pase !== 'string' || !pase.includes('.')) return false;
+  const [payload, sig] = pase.split('.');
+  if (!payload || !sig) return false;
+
+  const expectedSig = crypto
+    .createHmac('sha256', obtenerClaveHmac(secret))
+    .update(payload)
+    .digest('base64url');
+
+  const bufA = Buffer.from(sig);
+  const bufB = Buffer.from(expectedSig);
+  if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
+    return false;
+  }
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return typeof data.exp === 'number' && Date.now() <= data.exp;
+  } catch {
+    return false;
+  }
+}
 
 export async function verificarCaptcha(token, secret, ip) {
   if (!token) return { success: false, error: 'Falta el token del Captcha.' };
@@ -24,7 +76,7 @@ export async function verificarCaptcha(token, secret, ip) {
   const data = await resp.json();
 
   return data.success
-    ? { success: true }
+    ? { success: true, captchaPass: emitirPaseCaptcha(claveSecreta) }
     : { success: false, error: 'Google rechazó el Captcha.', codes: data['error-codes'] || [] };
 }
 

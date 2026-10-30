@@ -1,14 +1,17 @@
 # ============================================================
-# The Sonic Vault - API del Captcha (Node.js sin dependencias externas)
+# The Sonic Vault - API Backend (Captcha + Spotify + 2FA)
 # ============================================================
 FROM node:20-alpine
 WORKDIR /app
 
-# El código usa ES Modules, así que se declara el tipo del paquete
-RUN echo '{"type":"module"}' > package.json
+ENV NODE_ENV=production
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 COPY api/verify-captcha.js ./api/verify-captcha.js
 COPY api/spotify-token.js ./api/spotify-token.js
+COPY api/2fa.js ./api/2fa.js
 COPY server/captcha-server.js ./server/captcha-server.js
 
 # Se ejecuta sin privilegios de root (buena práctica de seguridad)
