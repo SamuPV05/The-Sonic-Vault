@@ -1,704 +1,101 @@
-import { useState, useEffect, useRef } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
-// IMPORTAMOS FIREBASE
-import { db } from '../firebase/config'; 
-import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc, increment } from 'firebase/firestore';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-
-import { 
-  BeatItScheduler, 
-  triggerSound, 
-  KIT_DEFINITIONS, 
-  INSTRUMENTS, 
-  INSTRUMENT_CONFIG,
-  exportPatternToWav 
+import {
+  triggerSound,
+  KIT_DEFINITIONS,
+  INSTRUMENTS,
+  INSTRUMENT_CONFIG
 } from '../services/beatItAudioEngine';
+import { GENRE_PRESETS, getDelaySeconds } from '../constants/beatItPresets';
+import { useBeatItScheduler } from '../hooks/useBeatItScheduler';
+import { useBeatItPersistence } from '../hooks/useBeatItPersistence';
 import BeatItSpotifyRadarModal from '../components/BeatItSpotifyRadarModal';
 import EchoToast from '../components/EchoToast';
 import { useToast } from '../hooks/useToast';
 
-const TOTAL_MAX_STEPS = 32;
-
-// --- PRESETS DE GÉNERO DE FÁBRICA (FASE 6) ---
-const GENRE_PRESETS = [
-  {
-    name: 'Trap Bóveda',
-    genre: 'Trap / Drill',
-    bpm: 140,
-    kit: 'Trap Bóveda',
-    swing: 50,
-    isLoFi: false,
-    steps: 16,
-    icon: 'fa-skull',
-    color: '#9945ff',
-    grid: {
-      kick:   [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-      snare:  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      clap:   [0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
-      hihat:  [1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 2],
-      openhat:[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-      sub808: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0],
-      tom:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      crash:  [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    }
-  },
-  {
-    name: 'Boom Bap 90s',
-    genre: 'Classic Hip-Hop',
-    bpm: 92,
-    kit: 'Analog 808',
-    swing: 62,
-    isLoFi: true,
-    steps: 16,
-    icon: 'fa-compact-disc',
-    color: '#00ffcc',
-    grid: {
-      kick:   [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 1, 0, 0],
-      snare:  [0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
-      clap:   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      hihat:  [2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1],
-      openhat:[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0],
-      sub808: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      tom:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0],
-      crash:  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    }
-  },
-  {
-    name: 'Synthwave 80s',
-    genre: 'Retro Electro',
-    bpm: 122,
-    kit: 'Cyberpunk',
-    swing: 50,
-    isLoFi: false,
-    steps: 16,
-    icon: 'fa-bolt',
-    color: '#ff0077',
-    grid: {
-      kick:   [2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
-      snare:  [0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
-      clap:   [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-      hihat:  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      openhat:[0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0],
-      sub808: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-      tom:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 0],
-      crash:  [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    }
-  },
-  {
-    name: 'Reggaetón Dembow',
-    genre: 'Urbano Latino',
-    bpm: 96,
-    kit: 'Trap Bóveda',
-    swing: 50,
-    isLoFi: false,
-    steps: 16,
-    icon: 'fa-fire',
-    color: '#ffaa00',
-    grid: {
-      kick:   [2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
-      snare:  [0, 0, 0, 2, 0, 0, 2, 0, 0, 0, 0, 2, 0, 0, 2, 0],
-      clap:   [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0],
-      hihat:  [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      openhat:[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
-      sub808: [2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0],
-      tom:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-      crash:  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    }
-  },
-  {
-    name: 'Classic House',
-    genre: 'House / Club',
-    bpm: 126,
-    kit: 'Analog 808',
-    swing: 54,
-    isLoFi: false,
-    steps: 16,
-    icon: 'fa-record-vinyl',
-    color: '#00bfff',
-    grid: {
-      kick:   [2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0],
-      snare:  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      clap:   [0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0],
-      hihat:  [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-      openhat:[0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 2, 0],
-      sub808: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      tom:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0],
-      crash:  [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    }
-  },
-  {
-    name: 'Lo-Fi Chill Hop',
-    genre: 'Chill / Study',
-    bpm: 80,
-    kit: 'Lo-Fi Chill',
-    swing: 65,
-    isLoFi: true,
-    steps: 16,
-    icon: 'fa-mug-hot',
-    color: '#e6c387',
-    grid: {
-      kick:   [2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0],
-      snare:  [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-      clap:   [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-      hihat:  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      openhat:[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-      sub808: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      tom:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-      crash:  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    }
-  }
-];
-
 export default function BeatIt() {
+  const { user } = useAuth();
   const { toasts, showToast, dismissToast } = useToast();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [tempo, setTempo] = useState(120); 
-  const [currentStep, setCurrentStep] = useState(0);
-  const [currentKit, setCurrentKit] = useState("Analog 808");
-  const [isLoFi, setIsLoFi] = useState(false);
-  
-  // --- GROOVE, SWING Y COMPASES ---
-  const [swing, setSwing] = useState(50); // 50% = Straight, 75% = Heavy Swing
-  const [totalSteps, setTotalSteps] = useState(16); // 16 o 32 pasos
-  const [activeBar, setActiveBar] = useState(0); // 0 = Bar 1 (0-15), 1 = Bar 2 (16-31)
-  
-  // --- FASE 5: RACK DE EFECTOS MAESTROS (MODO DJ) ---
-  const [showFxRack, setShowFxRack] = useState(false);
-  const [fxSettings, setFxSettings] = useState({
-    enabled: true,
-    djFilter: 0, // -100 (LP) a +100 (HP), 0 = Neutral
-    drive: 0, // 0 a 100% Tape Saturation
-    delayWet: 0, // 0 a 100% Mix
-    delayFeedback: 35, // 0 a 80% Feedback
-    delaySync: '1/8d' // '1/16', '1/8', '1/8d', '1/4'
-  });
-
-  // --- FASE 6: PRESETS Y TAP TEMPO ---
-  const [showPresets, setShowPresets] = useState(false);
-  const tapTimesRef = useRef([]);
-  const [isTapping, setIsTapping] = useState(false);
-
-  // --- FASE 7: EXPORTADOR DE AUDIO WAV ---
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportLoops, setExportLoops] = useState(2);
-  const [exportStatusText, setExportStatusText] = useState('');
-
-  // --- FASE 5 SPOTIFY: RADAR BPM & GENERADOR DE PLAYLISTS ---
   const [showSpotifyRadar, setShowSpotifyRadar] = useState(false);
 
-  const schedulerRef = useRef(null);
+  const scheduler = useBeatItScheduler({ showToast });
+  const {
+    isPlaying,
+    tempo,
+    setTempo,
+    currentStep,
+    currentKit,
+    setCurrentKit,
+    isLoFi,
+    setIsLoFi,
+    swing,
+    setSwing,
+    totalSteps,
+    setTotalSteps,
+    activeBar,
+    setActiveBar,
+    grid,
+    trackVolumes,
+    mutes,
+    solos,
+    masterVolume,
+    setMasterVolume,
+    showFxRack,
+    setShowFxRack,
+    fxSettings,
+    setFxSettings,
+    showPresets,
+    setShowPresets,
+    isTapping,
+    showExportModal,
+    setShowExportModal,
+    isExporting,
+    exportLoops,
+    setExportLoops,
+    exportStatusText,
+    activeKitColor,
+    hasAnySolo,
+    isFxActive,
+    getFilterReadout,
+    stopPlayback,
+    resetGrid,
+    handleToggleMute,
+    handleToggleSolo,
+    handleVolumeChange,
+    handleTogglePlay,
+    handleTapTempo,
+    toggleStep,
+    handleDuplicateBar1ToBar2,
+    handleClearGrid,
+    applyPresetToScheduler,
+    applyLoadedBeatToScheduler,
+    handleExportWav: exportWavWithScheduler
+  } = scheduler;
 
-  const [grid, setGrid] = useState(() => {
-    const initialGrid = {};
-    INSTRUMENTS.forEach(inst => {
-      initialGrid[inst] = Array(TOTAL_MAX_STEPS).fill(0);
-    });
-    return initialGrid;
+  const {
+    beatName,
+    setBeatName,
+    savedBeats,
+    isSaving,
+    loadedBeatNotice,
+    setLoadedBeatNotice,
+    handleSaveBeat,
+    loadBeat
+  } = useBeatItPersistence({
+    user,
+    showToast,
+    scheduler,
+    applyLoadedBeatToScheduler,
+    stopPlayback,
+    resetGrid
   });
 
-  // --- ESTADOS DE LA CONSOLA DE MEZCLA ---
-  const [trackVolumes, setTrackVolumes] = useState(() => {
-    const initial = {};
-    INSTRUMENTS.forEach(inst => initial[inst] = 0.85);
-    return initial;
-  });
-
-  const [mutes, setMutes] = useState(() => {
-    const initial = {};
-    INSTRUMENTS.forEach(inst => initial[inst] = false);
-    return initial;
-  });
-
-  const [solos, setSolos] = useState(() => {
-    const initial = {};
-    INSTRUMENTS.forEach(inst => initial[inst] = false);
-    return initial;
-  });
-
-  const [masterVolume, setMasterVolume] = useState(0.85);
-
-  // --- ESTADOS PARA FIREBASE Y NAVEGACIÓN DESDE PERFIL ---
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const initialBeatLoadedRef = useRef(false);
-  const [loadedBeatNotice, setLoadedBeatNotice] = useState(null);
-
-  const [beatName, setBeatName] = useState('');
-  const [savedBeats, setSavedBeats] = useState([]); 
-  const { user } = useAuth();
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Cálculo de segundos de retardo sincronizado al tempo
-  const getDelaySeconds = (sync, bpm) => {
-    const quarter = 60.0 / Math.max(40, bpm);
-    switch (sync) {
-      case '1/16': return quarter * 0.25;
-      case '1/8': return quarter * 0.5;
-      case '1/8d': return quarter * 0.75;
-      case '1/4': return quarter * 1.0;
-      default: return quarter * 0.75;
-    }
-  };
-
-  // --- INICIALIZACIÓN DEL MOTOR WEB AUDIO API ---
-  useEffect(() => {
-    schedulerRef.current = new BeatItScheduler({
-      tempo,
-      steps: totalSteps,
-      kit: currentKit,
-      isLoFi,
-      grid,
-      swing,
-      trackVolumes,
-      mutes,
-      solos,
-      masterVolume,
-      fx: {
-        enabled: fxSettings.enabled,
-        djFilter: fxSettings.djFilter,
-        drive: fxSettings.drive,
-        delayWet: fxSettings.delayWet,
-        delayFeedback: fxSettings.delayFeedback,
-        delayTime: getDelaySeconds(fxSettings.delaySync, tempo)
-      },
-      onStepChange: (step) => setCurrentStep(step)
-    });
-
-    return () => {
-      if (schedulerRef.current) {
-        schedulerRef.current.stop(true);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Sincronizar cambios de compás, kits, swing y totalSteps
-  useEffect(() => {
-    if (schedulerRef.current) {
-      schedulerRef.current.updateTempo(tempo);
-      schedulerRef.current.updateGrid(grid);
-      schedulerRef.current.updateKit(currentKit);
-      schedulerRef.current.updateLoFi(isLoFi);
-      schedulerRef.current.updateSwing(swing);
-      schedulerRef.current.updateSteps(totalSteps);
-    }
-  }, [tempo, grid, currentKit, isLoFi, swing, totalSteps]);
-
-  // Sincronizar consola de mezcla en tiempo real
-  useEffect(() => {
-    if (schedulerRef.current) {
-      schedulerRef.current.updateMixer({
-        trackVolumes,
-        mutes,
-        solos,
-        masterVolume
-      });
-    }
-  }, [trackVolumes, mutes, solos, masterVolume]);
-
-  // Sincronizar Rack de Efectos Maestros en tiempo real
-  useEffect(() => {
-    if (schedulerRef.current) {
-      schedulerRef.current.updateFX({
-        enabled: fxSettings.enabled,
-        djFilter: fxSettings.djFilter,
-        drive: fxSettings.drive,
-        delayWet: fxSettings.delayWet,
-        delayFeedback: fxSettings.delayFeedback,
-        delayTime: getDelaySeconds(fxSettings.delaySync, tempo)
-      });
-    }
-  }, [fxSettings, tempo]);
-
-  const handleToggleMute = (inst) => {
-    setMutes(prev => ({ ...prev, [inst]: !prev[inst] }));
-  };
-
-  const handleToggleSolo = (inst) => {
-    setSolos(prev => ({ ...prev, [inst]: !prev[inst] }));
-  };
-
-  const handleVolumeChange = (inst, value) => {
-    const vol = parseFloat(value);
-    setTrackVolumes(prev => ({ ...prev, [inst]: vol }));
-  };
-
-  // Manejo de reproducción sin latencia ni jitter
-  const handleTogglePlay = () => {
-    if (isPlaying) {
-      schedulerRef.current?.stop();
-      setIsPlaying(false);
-    } else {
-      schedulerRef.current?.start();
-      setIsPlaying(true);
-    }
-  };
-
-  // --- LÓGICA DE TAP TEMPO EN VIVO (FASE 6) ---
-  const handleTapTempo = () => {
-    const now = performance.now();
-    const times = tapTimesRef.current;
-    
-    // Si pasaron más de 2 segundos desde el último toque, reiniciar
-    if (times.length > 0 && now - times[times.length - 1] > 2000) {
-      tapTimesRef.current = [];
-    }
-    
-    tapTimesRef.current.push(now);
-    if (tapTimesRef.current.length > 4) {
-      tapTimesRef.current.shift();
-    }
-    
-    setIsTapping(true);
-    setTimeout(() => setIsTapping(false), 120);
-
-    if (tapTimesRef.current.length >= 2) {
-      const intervals = [];
-      for (let i = 1; i < tapTimesRef.current.length; i++) {
-        intervals.push(tapTimesRef.current[i] - tapTimesRef.current[i - 1]);
-      }
-      const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-      const calculatedBpm = Math.round(60000 / avgInterval);
-      const clampedBpm = Math.max(60, Math.min(200, calculatedBpm));
-      setTempo(clampedBpm);
-    }
-  };
-
-  // Cargar Preset de Género
   const handleLoadPreset = (preset) => {
-    if (isPlaying) {
-      schedulerRef.current?.stop();
-      setIsPlaying(false);
-    }
-
-    setTempo(preset.bpm);
-    setCurrentKit(preset.kit);
-    setSwing(preset.swing);
-    setIsLoFi(preset.isLoFi);
-    setTotalSteps(preset.steps || 16);
-    setActiveBar(0);
-    setCurrentStep(0);
-
-    const newGrid = {};
-    INSTRUMENTS.forEach(inst => {
-      const row = Array(TOTAL_MAX_STEPS).fill(0);
-      const src = preset.grid[inst] || [];
-      for (let i = 0; i < 16; i++) {
-        row[i] = src[i] || 0;
-        row[i + 16] = src[i] || 0; // Duplicar automáticamente al compás 2
-      }
-      newGrid[inst] = row;
-    });
-    setGrid(newGrid);
+    applyPresetToScheduler(preset);
     setBeatName(`${preset.name}`);
-    setShowPresets(false);
   };
 
-  // --- EXPORTAR AUDIO WAV OFFLINE (FASE 7) ---
-  const handleExportWav = async (type = 'master') => {
-    try {
-      setIsExporting(true);
-      setExportStatusText(type === 'master' ? 'Renderizando Master WAV a 44.1kHz...' : 'Renderizando Stems separados...');
-
-      const delaySec = getDelaySeconds(fxSettings.delaySync, tempo);
-      const fxPayload = { ...fxSettings, delayTime: delaySec };
-      const safeName = (beatName.trim() || 'TheSonicVault_Beat').replace(/[^a-zA-Z0-9_-]/g, '_');
-
-      if (type === 'master') {
-        const wavBlob = await exportPatternToWav({
-          grid,
-          kit: currentKit,
-          isLoFi,
-          tempo,
-          swing,
-          steps: totalSteps,
-          loops: exportLoops,
-          trackVolumes,
-          mutes,
-          solos,
-          masterVolume,
-          fx: fxPayload
-        });
-
-        const url = URL.createObjectURL(wavBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${safeName}_${currentKit.replace(/\s+/g, '')}_${tempo}BPM_Master.wav`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else if (type === 'stems') {
-        // Renderizar stems individuales
-        for (const inst of INSTRUMENTS) {
-          const hasNotes = grid[inst] && grid[inst].some(v => v > 0);
-          if (!hasNotes) continue;
-
-          setExportStatusText(`Renderizando pista: ${inst.toUpperCase()}...`);
-
-          const wavBlob = await exportPatternToWav({
-            grid,
-            kit: currentKit,
-            isLoFi,
-            tempo,
-            swing,
-            steps: totalSteps,
-            loops: exportLoops,
-            trackVolumes,
-            mutes: {},
-            solos: {},
-            masterVolume,
-            fx: fxPayload,
-            onlyInstrument: inst
-          });
-
-          const url = URL.createObjectURL(wavBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${safeName}_STEM_${inst.toUpperCase()}_${tempo}BPM.wav`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          await new Promise(r => setTimeout(r, 200));
-        }
-      }
-    } catch (err) {
-      console.error("Error exportando audio WAV:", err);
-      showToast('error', 'Error al Exportar', 'Hubo un error al renderizar el archivo WAV digital.');
-    } finally {
-      setIsExporting(false);
-      setExportStatusText('');
-      setShowExportModal(false);
-    }
-  };
-
-  // --- DETECTAR USUARIO LOGUEADO Y TRAER SUS BEATS ---
-  useEffect(() => {
-    const cargarBeatsUsuario = async () => {
-      if (!user?.uid) {
-        setSavedBeats([]);
-        return;
-      }
-      try {
-        const q = query(
-          collection(db, "beats"), 
-          where("userId", "==", user.uid)
-        );
-        const querySnapshot = await getDocs(q);
-        const beatsNube = [];
-        querySnapshot.forEach((doc) => {
-          beatsNube.push({ id: doc.id, ...doc.data() });
-        });
-        setSavedBeats(beatsNube);
-      } catch (error) {
-        console.error("Error trayendo las cintas de la nube: ", error);
-      }
-    };
-
-    cargarBeatsUsuario();
-  }, [user?.uid]);
-
-  // Ciclo de 3 estados de velocidad: 0 (Off) -> 1 (Normal) -> 2 (Acento) -> 0
-  const toggleStep = (instrument, stepIndex) => {
-    const currentVal = grid[instrument][stepIndex];
-    let nextVal = 0;
-    if (!currentVal || currentVal === 0) {
-      nextVal = 1; // Normal
-    } else if (currentVal === 1 || currentVal === true) {
-      nextVal = 2; // Acento / Punch
-    } else {
-      nextVal = 0; // Off
-    }
-
-    const newGrid = { ...grid };
-    newGrid[instrument] = [...grid[instrument]]; 
-    newGrid[instrument][stepIndex] = nextVal;
-    setGrid(newGrid);
-
-    if (nextVal > 0) {
-      const isAccent = nextVal === 2;
-      triggerSound(instrument, currentKit, isLoFi, null, trackVolumes[instrument], isAccent);
-    }
-  };
-
-  // Duplicar Compás 1 en Compás 2
-  const handleDuplicateBar1ToBar2 = () => {
-    const newGrid = { ...grid };
-    INSTRUMENTS.forEach(inst => {
-      const row = [...newGrid[inst]];
-      for (let i = 0; i < 16; i++) {
-        row[i + 16] = row[i];
-      }
-      newGrid[inst] = row;
-    });
-    setGrid(newGrid);
-    setActiveBar(1);
-  };
-
-  // Limpiar cuadrícula
-  const handleClearGrid = () => {
-    if (window.confirm("¿Limpiar el patrón del secuenciador?")) {
-      const emptyGrid = {};
-      INSTRUMENTS.forEach(inst => emptyGrid[inst] = Array(TOTAL_MAX_STEPS).fill(0));
-      setGrid(emptyGrid);
-    }
-  };
-
-  // --- GUARDAR EL BEAT EN FIREBASE ---
-  const handleSaveBeat = async () => {
-    if (!user) {
-      showToast('warning', 'Sesión Requerida', '¡Debes iniciar sesión para guardar tus beats en The Sonic Vault!');
-      return;
-    }
-    if (beatName.trim() === '') {
-      showToast('warning', 'Nombre Requerido', '¡Ponle un nombre a tu obra maestra antes de guardar!');
-      return;
-    }
-
-    setIsSaving(true);
-    const snapshotGrid = JSON.parse(JSON.stringify(grid));
-
-    const newBeat = {
-      userId: user.uid,
-      name: beatName,
-      tempo: tempo,
-      kit: currentKit,
-      isLoFi: isLoFi,
-      gridData: snapshotGrid,
-      trackVolumes: trackVolumes,
-      mutes: mutes,
-      solos: solos,
-      masterVolume: masterVolume,
-      swing: swing,
-      totalSteps: totalSteps,
-      fxSettings: fxSettings,
-      date: new Date().toLocaleDateString(),
-      timestamp: new Date()
-    };
-
-    try {
-      const docRef = await addDoc(collection(db, "beats"), newBeat);
-      try {
-        await setDoc(doc(db, 'stats', 'global'), { beats: increment(1) }, { merge: true });
-      } catch (statsErr) {
-        console.error('No se pudo actualizar el contador de beats:', statsErr);
-      }
-      setSavedBeats([...savedBeats, { id: docRef.id, ...newBeat }]);
-      setBeatName(''); 
-      
-      const emptyGrid = {};
-      INSTRUMENTS.forEach(inst => emptyGrid[inst] = Array(TOTAL_MAX_STEPS).fill(0));
-      setGrid(emptyGrid);
-      if (isPlaying) {
-        schedulerRef.current?.stop();
-        setIsPlaying(false);
-      }
-      
-      showToast('success', 'Cinta Guardada', `¡"${newBeat.name}" ha sido guardada con éxito en tu Bóveda!`);
-    } catch (error) {
-      console.error("Error guardando en la nube: ", error);
-      showToast('error', 'Fallo al Guardar', 'Hubo un error guardando tu cinta en la nube.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const loadBeat = (beatToLoad) => {
-    if (isPlaying) {
-      schedulerRef.current?.stop();
-      setIsPlaying(false);
-    }
-    const normalizedGrid = {};
-    INSTRUMENTS.forEach(inst => {
-      const rawRow = (beatToLoad.gridData && beatToLoad.gridData[inst]) || [];
-      const row = Array(TOTAL_MAX_STEPS).fill(0);
-      for (let i = 0; i < TOTAL_MAX_STEPS; i++) {
-        if (rawRow[i] !== undefined) {
-          row[i] = rawRow[i] === true ? 1 : rawRow[i];
-        }
-      }
-      normalizedGrid[inst] = row;
-    });
-    setGrid(normalizedGrid);
-    setTempo(beatToLoad.tempo || 120);
-    const validKit = KIT_DEFINITIONS[beatToLoad.kit] ? beatToLoad.kit : "Analog 808";
-    setCurrentKit(validKit);
-    setIsLoFi(!!beatToLoad.isLoFi);
-    if (beatToLoad.trackVolumes) setTrackVolumes(beatToLoad.trackVolumes);
-    if (beatToLoad.mutes) setMutes(beatToLoad.mutes);
-    if (beatToLoad.solos) setSolos(beatToLoad.solos);
-    if (beatToLoad.masterVolume !== undefined) setMasterVolume(beatToLoad.masterVolume);
-    setSwing(beatToLoad.swing !== undefined ? beatToLoad.swing : 50);
-    setTotalSteps(beatToLoad.totalSteps || 16);
-    if (beatToLoad.fxSettings) {
-      setFxSettings({
-        enabled: beatToLoad.fxSettings.enabled !== undefined ? beatToLoad.fxSettings.enabled : true,
-        djFilter: beatToLoad.fxSettings.djFilter !== undefined ? beatToLoad.fxSettings.djFilter : 0,
-        drive: beatToLoad.fxSettings.drive !== undefined ? beatToLoad.fxSettings.drive : 0,
-        delayWet: beatToLoad.fxSettings.delayWet !== undefined ? beatToLoad.fxSettings.delayWet : 0,
-        delayFeedback: beatToLoad.fxSettings.delayFeedback !== undefined ? beatToLoad.fxSettings.delayFeedback : 35,
-        delaySync: beatToLoad.fxSettings.delaySync || '1/8d'
-      });
-    }
-    setActiveBar(0);
-    setCurrentStep(0);
-    setBeatName(beatToLoad.name || '');
-    setLoadedBeatNotice({
-      name: beatToLoad.name || 'Composición sin título',
-      kit: validKit,
-      tempo: beatToLoad.tempo || 120
-    });
-  };
-
-  // Hidratación automática cuando se navega desde /perfil con un beat seleccionado
-  useEffect(() => {
-    if (initialBeatLoadedRef.current) return;
-
-    const stateBeat = location.state?.beatData;
-    const queryBeatId = searchParams.get('beatId');
-
-    if (stateBeat) {
-      initialBeatLoadedRef.current = true;
-      loadBeat(stateBeat);
-      return;
-    }
-
-    if (queryBeatId) {
-      const fromSaved = savedBeats.find(b => b.id === queryBeatId);
-      if (fromSaved) {
-        initialBeatLoadedRef.current = true;
-        loadBeat(fromSaved);
-        return;
-      }
-
-      // Consulta directa a Firestore si aún no está en savedBeats o se abrió por enlace directo
-      getDoc(doc(db, 'beats', queryBeatId))
-        .then((snap) => {
-          if (snap.exists() && !initialBeatLoadedRef.current) {
-            initialBeatLoadedRef.current = true;
-            loadBeat({ id: snap.id, ...snap.data() });
-          }
-        })
-        .catch((err) => {
-          console.error('Error cargando beat por ID:', err);
-        });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, searchParams, savedBeats]);
-
-  const activeKitColor = KIT_DEFINITIONS[currentKit]?.color || 'var(--accent-color, #00ffcc)';
-  const hasAnySolo = Object.values(solos).some(Boolean);
-  const isFxActive = fxSettings.enabled && (fxSettings.djFilter !== 0 || fxSettings.drive > 0 || fxSettings.delayWet > 0);
-
-  // Formateo de texto dinámico para el DJ Filter
-  const getFilterReadout = () => {
-    const val = Number(fxSettings.djFilter) || 0;
-    if (val < 0) return `PASABAJOS (${val}%) • SUB-BASS`;
-    if (val > 0) return `PASAALTOS (+${val}%) • DROP FX`;
-    return 'FLAT (BYPASS)';
-  };
+  const handleExportWav = (type = 'master') => exportWavWithScheduler(type, beatName);
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1.5rem', background: 'transparent' }}>

@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 06:35] T13a — Diseño modular de BeatIt.jsx y extracción de hooks useBeatItScheduler y useBeatItPersistence — Argon
+- Rama: `fix/T13a-beatit-hooks`
+- Estado: completada
+- Archivos tocados: `src/constants/beatItPresets.js`, `src/hooks/useBeatItScheduler.js`, `src/hooks/useBeatItPersistence.js`, `src/pages/BeatIt.jsx`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se extrajeron las constantes/presets a `src/constants/beatItPresets.js`, la gestión del motor Web Audio API (`BeatItScheduler`, estados de mezcla, Rack FX, Tap Tempo y exportación WAV) a `src/hooks/useBeatItScheduler.js`, y la persistencia en Firestore (`beats`, incremento en `stats/global` e hidratación desde `/perfil` o `?beatId=`) a `src/hooks/useBeatItPersistence.js`. `BeatIt.jsx` pasó de 1,710 a ~1,100 líneas y quedaron delimitados los contratos de props para los 4 subcomponentes visuales de T13b (`BeatItTransport`, `BeatItFXRack`, `BeatItMixer`, `BeatItGrid`).
+- Decisiones tomadas: `useBeatItScheduler` expone `applyPresetToScheduler` y `applyLoadedBeatToScheduler` para que `useBeatItPersistence` coordine la carga de beats sin acoplar Firestore con Web Audio API.
+- Variables de entorno nuevas: Ninguna.
+- Verificación: lint ✅ · build ✅ · pasos manuales: Abrir `/beat-it`, probar Play/Stop, cambio de Kit, presets, Rack FX, exportación WAV y guardado/carga de beat.
+- Riesgos / pendientes: Ninguno.
+- Siguiente paso sugerido (y para qué modelo): T13b (Extraer `BeatItTransport`, `BeatItFXRack`, `BeatItMixer` y `BeatItGrid` en `src/components/beatit/`) con Flash o Argon.
+
 ### [2026-10-29 23:05] T12 — Verificación y pruebas de flujos 2FA y autenticación — Argon
 - Rama: `fix/T12-pruebas-2fa`
 - Estado: completada
