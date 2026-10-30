@@ -213,6 +213,28 @@ export async function getSpotifyNewReleases(limit = 20) {
 // ----------------------------------------------------------------------------
 // 2. FLUJO DE USUARIO CON PKCE (OAuth) - Para sacarle el jugo a la cuenta Premium
 // ----------------------------------------------------------------------------
+//
+// NOTA DE SEGURIDAD Y ARQUITECTURA (T14 — Riesgo aceptado de tokens en localStorage):
+// - Contexto: Mientras que el flujo de catálogo público (Client Credentials) delega el
+//   SPOTIFY_CLIENT_SECRET al servidor (/api/spotify-token), la conexión con la cuenta
+//   personal del usuario emplea el estándar OAuth 2.0 Authorization Code con PKCE
+//   (RFC 7636) diseñado para Single Page Applications (SPA) sin backend de sesión.
+// - Riesgo aceptado: Los tokens de usuario (tsv_spotify_user_token, tsv_spotify_refresh_token,
+//   tsv_spotify_token_expiry) y el verificador efímero (tsv_spotify_code_verifier) se
+//   persisten en window.localStorage para permitir llamadas directas desde el navegador
+//   a https://api.spotify.com/v1 (ADN Sonoro, Now Playing y controles de reproducción).
+//   Al residir en localStorage, una vulnerabilidad de Cross-Site Scripting (XSS) en el
+//   mismo origen podría leer estos tokens.
+// - Mitigaciones implementadas:
+//   1. Content-Security-Policy (CSP) estricta en nginx.conf que restringe script-src,
+//      connect-src, frame-src y bloquea object-src ('none'), mitigando la inyección
+//      de scripts no autorizados y la exfiltración a dominios arbitrarios.
+//   2. Alcance mínimo (SCOPES acotados solo a lectura de perfil/actividad, reproducción
+//      y playlists; nunca a datos financieros ni cambio de credenciales de cuenta).
+//   3. Tiempo de vida corto del access_token (1 hora), eliminación inmediata del
+//      code_verifier tras el canje en handleSpotifyCallback(), y limpieza completa
+//      de claves en logoutSpotify().
+// ----------------------------------------------------------------------------
 
 const USER_TOKEN_KEY = 'tsv_spotify_user_token';
 const REFRESH_TOKEN_KEY = 'tsv_spotify_refresh_token';
