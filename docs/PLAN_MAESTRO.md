@@ -38,10 +38,10 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 - [x] **T13a** (4, Argon) Diseño de la división de `BeatIt.jsx` (límites de módulos, hooks `useBeatItScheduler` y `useBeatItPersistence`).
 - [x] **T13b** (3, Flash) Extraer `BeatItGrid`, `BeatItMixer`, `BeatItFXRack`, `BeatItTransport`. Sin cambios de comportamiento; verificar audio antes y después.
 - [x] **T14** (4, Argon, opcional) Tokens de Spotify en `localStorage`: aceptar y documentar el riesgo, añadir CSP en `nginx.conf`.
-- [ ] **T15** (1, Flash) Actualizar README con el estado real.
+- [x] **T15** (1, Flash) Actualizar README con el estado real.
 
-## Decisiones abiertas (bloquean T10 y T11)
-- Reglas actuales de Firestore (copiar desde la consola de Firebase).
-- ¿Plan gratuito de Firebase, sin Cloud Functions?
-- ¿EmailJS o proveedor con API de servidor?
-- ¿Despliegue en Vercel, Docker o ambos?
+## Decisiones resueltas en la estabilización (Fases A a E completadas)
+- Reglas de Firestore: diseñadas desde cero y versionadas en `firestore.rules` + `firebase.json` (T10).
+- Plan gratuito de Firebase Spark: documentado y soportado sin Cloud Functions; contadores atómicos con `stats/global` (T09).
+- EmailJS: mantenido e integrado mediante API REST desde el backend (`/api/2fa`) con fallback de prueba en desarrollo (T11).
+- Despliegue: paridad completa garantizada para Vercel Serverless Functions y Docker Compose (Nginx + API) (T11, T14, T15).

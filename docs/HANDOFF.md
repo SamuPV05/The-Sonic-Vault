@@ -19,6 +19,17 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-10-30 06:58] T15 — Actualizar README con el estado real del proyecto — Flash
+- Rama: `fix/T15-actualizar-readme`
+- Estado: completada
+- Archivos tocados: `README.md`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se actualizó de manera exhaustiva el archivo `README.md` para reflejar la arquitectura y capacidades reales alcanzadas tras la ejecución completa del Plan Maestro de estabilización (T01 a T15). Se documentó la suite de autenticación multi-factor en servidor (`/api/2fa` con `firebase-admin`, códigos de un solo uso en Firestore hasheados con HMAC-SHA256, rate limiting a 5 intentos, pase firmado de reCAPTCHA y cookie `HttpOnly` firmada), la validación de Google reCAPTCHA v2 con token firmado, las reglas declarativas de Firestore versionadas (`firestore.rules` y `firebase.json`), la política Content-Security-Policy (CSP) en `nginx.conf`, la optimización de bundle con code splitting (`React.lazy` + `Suspense` < 400 kB inicial), los contadores atómicos globales en tiempo real con `stats/global`, la división modular de Beat It Pro (`useBeatItScheduler`, `useBeatItPersistence`, `beatItPresets.js`, `BeatItTransport`, `BeatItFXRack`, `BeatItMixer`, `BeatItGrid`), el despliegue dual paritario (Vercel Serverless y Docker Compose multi-stage) y la tabla completa de variables de entorno requeridas y opcionales.
+- Decisiones tomadas: Se cerraron formalmente todas las decisiones abiertas en `docs/PLAN_MAESTRO.md` tras haber culminado exitosamente las Fases A, B, C, D y E.
+- Variables de entorno nuevas: Documentadas en la tabla del README (`EMAILJS_PRIVATE_KEY`, `SESSION_2FA_SECRET`, `FIREBASE_SERVICE_ACCOUNT_KEY`).
+- Verificación: lint ✅ · build ✅ · pasos manuales: Inspección visual del renderizado de `README.md`.
+- Riesgos / pendientes: Ninguno. Plan Maestro 100% completado.
+- Siguiente paso sugerido: El proyecto queda completamente estabilizado en `fix/stabilization`. Se puede proceder a fusionar `fix/stabilization` en la rama principal (`main`) o continuar con nuevas funcionalidades según lo decida el usuario.
+
 ### [2026-10-30 06:52] T14 — Documentar riesgo de tokens Spotify en localStorage y añadir CSP en nginx.conf — Argon
 - Rama: `fix/T14-csp-spotify-docs`
 - Estado: completada
