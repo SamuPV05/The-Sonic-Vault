@@ -6,17 +6,26 @@ import crypto from 'node:crypto';
 const TEST_SECRET = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
 const CAPTCHA_PASS_TTL_MS = 10 * 60 * 1000; // 10 minutos para completar login y envío de 2FA
 
-function obtenerClaveHmac(secret) {
-  return (
-    process.env.SESSION_2FA_SECRET ||
-    secret ||
-    process.env.RECAPTCHA_SECRET_KEY ||
-    process.env.SPOTIFY_CLIENT_SECRET ||
-    TEST_SECRET
-  );
+function esEntornoProduccion(env = process.env) {
+  return env.NODE_ENV === 'production' || env.VERCEL_ENV === 'production';
 }
 
-export function emitirPaseCaptcha(secret) {
+function obtenerClaveHmac(secret, env = process.env) {
+  const claveReal =
+    secret ||
+    env.RECAPTCHA_SECRET_KEY ||
+    env.SESSION_2FA_SECRET ||
+    env.SPOTIFY_CLIENT_SECRET ||
+    '';
+  if (claveReal) return claveReal;
+  // En producción jamás se usa una clave de respaldo pública; falla cerrado.
+  return esEntornoProduccion(env) ? '' : TEST_SECRET;
+}
+
+export function emitirPaseCaptcha(secret, env = process.env) {
+  const claveHmac = obtenerClaveHmac(secret, env);
+  if (!claveHmac) return null;
+
   const payload = Buffer.from(
     JSON.stringify({
       exp: Date.now() + CAPTCHA_PASS_TTL_MS,
@@ -25,20 +34,23 @@ export function emitirPaseCaptcha(secret) {
   ).toString('base64url');
 
   const sig = crypto
-    .createHmac('sha256', obtenerClaveHmac(secret))
+    .createHmac('sha256', claveHmac)
     .update(payload)
     .digest('base64url');
 
   return `${payload}.${sig}`;
 }
 
-export function verificarPaseCaptcha(pase, secret) {
+export function verificarPaseCaptcha(pase, secret, env = process.env) {
   if (!pase || typeof pase !== 'string' || !pase.includes('.')) return false;
+  const claveHmac = obtenerClaveHmac(secret, env);
+  if (!claveHmac) return false;
+
   const [payload, sig] = pase.split('.');
   if (!payload || !sig) return false;
 
   const expectedSig = crypto
-    .createHmac('sha256', obtenerClaveHmac(secret))
+    .createHmac('sha256', claveHmac)
     .update(payload)
     .digest('base64url');
 
@@ -56,10 +68,10 @@ export function verificarPaseCaptcha(pase, secret) {
   }
 }
 
-export async function verificarCaptcha(token, secret, ip) {
+export async function verificarCaptcha(token, secret, ip, env = process.env) {
   if (!token) return { success: false, error: 'Falta el token del Captcha.' };
 
-  const esProduccion = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+  const esProduccion = esEntornoProduccion(env);
   const claveSecreta = secret || (!esProduccion ? TEST_SECRET : '');
   if (!claveSecreta) {
     return { success: false, error: 'Configuración incompleta: falta RECAPTCHA_SECRET_KEY en el servidor.' };
@@ -76,7 +88,7 @@ export async function verificarCaptcha(token, secret, ip) {
   const data = await resp.json();
 
   return data.success
-    ? { success: true, captchaPass: emitirPaseCaptcha(claveSecreta) }
+    ? { success: true, captchaPass: emitirPaseCaptcha(claveSecreta, env) }
     : { success: false, error: 'Google rechazó el Captcha.', codes: data['error-codes'] || [] };
 }
 
