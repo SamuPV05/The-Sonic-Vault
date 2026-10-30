@@ -173,9 +173,11 @@ export default function Perfil() {
 
   const handleGuardarFoto = async () => {
     const url = tempFotoURL.trim();
-    const esUrlValida = /^https?:\/\/.+/i.test(url) || url.startsWith('data:image/svg+xml');
-    if (!esUrlValida) {
-      setErrorFoto('Ingresa una URL válida que comience con http:// o https://, o elige un avatar.');
+    const esAvatarPredefinido = AVATARES_PREDEFINIDOS.some((a) => a.url === url);
+    const esHttpsValida = /^https:\/\/[^\s<>"'`]+$/i.test(url) && url.length <= 512;
+
+    if (!esAvatarPredefinido && !esHttpsValida) {
+      setErrorFoto('Ingresa una URL segura (https://) de hasta 512 caracteres o elige un avatar predefinido.');
       return;
     }
 

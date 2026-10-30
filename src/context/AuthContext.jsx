@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, deleteDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { logoutSpotify } from '../services/spotifyService';
 
 // 1. Creamos el contexto
 const AuthContext = createContext();
@@ -147,6 +148,7 @@ export function AuthProvider({ children }) {
 
   // Cancela el 2FA. Si la cuenta nunca fue verificada (registro con correo falso o ajeno), se borra por completo.
   const cancelarRegistroPendiente = async () => {
+    logoutSpotify();
     const currentUser = auth.currentUser;
     if (!currentUser) return;
 
@@ -327,6 +329,7 @@ export function AuthProvider({ children }) {
 
   // D. Cerrar Sesión
   const logout = async () => {
+    logoutSpotify();
     await limpiarSesion2FA(auth.currentUser);
     return signOut(auth);
   };
@@ -354,6 +357,7 @@ export function AuthProvider({ children }) {
       if (!currentUser) {
         setUser(null);
         actualizarSesion2FA(null);
+        logoutSpotify();
         setLoading(false);
         return;
       }
