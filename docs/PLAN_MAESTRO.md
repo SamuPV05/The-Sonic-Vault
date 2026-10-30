@@ -45,7 +45,7 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 - [x] **T17** (4, Argon) Blindaje contra Rollback de intentos en `2fa_codes` e inmutabilidad de propietario en `beats` (`firestore.rules`, `api/2fa.js`).
 - [x] **T18** (2, Flash) Purga de tokens Spotify al cerrar sesión y validación estricta de avatares SVG/URL (`src/context/AuthContext.jsx`, `src/pages/Perfil.jsx`).
 - [x] **T19** (2, Flash) Protección anti-CSRF en Spotify OAuth con parámetro `state` (`src/services/spotifyService.js`, `src/pages/SpotifyCallback.jsx`).
-- [ ] **T20** (2, Flash) Herencia de cabeceras de seguridad en `nginx.conf` (`/assets/`) y control de payload `413` en `server/captcha-server.js`.
+- [x] **T20** (2, Flash) Herencia de cabeceras de seguridad en `nginx.conf` (`/assets/`) y control de payload `413` en `server/captcha-server.js`.
 - [ ] **T21** (1, Flash) Consolidación y versionado de activos de identidad visual, iconos y logos.
 
 ## Decisiones resueltas en la estabilización (Fases A a E completadas)
