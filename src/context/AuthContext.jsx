@@ -34,6 +34,19 @@ const limpiarStorageLegado = () => {
   }
 };
 
+// Función auxiliar para parsear respuestas de API evitando SyntaxError si el servidor devuelve HTML o texto
+const parseJsonSeguro = async (resp, fallbackError = 'Respuesta inesperada del servidor.') => {
+  try {
+    const text = await resp.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { success: false, error: resp.status >= 500 ? 'El servidor experimentó un error temporal. Por favor intenta de nuevo.' : fallbackError };
+    }
+  } catch {
+    return { success: false, error: fallbackError };
+  }
+};
 export function AuthProvider({ children }) {
   // rawUser es el usuario directo devuelto por Firebase Auth tras el primer factor (contraseña o popup)
   const [rawUser, setRawUser] = useState(null);
@@ -110,7 +123,7 @@ export function AuthProvider({ children }) {
       })
     });
 
-    const data = await resp.json();
+    const data = await parseJsonSeguro(resp, 'Error al solicitar el código 2FA al servidor.');
     if (!resp.ok || !data.success) {
       throw new Error(data.error || 'Error al solicitar el código 2FA al servidor.');
     }
@@ -136,7 +149,7 @@ export function AuthProvider({ children }) {
       })
     });
 
-    const data = await resp.json();
+    const data = await parseJsonSeguro(resp, 'Error al verificar el código 2FA con el servidor.');
     if (!resp.ok || !data.success) {
       const err = new Error(data.error || 'Código 2FA inválido.');
       err.locked = Boolean(data.locked);
@@ -212,7 +225,7 @@ export function AuthProvider({ children }) {
       credentials: 'include',
       body: JSON.stringify({ action: 'oauth-session', provider: metodoFallback })
     });
-    const data = await resp.json();
+    const data = await parseJsonSeguro(resp, 'No se pudo establecer la sesión verificada en el servidor.');
     if (!resp.ok || !data.success) {
       throw new Error(data.error || 'No se pudo establecer la sesión verificada en el servidor.');
     }
@@ -408,7 +421,7 @@ export function AuthProvider({ children }) {
           headers: { Authorization: `Bearer ${idToken}` },
           credentials: 'include'
         });
-        const data = await resp.json();
+        const data = await parseJsonSeguro(resp);
         if (resp.ok && data.verified && data.uid === currentUser.uid) {
           actualizarSesion2FA({
             uid: data.uid,

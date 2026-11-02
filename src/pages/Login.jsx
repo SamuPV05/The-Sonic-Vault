@@ -174,7 +174,13 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token })
       });
-      const data = await resp.json();
+      const rawText = await resp.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = { success: false, error: 'El servidor de verificación no respondió adecuadamente.' };
+      }
       if (data.success) {
         setCaptchaValido(true);
         if (data.captchaPass) {

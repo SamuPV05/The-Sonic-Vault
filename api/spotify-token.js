@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 // Función serverless (Vercel) y middleware local:
 // Obtiene el token público de Spotify de forma segura en el servidor evitando errores de CORS.
 
