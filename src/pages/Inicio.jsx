@@ -24,51 +24,60 @@ export default function Inicio() {
   const [beats, setBeats] = useState(0);
   const [decibelios, setDecibelios] = useState(0);
 
-  // Conexión en tiempo real al pulso de la bóveda (stats/global + colección pública echo_reports)
+  // Conexión reactiva en tiempo real a las colecciones de la Bóveda (conteo 100% automático y en vivo)
   useEffect(() => {
-    let reportCount = 0;
-
-    const unsubStats = onSnapshot(
-      doc(db, 'stats', 'global'),
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          const u = Number(data.users);
-          const b = Number(data.beats);
-          const r = Number(data.echo_reports);
-
-          // Si el documento global aún no registró usuarios o beats, mostramos los valores reales base de la bóveda
-          setExploradores(Number.isFinite(u) && u > 0 ? u : 4);
-          setBeats(Number.isFinite(b) && b > 0 ? b : 2);
-          setDecibelios(Math.max(Number.isFinite(r) ? r : 0, reportCount || 16));
-        } else {
-          setExploradores(4);
-          setBeats(2);
-          setDecibelios(Math.max(16, reportCount));
-        }
+    // 1. Conteo automático en vivo de Exploradores (users)
+    const unsubUsuarios = onSnapshot(
+      collection(db, 'users'),
+      (snap) => {
+        if (snap) setExploradores(snap.size);
       },
       (err) => {
-        console.error('Error leyendo contadores globales:', err);
+        console.warn('Lectura reactiva de usuarios (esperando propagación en consola):', err);
       }
     );
 
-    // Conteo en vivo de la red acústica comunitaria para garantizar reflejo exacto de reportes
+    // 2. Conteo automático en vivo de Cintas / Beats (beats)
+    const unsubBeats = onSnapshot(
+      collection(db, 'beats'),
+      (snap) => {
+        if (snap) setBeats(snap.size);
+      },
+      (err) => {
+        console.warn('Lectura reactiva de beats (esperando propagación en consola):', err);
+      }
+    );
+
+    // 3. Conteo automático en vivo de Nodos Acústicos (echo_reports)
     const unsubEchoes = onSnapshot(
       collection(db, 'echo_reports'),
       (snap) => {
-        if (snap && snap.size > 0) {
-          reportCount = snap.size;
-          setDecibelios((prev) => Math.max(prev, snap.size));
-        }
+        if (snap) setDecibelios(snap.size);
       },
       (err) => {
-        console.warn('Lectura complementaria de echo_reports:', err);
+        console.warn('Lectura reactiva de echo_reports:', err);
       }
     );
 
+    // Sincronización complementaria con stats/global
+    const unsubStats = onSnapshot(
+      doc(db, 'stats', 'global'),
+      (snap) => {
+        if (snap.exists()) {
+          const d = snap.data();
+          if (Number.isFinite(d.users) && d.users > 0) setExploradores((prev) => Math.max(prev, d.users));
+          if (Number.isFinite(d.beats) && d.beats > 0) setBeats((prev) => Math.max(prev, d.beats));
+          if (Number.isFinite(d.echo_reports) && d.echo_reports > 0) setDecibelios((prev) => Math.max(prev, d.echo_reports));
+        }
+      },
+      () => {}
+    );
+
     return () => {
-      unsubStats();
+      unsubUsuarios();
+      unsubBeats();
       unsubEchoes();
+      unsubStats();
     };
   }, []);
 

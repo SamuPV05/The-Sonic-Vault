@@ -56,7 +56,8 @@ service cloud.firestore {
     // 2. PERFILES DE USUARIO (AuthContext.jsx y Perfil.jsx)
     // Cada explorador solo puede leer, crear, editar o eliminar su propio documento.
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      // Lectura comunitaria publica para conteo automatico en vivo en portada
+      allow read: if true;
       allow create, update: if isOwner(userId)
         && (!('uid' in request.resource.data) || request.resource.data.uid == userId);
       allow delete: if isOwner(userId);
@@ -67,8 +68,8 @@ service cloud.firestore {
     // - list: restringido a los beats cuyo userId coincida con el usuario autenticado.
     // - create/update/delete: exclusivo del propietario del beat (userId inmutable en update — T17).
     match /beats/{beatId} {
-      allow get: if true;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Lectura publica para reproduccion por enlace (?beat=ID) y conteo automatico en vivo
+      allow read: if true;
 
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
