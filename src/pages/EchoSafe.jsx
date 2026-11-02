@@ -15,6 +15,9 @@ import { ACOUSTIC_LEVELS, HEAT_CONFIG, SOUND_CATEGORIES, getAcousticClassificati
 import EchoRecoveryModal from '../components/EchoRecoveryModal';
 import './EchoSafe.css';
 
+// Clave publica autorizada de CARTO Basemaps para renderizar teselas oscuras sin marca de agua
+const CARTO_API_KEY = (CARTO_API_KEY || 'cb1_4ypr_1_0fe0885a43f31cbe8ba0f931').trim();
+
 
 // --- ICONOS LIMPIOS Y MARCADORES TÁCTICOS ---
 const userIcon = L.divIcon({
@@ -958,14 +961,14 @@ export default function EchoSafe() {
               {/* 1. Capa base de calles (atenuada para no saturar) */}
               <TileLayer
                 className="echosafe-roads-tile"
-                url={`https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png${import.meta.env.VITE_CARTO_API_KEY ? `?key=${import.meta.env.VITE_CARTO_API_KEY}` : ''}`}
+                url={`https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png${CARTO_API_KEY ? `?key=${CARTO_API_KEY}` : ''}`}
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
               />
 
               {/* 2. Capa de etiquetas: barrios y ciudades nítidos flotando con halo protector */}
               <TileLayer
                 className="echosafe-labels-tile"
-                url={`https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png${import.meta.env.VITE_CARTO_API_KEY ? `?key=${import.meta.env.VITE_CARTO_API_KEY}` : ''}`}
+                url={`https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png${CARTO_API_KEY ? `?key=${CARTO_API_KEY}` : ''}`}
                 zIndex={250}
               />
               <MapFlyTo target={flyTarget} />
