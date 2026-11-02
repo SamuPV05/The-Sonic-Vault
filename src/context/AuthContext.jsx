@@ -17,18 +17,14 @@ import { logoutSpotify } from '../services/spotifyService';
 // 1. Creamos el contexto
 const AuthContext = createContext();
 
-// 2. Un Hook personalizado para usar este contexto fácilmente
+// 2. Hook personalizado para usar este contexto fácilmente
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth debe usarse dentro de un AuthProvider");
   return context;
 };
 
-// 3. El Proveedor que envuelve toda la app
-// --- SESIÓN 2FA VERIFICADA EN SERVIDOR (Cookie firmada HttpOnly + /api/2fa) ---
-// Ya no se confía en valores planos de sessionStorage. La sesión 2FA se valida contra el
-// servidor (/api/2fa) usando el ID token de Firebase y la cookie firmada HttpOnly sv_2fa_session.
-
+// 3. Limpieza de almacenamiento legado
 const limpiarStorageLegado = () => {
   try {
     sessionStorage.removeItem('sv_2fa_session');
@@ -39,12 +35,15 @@ const limpiarStorageLegado = () => {
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  // rawUser es el usuario directo devuelto por Firebase Auth tras el primer factor (contraseña o popup)
+  const [rawUser, setRawUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sesion2FA, setSesion2FA] = useState(null);
   const sesion2FARef = useRef(null);
-  // Mientras un popup OAuth está en curso, evitamos que Login dispare el envío del código por correo
+
+  // Bandera para evitar que onAuthStateChanged colisione con el registro de sesión OAuth
   const [oauthEnCurso, setOauthEnCurso] = useState(false);
+  const oauthEnCursoRef = useRef(false);
 
   const actualizarSesion2FA = (data) => {
     sesion2FARef.current = data;
@@ -52,7 +51,23 @@ export function AuthProvider({ children }) {
   };
 
   // La sesión solo cuenta como verificada si el servidor la emitió para el UID autenticado y no ha expirado
-  const is2FAPassed = !!(user && sesion2FA && sesion2FA.uid === user.uid && Date.now() <= sesion2FA.expira);
+  const is2FAPassed = Boolean(
+    rawUser && 
+    sesion2FA && 
+    sesion2FA.uid === rawUser.uid && 
+    Date.now() <= sesion2FA.expira
+  );
+
+  // Usuario en cuarentena de segundo factor: autenticó el primer factor pero aún no ha validado 2FA
+  const is2FAPending = Boolean(rawUser && !is2FAPassed);
+
+  // CERROJO DE SEGURIDAD ESTRICTO:
+  // Para el resto de la aplicación (Navbar, BeatIt, EchoSafe, Perfil), el usuario NO existe
+  // a menos que haya superado exitosamente el 2FA. Si está en cuarentena, 'user' es estrictamente null.
+  const user = is2FAPassed ? rawUser : null;
+
+  // pending2FAUser se exporta EXCLUSIVAMENTE para que la vista de Login pueda mostrar el correo y validar el código
+  const pending2FAUser = is2FAPending ? rawUser : null;
 
   const limpiarSesion2FA = async (currentUser = auth.currentUser) => {
     limpiarStorageLegado();
@@ -146,16 +161,19 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  // Cancela el 2FA. Si la cuenta nunca fue verificada (registro con correo falso o ajeno), se borra por completo.
+  // Cancela el 2FA. Si la cuenta nunca fue verificada (registro pendiente), se borra por completo.
   const cancelarRegistroPendiente = async () => {
     logoutSpotify();
     const currentUser = auth.currentUser;
-    if (!currentUser) return;
+    if (!currentUser) {
+      setRawUser(null);
+      actualizarSesion2FA(null);
+      return;
+    }
 
     let pendiente = false;
     try {
       const snap = await getDoc(doc(db, 'users', currentUser.uid));
-      // Cuentas antiguas sin el campo se consideran verificadas
       pendiente = snap.exists() && snap.data().verificado === false;
     } catch (err) {
       console.error('No se pudo leer el estado de la cuenta:', err);
@@ -171,7 +189,8 @@ export function AuthProvider({ children }) {
         } catch (statsErr) {
           console.error('No se pudo descontar el contador de usuarios:', statsErr);
         }
-        await deleteUser(currentUser); // También cierra la sesión
+        await deleteUser(currentUser);
+        setRawUser(null);
         return;
       } catch (err) {
         console.error('No se pudo eliminar la cuenta pendiente:', err);
@@ -191,7 +210,7 @@ export function AuthProvider({ children }) {
         Authorization: `Bearer ${idToken}`
       },
       credentials: 'include',
-      body: JSON.stringify({ action: 'oauth-session' })
+      body: JSON.stringify({ action: 'oauth-session', provider: metodoFallback })
     });
     const data = await resp.json();
     if (!resp.ok || !data.success) {
@@ -204,20 +223,15 @@ export function AuthProvider({ children }) {
     });
   };
 
-  // Funciones Mágicas
-
   // A. Registrar nuevo usuario con Email
   const signup = async (email, password, nombre) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
     
-    // Actualizamos el perfil de Firebase Auth con el nombre del usuario
-    // Esto hace que user.displayName funcione en toda la app
     await updateProfile(firebaseUser, {
       displayName: nombre
     });
     
-    // Al registrarse, le creamos un documento en Firestore (La Bóveda)
     await setDoc(doc(db, 'users', firebaseUser.uid), {
       uid: firebaseUser.uid,
       nombre: nombre,
@@ -225,7 +239,7 @@ export function AuthProvider({ children }) {
       biografia: "Nuevo explorador sónico...",
       bio: "Nuevo explorador sónico...",
       ciudad: "",
-      verificado: false, // Pasa a true cuando confirma el primer código del correo
+      verificado: false,
       fechaRegistro: new Date().toISOString()
     });
     try {
@@ -234,33 +248,32 @@ export function AuthProvider({ children }) {
       console.error('No se pudo actualizar el contador de usuarios:', statsErr);
     }
 
-    // Forzamos que onAuthStateChanged recoja el displayName actualizado
     await auth.currentUser.reload();
-    setUser(auth.currentUser);
-
+    setRawUser(auth.currentUser);
     return firebaseUser;
   };
 
-  // B. Iniciar Sesión normal
-  const login = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+  // B. Iniciar Sesión normal con Email/Contraseña
+  const login = async (email, password) => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    setRawUser(userCredential.user);
+    return userCredential.user;
   };
 
   // C. Iniciar Sesión con GOOGLE
-  // Google ya verifica la identidad y el correo; el servidor valida el proveedor en el ID token y emite la cookie firmada.
   const loginWithGoogle = async () => {
     setOauthEnCurso(true);
+    oauthEnCursoRef.current = true;
     try {
       const googleProvider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, googleProvider);
       const firebaseUser = userCredential.user;
+      setRawUser(firebaseUser);
       await registrarSesionOAuthEnServidor(firebaseUser, 'google');
 
-      // Revisamos si es la primera vez que entra con Google
       const docRef = doc(db, 'users', firebaseUser.uid);
       const docSnap = await getDoc(docRef);
 
-      // Si no existe en nuestra base de datos, lo creamos
       if (!docSnap.exists()) {
         await setDoc(docRef, {
           uid: firebaseUser.uid,
@@ -270,7 +283,7 @@ export function AuthProvider({ children }) {
           bio: "Explorador sónico verificado por Google",
           ciudad: "",
           foto: firebaseUser.photoURL,
-          verificado: true, // Google ya garantiza que el correo es real
+          verificado: true,
           fechaRegistro: new Date().toISOString()
         });
         try {
@@ -280,15 +293,23 @@ export function AuthProvider({ children }) {
         }
       }
       return firebaseUser;
+    } catch (err) {
+      console.error('Error Google Auth:', err);
+      // Si la verificación de sesión en servidor falla, cerramos sesión de Firebase para no dejar estado inconsistente
+      await signOut(auth).catch(() => {});
+      setRawUser(null);
+      actualizarSesion2FA(null);
+      throw err;
     } finally {
       setOauthEnCurso(false);
+      oauthEnCursoRef.current = false;
     }
   };
 
   // C2. Iniciar Sesión con MICROSOFT
-  // Igual que Google: el proveedor ya verificó la cuenta y el servidor emite la cookie firmada tras validar el token.
   const loginWithMicrosoft = async () => {
     setOauthEnCurso(true);
+    oauthEnCursoRef.current = true;
     try {
       const microsoftProvider = new OAuthProvider('microsoft.com');
       microsoftProvider.setCustomParameters({
@@ -296,13 +317,12 @@ export function AuthProvider({ children }) {
       });
       const userCredential = await signInWithPopup(auth, microsoftProvider);
       const firebaseUser = userCredential.user;
+      setRawUser(firebaseUser);
       await registrarSesionOAuthEnServidor(firebaseUser, 'microsoft');
 
-      // Revisamos si es la primera vez que entra con Microsoft
       const docRef = doc(db, 'users', firebaseUser.uid);
       const docSnap = await getDoc(docRef);
 
-      // Si no existe en nuestra base de datos, lo creamos
       if (!docSnap.exists()) {
         await setDoc(docRef, {
           uid: firebaseUser.uid,
@@ -312,7 +332,7 @@ export function AuthProvider({ children }) {
           bio: "Explorador sónico verificado por Microsoft",
           ciudad: "",
           foto: firebaseUser.photoURL || null,
-          verificado: true, // Microsoft ya garantiza que el correo es real
+          verificado: true,
           fechaRegistro: new Date().toISOString()
         });
         try {
@@ -322,8 +342,15 @@ export function AuthProvider({ children }) {
         }
       }
       return firebaseUser;
+    } catch (err) {
+      console.error('Error Microsoft Auth:', err);
+      await signOut(auth).catch(() => {});
+      setRawUser(null);
+      actualizarSesion2FA(null);
+      throw err;
     } finally {
       setOauthEnCurso(false);
+      oauthEnCursoRef.current = false;
     }
   };
 
@@ -331,6 +358,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     logoutSpotify();
     await limpiarSesion2FA(auth.currentUser);
+    setRawUser(null);
     return signOut(auth);
   };
 
@@ -338,31 +366,33 @@ export function AuthProvider({ children }) {
   const updateUserPhoto = async (photoURL) => {
     if (!auth.currentUser) return;
     
-    // Actualizar en Firebase Auth
     await updateProfile(auth.currentUser, { photoURL });
-    
-    // Actualizar en Firestore
     const userDocRef = doc(db, 'users', auth.currentUser.uid);
     await setDoc(userDocRef, { foto: photoURL }, { merge: true });
     
-    // Refrescar el usuario en el estado
     await auth.currentUser.reload();
-    setUser({ ...auth.currentUser });
+    setRawUser({ ...auth.currentUser });
   };
 
-  // Observador: verifica el usuario en Firebase y valida la cookie de sesión 2FA contra el servidor
+  // Observador: sincroniza usuario de Firebase y valida cookie de sesión 2FA
   useEffect(() => {
     limpiarStorageLegado();
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        setUser(null);
+        setRawUser(null);
         actualizarSesion2FA(null);
         logoutSpotify();
         setLoading(false);
         return;
       }
 
-      setUser(currentUser);
+      setRawUser(currentUser);
+
+      // Si hay un flujo OAuth activo en este momento, no competimos con registrarSesionOAuthEnServidor
+      if (oauthEnCursoRef.current) {
+        setLoading(false);
+        return;
+      }
 
       // Si ya tenemos en memoria una sesión 2FA válida para este mismo UID, no repetimos la consulta
       const actual = sesion2FARef.current;
@@ -386,11 +416,18 @@ export function AuthProvider({ children }) {
             expira: data.expira
           });
         } else {
-          actualizarSesion2FA(null);
+          // Solo limpiar si en el intermedio no se fijó una sesión válida
+          const vigente = sesion2FARef.current;
+          if (!vigente || vigente.uid !== currentUser.uid || Date.now() > vigente.expira) {
+            actualizarSesion2FA(null);
+          }
         }
       } catch (err) {
         console.error('Error verificando sesión 2FA con el servidor:', err);
-        actualizarSesion2FA(null);
+        const vigente = sesion2FARef.current;
+        if (!vigente || vigente.uid !== currentUser.uid || Date.now() > vigente.expira) {
+          actualizarSesion2FA(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -399,7 +436,23 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ signup, login, loginWithGoogle, loginWithMicrosoft, logout, updateUserPhoto, user, loading, is2FAPassed, oauthEnCurso, send2FACode, verify2FA, cancelarRegistroPendiente }}>
+    <AuthContext.Provider value={{ 
+      signup, 
+      login, 
+      loginWithGoogle, 
+      loginWithMicrosoft, 
+      logout, 
+      updateUserPhoto, 
+      user, 
+      pending2FAUser,
+      loading, 
+      is2FAPassed, 
+      is2FAPending,
+      oauthEnCurso, 
+      send2FACode, 
+      verify2FA, 
+      cancelarRegistroPendiente 
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

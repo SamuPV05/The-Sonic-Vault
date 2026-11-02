@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { db } from '../firebase/config';
-import { collection, addDoc, onSnapshot, query, limit, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, limit, orderBy, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -26,7 +27,7 @@ const userIcon = L.divIcon({
 function MapFlyTo({ target }) {
   const map = useMap();
   useEffect(() => {
-    if (target) map.flyTo(target.coords, 16, { duration: 2 });
+    if (target?.coords) map.flyTo(target.coords, target.zoom || 16, { duration: 2 });
   }, [target, map]);
   return null;
 }
@@ -58,21 +59,50 @@ function FitToReports({ reports, enabled }) {
   return null;
 }
 
+// Cálculo de distancia ortodrómica (Haversine) en metros entre dos coordenadas geográficas
+function getHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Radio medio de la Tierra en metros
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default function EchoSafe() {
   const { user } = useAuth();
+  const location = useLocation();
+  const initialNavCoords = location.state?.targetCoords;
+  const hasNavCoords = initialNavCoords && Number.isFinite(initialNavCoords[0]) && Number.isFinite(initialNavCoords[1]);
+  const handledStateRef = useRef(hasNavCoords ? `${initialNavCoords[0]}_${initialNavCoords[1]}` : null);
   const [reportes, setReportes] = useState([]);
   const [toasts, setToasts] = useState([]);
-  
-  const [userLocation, setUserLocation] = useState([6.2442, -75.5812]);
-  const [isTracking, setIsTracking] = useState(false);
-  const [locationStatus, setLocationStatus] = useState("Esperando enlace satelital...");
-  const [locationSource, setLocationSource] = useState(null); // 'gps' | 'manual'
+
+  const [userLocation, setUserLocation] = useState(() => (hasNavCoords ? initialNavCoords : [6.2442, -75.5812]));
+  const [isTracking, setIsTracking] = useState(() => !!hasNavCoords);
+  const [locationStatus, setLocationStatus] = useState(() => (hasNavCoords ? "Nodo de reporte enfocado desde Perfil" : "Esperando enlace satelital..."));
+  const [locationSource, setLocationSource] = useState(() => (hasNavCoords ? 'manual' : null));
   const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [pickMode, setPickMode] = useState(false);
-  const [flyTarget, setFlyTarget] = useState(null);
+  const [flyTarget, setFlyTarget] = useState(() => (hasNavCoords ? { coords: initialNavCoords, zoom: 17, id: Date.now() } : null));
   const [mapZoom, setMapZoom] = useState(13);
-  const [viewMode, setViewMode] = useState('heat'); // 'heat' | 'points'
-  
+  const [viewMode, setViewMode] = useState(() => (hasNavCoords ? 'points' : 'heat'));
+  // Calibración de sensibilidad de micrófono (persistencia en localStorage)
+  const [calibrationOffset, setCalibrationOffset] = useState(() => {
+    const saved = localStorage.getItem('echosafe_mic_offset');
+    return saved !== null ? Number(saved) : 0;
+  });
+
+  const handleCalibrationChange = (newOffset) => {
+    setCalibrationOffset(newOffset);
+    localStorage.setItem('echosafe_mic_offset', String(newOffset));
+  };
+
+
   const [finalAverage, setFinalAverage] = useState(null);
   const [scanSummary, setScanSummary] = useState(null);
   const [categoria, setCategoria] = useState(SOUND_CATEGORIES[0].id);
@@ -81,6 +111,8 @@ export default function EchoSafe() {
   // Estados de filtros para el mapa y las consultas
   const [filtroCategoria, setFiltroCategoria] = useState('all');
   const [filtroNivel, setFiltroNivel] = useState('all');
+  
+
 
   // Estado del Protocolo de Descompresión Auditiva (Fase 2)
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
@@ -101,25 +133,72 @@ export default function EchoSafe() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Consulta optimizada acotada a los 150 registros más recientes
+  // Enfocar automáticamente coordenadas si cambian por navegación posterior
   useEffect(() => {
-    const q = query(collection(db, "echo_reports"), limit(150));
-    const unsubscribe = onSnapshot(q, (s) => {
-      const data = [];
-      s.forEach((d) => data.push({ id: d.id, ...d.data() }));
+    const coords = location.state?.targetCoords;
+    if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+      const key = `${coords[0]}_${coords[1]}`;
+      if (handledStateRef.current === key) return;
+      handledStateRef.current = key;
 
-      // Ordenar cronológicamente (más recientes primero) combinando serverTimestamp y strings
-      data.sort((a, b) => {
-        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.fecha ? new Date(a.fecha).getTime() || 0 : 0);
-        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.fecha ? new Date(b.fecha).getTime() || 0 : 0);
-        return timeB - timeA;
-      });
+      const t = setTimeout(() => {
+        setUserLocation(coords);
+        setIsTracking(true);
+        setLocationSource('manual');
+        setLocationStatus('Nodo de reporte enfocado desde Perfil');
+        setViewMode('points');
+        setFlyTarget({ coords, zoom: 17, id: Date.now() });
+        showToast('info', 'Ubicación Enfocada', 'Visualizando reporte acústico seleccionado en el mapa.');
+      }, 0);
+      return () => clearTimeout(t);
+    }
+  }, [location]);
+  // Consulta optimizada acotada a los 150 registros más recientes ordenados en el servidor
+  useEffect(() => {
+    let q;
+    try {
+      q = query(collection(db, "echo_reports"), orderBy("createdAt", "desc"), limit(150));
+    } catch {
+      q = query(collection(db, "echo_reports"), limit(150));
+    }
 
-      setReportes(data);
-    }, (error) => {
-      console.error("Error al sincronizar reportes de Firestore:", error);
-      showToast('error', 'Error de enlace', 'No se pudieron sincronizar los datos de la red sonora.');
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (s) => {
+        const data = [];
+        s.forEach((d) => data.push({ id: d.id, ...d.data() }));
+
+        // Ordenar cronológicamente (más recientes primero) combinando serverTimestamp y strings
+        data.sort((a, b) => {
+          const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.fecha ? new Date(a.fecha).getTime() || 0 : 0);
+          const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.fecha ? new Date(b.fecha).getTime() || 0 : 0);
+          return timeB - timeA;
+        });
+
+        setReportes(data);
+      },
+      (error) => {
+        console.error("Error al sincronizar reportes de Firestore con ordenación de servidor:", error);
+        // Fallback resiliente a consulta sin orderBy si la colección contiene docs legacy sin createdAt
+        const fallbackQ = query(collection(db, "echo_reports"), limit(150));
+        onSnapshot(
+          fallbackQ,
+          (fallbackSnap) => {
+            const fallbackData = [];
+            fallbackSnap.forEach((d) => fallbackData.push({ id: d.id, ...d.data() }));
+            fallbackData.sort((a, b) => {
+              const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.fecha ? new Date(a.fecha).getTime() || 0 : 0);
+              const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.fecha ? new Date(b.fecha).getTime() || 0 : 0);
+              return timeB - timeA;
+            });
+            setReportes(fallbackData);
+          },
+          () => {
+            showToast('error', 'Error de enlace', 'No se pudieron sincronizar los datos de la red sonora.');
+          }
+        );
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -213,16 +292,82 @@ export default function EchoSafe() {
 
   const {
     start: iniciarMedicion,
+    cancel: cancelarMedicion,
     isListening,
     progress: listeningProgress,
     liveDb,
     analyser: audioAnalyser
-  } = useAudioMeter({ onComplete: handleScanComplete, onError: handleScanError });
+  } = useAudioMeter({ onComplete: handleScanComplete, onError: handleScanError, calibrationOffset });
 
   const iniciarEscaneo = () => {
     setFinalAverage(null);
     setScanSummary(null);
     iniciarMedicion();
+  };
+
+  // Búsqueda inteligente del refugio de calma (<= 50 dB) más cercano con la fórmula de Haversine
+  const handleBuscarRefugioTranquilo = () => {
+    const calmReports = reportes.filter((r) => {
+      const dbVal = Number(r.db);
+      const lat = Number(r.lat);
+      const lng = Number(r.lng);
+      return !isNaN(dbVal) && dbVal <= 50 && Number.isFinite(lat) && Number.isFinite(lng);
+    });
+
+    if (calmReports.length === 0) {
+      showToast(
+        'warning',
+        'Sin refugios registrados',
+        'No hay nodos con nivel de calma (≤ 50 dB) reportados actualmente en la red comunitaria.'
+      );
+      return;
+    }
+
+    const currentCoords = userLocation;
+    let closestReport = null;
+    let minDistance = Infinity;
+
+    calmReports.forEach((report) => {
+      const dist = getHaversineDistance(
+        currentCoords[0],
+        currentCoords[1],
+        Number(report.lat),
+        Number(report.lng)
+      );
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestReport = report;
+      }
+    });
+
+    if (!closestReport) return;
+
+    const distText =
+      minDistance < 1000
+        ? `${Math.round(minDistance)} m`
+        : `${(minDistance / 1000).toFixed(1)} km`;
+
+    setViewMode('points');
+    setFiltroNivel('all');
+    setFlyTarget({
+      coords: [Number(closestReport.lat), Number(closestReport.lng)],
+      zoom: 17,
+      id: Date.now()
+    });
+
+    showToast(
+      'success',
+      'Refugio de Calma Encontrado',
+      `Refugio a ${distText} de tu posición actual (${closestReport.db} dB • ${closestReport.descripcion || 'Entorno seguro'}).`,
+      6000
+    );
+  };
+
+  const handleCancelarEscaneo = () => {
+    cancelarMedicion();
+    setFinalAverage(null);
+    setScanSummary(null);
+    showToast('info', 'Escaneo cancelado', 'La medición acústica fue interrumpida por el usuario.');
   };
 
   const handleGuardarReporte = async () => {
@@ -315,7 +460,7 @@ export default function EchoSafe() {
 
   return (
     <main className="echosafe-wrapper">
-      
+
       {/* CABECERA FUTURISTA Y BADGE EN VIVO */}
       <section className="echosafe-hero">
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
@@ -412,10 +557,10 @@ export default function EchoSafe() {
 
       {/* DISPOSICIÓN PRINCIPAL: CONSOLA DE MONITOREO Y MAPA TÁCTICO */}
       <div className="echosafe-main-grid">
-        
+
         {/* PANEL IZQUIERDO: TERMINAL DE CONTROL Y SONÓMETRO */}
         <section className="echosafe-control-panel">
-          
+
           <div className="echosafe-panel-header">
             <div className="echosafe-gps-pill" style={{ borderColor: isTracking ? 'rgba(0, 240, 255, 0.4)' : '#262b3d' }}>
               <i className="fa-solid fa-satellite-dish" style={{ color: isTracking ? '#00F0FF' : '#FBBF24' }}></i>
@@ -430,7 +575,7 @@ export default function EchoSafe() {
 
           {/* EL ARO DEL MEDIDOR */}
           <div className="echosafe-gauge-container">
-            <div 
+            <div
               className="echosafe-gauge-ring"
               style={{
                 borderColor: ringColor,
@@ -444,7 +589,7 @@ export default function EchoSafe() {
 
               {/* Insignia de clasificación en vivo */}
               {dbLevel > 0 && (
-                <div 
+                <div
                   className="echosafe-classification-badge"
                   style={{
                     background: `${acousticInfo.color}20`,
@@ -461,8 +606,8 @@ export default function EchoSafe() {
             {/* Barra de progreso de escaneo */}
             {isListening && (
               <div className="echosafe-progress-bar-wrap">
-                <div 
-                  className="echosafe-progress-bar-fill" 
+                <div
+                  className="echosafe-progress-bar-fill"
                   style={{ width: `${listeningProgress}%`, background: ringColor, color: ringColor }}
                 ></div>
               </div>
@@ -471,30 +616,82 @@ export default function EchoSafe() {
 
           {/* ANALIZADOR DE ESPECTRO EN VIVO */}
           <SpectrumVisualizer analyser={audioAnalyser} color={ringColor} />
+          {/* CALIBRACIÓN RÁPIDA DE MICRÓFONO (OFFSET ±15 dB) */}
+          <div
+            style={{
+              margin: '0.8rem 0',
+              padding: '8px 12px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <i className="fa-solid fa-sliders" style={{ color: '#00F0FF', fontSize: '0.75rem' }} />
+                Calibración Micrófono:
+              </span>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 'bold',
+                  color: calibrationOffset === 0 ? '#94a3b8' : (calibrationOffset > 0 ? '#10B981' : '#FBBF24'),
+                  background: 'rgba(0,0,0,0.3)',
+                  padding: '1px 6px',
+                  borderRadius: '4px'
+                }}
+              >
+                {calibrationOffset > 0 ? `+${calibrationOffset}` : calibrationOffset} dB
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#64748b' }}>-15 dB</span>
+              <input
+                type="range"
+                min="-15"
+                max="15"
+                step="1"
+                value={calibrationOffset}
+                onChange={(e) => handleCalibrationChange(Number(e.target.value))}
+                title={`Ajuste de sensibilidad del micrófono: ${calibrationOffset} dB`}
+                style={{
+                  flex: 1,
+                  accentColor: '#00F0FF',
+                  cursor: 'pointer',
+                  height: '4px'
+                }}
+              />
+              <span style={{ fontSize: '0.65rem', color: '#64748b' }}>+15 dB</span>
+            </div>
+          </div>
+
 
           {/* BOTONERA Y CONTROLES TÁCTICOS */}
           <div className="echosafe-actions-block">
             {!isTracking ? (
               <>
-              <button 
-                onClick={iniciarRastreo} 
-                className="echosafe-btn-primary echosafe-btn-locate"
-              >
-                <i className="fa-solid fa-location-crosshairs"></i>
-                UBICAR CON GPS
-              </button>
-            <button
-                type="button"
-                onClick={alternarSeleccionManual}
-                className={`echosafe-btn-secondary ${pickMode ? 'active' : ''}`}
-              >
-                <i className={`fa-solid ${pickMode ? 'fa-xmark' : 'fa-hand-pointer'}`}></i>
-                {pickMode ? 'CANCELAR SELECCIÓN' : 'ELEGIR PUNTO MANUALMENTE'}
-              </button>
+                <button
+                  onClick={iniciarRastreo}
+                  className="echosafe-btn-primary echosafe-btn-locate"
+                >
+                  <i className="fa-solid fa-location-crosshairs"></i>
+                  UBICAR CON GPS
+                </button>
+                <button
+                  type="button"
+                  onClick={alternarSeleccionManual}
+                  className={`echosafe-btn-secondary ${pickMode ? 'active' : ''}`}
+                >
+                  <i className={`fa-solid ${pickMode ? 'fa-xmark' : 'fa-hand-pointer'}`}></i>
+                  {pickMode ? 'CANCELAR SELECCIÓN' : 'ELEGIR PUNTO MANUALMENTE'}
+                </button>
               </>
             ) : !isListening && finalAverage === null ? (
-              <button 
-                onClick={iniciarEscaneo} 
+              <button
+                onClick={iniciarEscaneo}
                 className="echosafe-btn-primary echosafe-btn-scan"
               >
                 <i className="fa-solid fa-microphone-lines"></i>
@@ -512,6 +709,35 @@ export default function EchoSafe() {
                 <div style={{ color: ringColor, fontWeight: 700, fontSize: '0.88rem', letterSpacing: '0.5px' }}>
                   Analizando espectro acústico ({Math.round(listeningProgress)}%)
                 </div>
+                <button
+                  type="button"
+                  onClick={handleCancelarEscaneo}
+                  style={{
+                    marginTop: '8px',
+                    background: 'rgba(255, 68, 68, 0.12)',
+                    color: '#ff6666',
+                    border: '1px solid rgba(255, 68, 68, 0.35)',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: '0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 68, 68, 0.25)';
+                    e.currentTarget.style.borderColor = '#ff4444';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 68, 68, 0.12)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 68, 68, 0.35)';
+                  }}
+                >
+                  <i className="fa-solid fa-xmark" /> CANCELAR ESCANEO
+                </button>
               </div>
             ) : (
               <div className="echosafe-form-container">
@@ -586,8 +812,8 @@ export default function EchoSafe() {
                     </label>
                     <span className="echosafe-char-count">{descripcion.length} / 180</span>
                   </div>
-                  <textarea 
-                    value={descripcion} 
+                  <textarea
+                    value={descripcion}
                     onChange={(e) => setDescripcion(e.target.value.slice(0, 180))}
                     placeholder="Ej. Tráfico pesado en hora pico, música de terraza, zona tranquila de parque..."
                     className="echosafe-textarea"
@@ -596,15 +822,15 @@ export default function EchoSafe() {
                 </div>
 
                 <div className="echosafe-form-btn-row">
-                  <button 
-                    onClick={() => { setFinalAverage(null); setScanSummary(null); }} 
+                  <button
+                    onClick={() => { setFinalAverage(null); setScanSummary(null); }}
                     className="echosafe-btn-repeat"
                   >
                     REPETIR
                   </button>
-                  <button 
-                    onClick={handleGuardarReporte} 
-                    disabled={!user} 
+                  <button
+                    onClick={handleGuardarReporte}
+                    disabled={!user}
                     className="echosafe-btn-transmit"
                   >
                     <i className="fa-solid fa-satellite"></i>
@@ -618,7 +844,7 @@ export default function EchoSafe() {
 
         {/* PANEL DERECHO: VISUALIZADOR CARTOGRÁFICO INMERSIVO */}
         <section className="echosafe-map-panel">
-          
+
           <div className="echosafe-map-hud-header">
             <div className="echosafe-map-title">
               <i className="fa-solid fa-earth-americas"></i>
@@ -655,8 +881,8 @@ export default function EchoSafe() {
                 <i className="fa-solid fa-filter" style={{ marginRight: '4px', color: '#00F0FF' }}></i>
                 Filtrar:
               </span>
-              <select 
-                value={filtroCategoria} 
+              <select
+                value={filtroCategoria}
                 onChange={(e) => setFiltroCategoria(e.target.value)}
                 className="echosafe-filter-select"
               >
@@ -666,8 +892,8 @@ export default function EchoSafe() {
                 ))}
               </select>
 
-              <select 
-                value={filtroNivel} 
+              <select
+                value={filtroNivel}
                 onChange={(e) => setFiltroNivel(e.target.value)}
                 className="echosafe-filter-select"
               >
@@ -678,6 +904,37 @@ export default function EchoSafe() {
                 <option value="critical">Peligro auditivo (&gt; 80 dB)</option>
               </select>
             </div>
+                            <button
+                type="button"
+                onClick={handleBuscarRefugioTranquilo}
+                title="Calcular y volar al nodo calmo (≤ 50 dB) más cercano a tu ubicación con la fórmula Haversine"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)',
+                  border: '1px solid rgba(0, 240, 255, 0.4)',
+                  color: '#00F0FF',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: '0.2s',
+                  boxShadow: '0 0 10px rgba(0, 240, 255, 0.15)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 240, 255, 0.3) 0%, rgba(16, 185, 129, 0.3) 100%)';
+                  e.currentTarget.style.boxShadow = '0 0 15px rgba(0, 240, 255, 0.35)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)';
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 240, 255, 0.15)';
+                }}
+              >
+                <i className="fa-solid fa-shield-heart" style={{ color: '#10B981' }} />
+                <span>REFUGIO MÁS CERCANO</span>
+              </button>
 
             <div className="echosafe-filter-badge">
               {reportesFiltrados.length} de {totalReportes} puntos visibles
@@ -698,7 +955,19 @@ export default function EchoSafe() {
               </div>
             )}
             <MapContainer center={userLocation} zoom={13} style={{ height: '100%', width: '100%', background: '#07080d' }}>
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+              {/* 1. Capa base de calles (atenuada para no saturar) */}
+              <TileLayer
+                className="echosafe-roads-tile"
+                url={`https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png${import.meta.env.VITE_CARTO_API_KEY ? `?key=${import.meta.env.VITE_CARTO_API_KEY}` : ''}`}
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              />
+
+              {/* 2. Capa de etiquetas: barrios y ciudades nítidos flotando con halo protector */}
+              <TileLayer
+                className="echosafe-labels-tile"
+                url={`https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png${import.meta.env.VITE_CARTO_API_KEY ? `?key=${import.meta.env.VITE_CARTO_API_KEY}` : ''}`}
+                zIndex={250}
+              />
               <MapFlyTo target={flyTarget} />
 
               <MapEvents onZoomChange={setMapZoom} pickMode={pickMode} onPick={fijarUbicacionManual} />
@@ -751,12 +1020,12 @@ export default function EchoSafe() {
 
       {/* MODAL PROTOCOLO DE DESCOMPRESIÓN AUDITIVA & SOUND HEALING (FASE 2) */}
       {showRecoveryModal && (
-        <EchoRecoveryModal 
-          onClose={() => setShowRecoveryModal(false)} 
-          initialDb={recoveryInitialDb} 
+        <EchoRecoveryModal
+          onClose={() => setShowRecoveryModal(false)}
+          initialDb={recoveryInitialDb}
         />
       )}
     </main>
   );
 }
-
+

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { db } from '../firebase/config';
+import { auth, db } from '../firebase/config';
+import { updateProfile } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
-import { collection, getDocs, query, where, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { collection, getDocs, query, where, doc, getDoc, setDoc, deleteDoc, increment, onSnapshot } from 'firebase/firestore';
+import { Link, useNavigate } from 'react-router-dom';
 import SpotifyProfileWidget from '../components/SpotifyProfileWidget';
 import EchoToast from '../components/EchoToast';
 import { useToast } from '../hooks/useToast';
@@ -23,6 +24,7 @@ const AVATARES_PREDEFINIDOS = [
 ];
 
 export default function Perfil() {
+  const navigate = useNavigate();
   const { user, updateUserPhoto } = useAuth();
   const { toasts, showToast, dismissToast } = useToast();
   const [misBeats, setMisBeats] = useState([]);
@@ -31,7 +33,9 @@ export default function Perfil() {
   const [artistasDB, setArtistasDB] = useState({});
 
   // PerfilData: bio y vibes (solo guardamos artistId y eraIndex)
-  const [perfilData, setPerfilData] = useState({ bio: '', biografia: '', vibes: [null, null, null] });
+  const [perfilData, setPerfilData] = useState({ bio: '', biografia: '', ciudad: '', nombre: '', vibes: [null, null, null] });
+  const [tempNombre, setTempNombre] = useState('');
+  const [tempCiudad, setTempCiudad] = useState('');
   
   const [editandoBio, setEditandoBio] = useState(false);
   const [tempBio, setTempBio] = useState('');
@@ -44,6 +48,8 @@ export default function Perfil() {
   const [tempFotoURL, setTempFotoURL] = useState('');
   const [guardandoFoto, setGuardandoFoto] = useState(false);
   const [errorFoto, setErrorFoto] = useState('');
+  const [beatAEliminar, setBeatAEliminar] = useState(null);
+  const [eliminandoBeat, setEliminandoBeat] = useState(false);
 
   // Carga inicial (Auth, Beats y Perfil)
   useEffect(() => {
@@ -78,9 +84,21 @@ export default function Perfil() {
           const data = userSnap.data();
           const vibesData = data.vibes || [null, null, null];
           const biografiaTexto = data.biografia ?? data.bio ?? '';
-          setPerfilData({ bio: biografiaTexto, biografia: biografiaTexto, vibes: vibesData });
+          const nombreGuardado = data.nombre || user.displayName || '';
+          const ciudadGuardada = data.ciudad || '';
+          setPerfilData({
+            bio: biografiaTexto,
+            biografia: biografiaTexto,
+            nombre: nombreGuardado,
+            ciudad: ciudadGuardada,
+            vibes: vibesData
+          });
+          setTempNombre(nombreGuardado);
+          setTempCiudad(ciudadGuardada);
           setTempBio(biografiaTexto);
           setTempVibes(vibesData);
+        } else {
+          setTempNombre(user.displayName || '');
         }
       } catch (error) {
         console.error("Error al cargar datos del perfil:", error);
@@ -89,7 +107,7 @@ export default function Perfil() {
       }
     };
     cargarPerfil();
-  }, [user?.uid]);
+  }, [user?.uid, user?.displayName]);
 
   // Escuchador en tiempo real para Echo-Safe
   useEffect(() => {
@@ -115,40 +133,62 @@ export default function Perfil() {
   }, [user?.uid]);
 
   // --- FUNCIÓN ÚNICA DE GUARDADO (A prueba de balas) ---
-  const handleGuardarCambios = async () => {
-    if (!user) return;
-    
+    const handleGuardarCambios = async () => {
     try {
       const userDocRef = doc(db, "users", user.uid);
-      
-      // Firebase ODIA los valores "undefined", así que nos aseguramos de limpiarlos
-      const vibesLimpios = tempVibes.map(vibe => {
-        if (!vibe) return null;
-        return {
-          artistId: vibe.artistId || "",
-          eraIndex: vibe.eraIndex !== undefined ? vibe.eraIndex : 0
-        };
-      });
+      const nombreLimpio = tempNombre.trim() || user.displayName || 'Explorador Sónico';
+      const ciudadLimpia = tempCiudad.trim();
 
       const nuevosDatos = {
-        biografia: tempBio || "",
-        bio: tempBio || "",
-        vibes: vibesLimpios
+        ...perfilData,
+        nombre: nombreLimpio,
+        ciudad: ciudadLimpia,
+        biografia: tempBio,
+        bio: tempBio,
+        vibes: tempVibes
       };
-
-      // Intentamos inyectar el documento
-      await setDoc(userDocRef, nuevosDatos, { merge: true });
       
-      // Si pasa, actualizamos la pantalla
+      await setDoc(userDocRef, nuevosDatos, { merge: true });
+
+      // Actualizar el displayName en Firebase Auth si cambió
+      if (nombreLimpio && nombreLimpio !== user.displayName && auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: nombreLimpio });
+        await auth.currentUser.reload();
+      }
+      
       setPerfilData(nuevosDatos);
       setEditandoBio(false);
       setEditandoVibes(false);
       
-      showToast('success', 'Bóveda Actualizada', '¡Tus preferencias y biografía han sido sincronizadas en la nube!');
+      showToast('success', 'Bóveda Actualizada', '¡Tus datos, biografía y vitrina han sido sincronizados en la nube!');
       
     } catch (error) {
       console.error("Error al guardar en Firestore:", error);
       showToast('error', 'Fallo al Guardar', error.message || 'No se pudo actualizar la información en la nube.');
+    }
+  };
+
+  // --- ELIMINAR BEAT DESDE EL PERFIL CON DECREMENTO ATÓMICO ---
+  const handleConfirmarEliminarBeat = async () => {
+    if (!user?.uid || !beatAEliminar?.id) return;
+    setEliminandoBeat(true);
+    const targetId = beatAEliminar.id;
+    const targetName = beatAEliminar.name || 'Cinta';
+    try {
+      await deleteDoc(doc(db, 'beats', targetId));
+      try {
+        await setDoc(doc(db, 'stats', 'global'), { beats: increment(-1) }, { merge: true });
+      } catch (statsErr) {
+        console.error('No se pudo descontar el contador global de beats:', statsErr);
+      }
+      setMisBeats((prev) => prev.filter((b) => b.id !== targetId));
+      setBeatAEliminar(null);
+      showToast('info', 'Cinta Eliminada', `"${targetName}" fue eliminada permanentemente de tu Bóveda.`);
+    } catch (error) {
+      console.error('Error al eliminar beat desde perfil:', error);
+      showToast('error', 'Fallo al Eliminar', 'No se pudo eliminar la cinta de la nube.');
+    } finally {
+      setEliminandoBeat(false);
     }
   };
 
@@ -242,23 +282,120 @@ export default function Perfil() {
           </div>
         </div>
         
-        <div style={{ flex: 1, minWidth: '300px' }}>
-          <h1 style={{ margin: '0 0 5px 0', fontSize: '2.5rem', textTransform: 'uppercase' }}>{user?.displayName}</h1>
-          <p style={{ color: '#888', margin: '0 0 15px 0', fontSize: '0.9rem' }}><i className="fa-solid fa-envelope" style={{ marginRight: '8px' }}></i>{user?.email}</p>
+                <div style={{ flex: 1, minWidth: '300px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h1 style={{ margin: '0 0 5px 0', fontSize: '2.5rem', textTransform: 'uppercase', color: '#fff' }}>
+                {perfilData.nombre || user?.displayName || 'Explorador Sónico'}
+              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap', margin: '0 0 15px 0' }}>
+                <p style={{ color: '#888', margin: 0, fontSize: '0.88rem' }}>
+                  <i className="fa-solid fa-envelope" style={{ marginRight: '6px' }} />
+                  {user?.email}
+                </p>
+                <p style={{ color: 'var(--accent-color)', margin: 0, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fa-solid fa-location-dot" />
+                  <span>{perfilData.ciudad || 'Base no especificada'}</span>
+                </p>
+              </div>
+            </div>
+
+            {!editandoBio && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTempNombre(perfilData.nombre || user?.displayName || '');
+                  setTempCiudad(perfilData.ciudad || '');
+                  setTempBio(perfilData.biografia || perfilData.bio || '');
+                  setEditandoBio(true);
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'var(--accent-color)',
+                  border: '1px solid var(--accent-color)',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: '0.2s'
+                }}
+              >
+                <i className="fa-solid fa-pen-to-square" /> EDITAR PERFIL
+              </button>
+            )}
+          </div>
           
-          <div style={{ background: '#0a0a0a', padding: '15px', borderRadius: '8px', border: '1px solid #1a1a1a' }}>
+          <div style={{ background: '#0a0a0a', padding: '16px', borderRadius: '10px', border: '1px solid #1a1a1a' }}>
             {editandoBio ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <textarea value={tempBio} onChange={(e) => setTempBio(e.target.value)} style={{ width: '100%', background: '#111', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '4px', minHeight: '80px', resize: 'none', outline: 'none' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <label style={{ display: 'block', fontSize: '0.72rem', color: '#888', fontWeight: 'bold', marginBottom: '4px' }}>
+                      NOMBRE PÚBLICO:
+                    </label>
+                    <input
+                      type="text"
+                      value={tempNombre}
+                      onChange={(e) => setTempNombre(e.target.value)}
+                      maxLength={35}
+                      placeholder="Tu nombre de explorador..."
+                      style={{ width: '100%', background: '#111', color: '#fff', border: '1px solid #333', padding: '8px 12px', borderRadius: '6px', outline: 'none', fontSize: '0.85rem' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <label style={{ display: 'block', fontSize: '0.72rem', color: '#888', fontWeight: 'bold', marginBottom: '4px' }}>
+                      CIUDAD / BASE OPERATIVA:
+                    </label>
+                    <input
+                      type="text"
+                      value={tempCiudad}
+                      onChange={(e) => setTempCiudad(e.target.value)}
+                      maxLength={40}
+                      placeholder="Ej: Medellín, CO"
+                      style={{ width: '100%', background: '#111', color: '#fff', border: '1px solid #333', padding: '8px 12px', borderRadius: '6px', outline: 'none', fontSize: '0.85rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.72rem', color: '#888', fontWeight: 'bold', marginBottom: '4px' }}>
+                    BIOGRAFÍA / MANIFIESTO:
+                  </label>
+                  <textarea
+                    value={tempBio}
+                    onChange={(e) => setTempBio(e.target.value)}
+                    maxLength={280}
+                    placeholder="Cuéntale a la Bóveda tu conexión con la música..."
+                    style={{ width: '100%', background: '#111', color: '#fff', border: '1px solid #333', padding: '10px', borderRadius: '6px', minHeight: '80px', resize: 'none', outline: 'none', fontSize: '0.85rem' }}
+                  />
+                </div>
+
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setEditandoBio(false)} style={{ background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
-                  <button onClick={handleGuardarCambios} style={{ background: 'var(--accent-color)', color: '#000', border: 'none', padding: '5px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Guardar Bio</button>
+                  <button
+                    type="button"
+                    onClick={() => setEditandoBio(false)}
+                    style={{ background: 'transparent', color: '#888', border: 'none', cursor: 'pointer', fontSize: '0.82rem', padding: '6px 12px' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleGuardarCambios}
+                    style={{ background: 'var(--accent-color)', color: '#000', border: 'none', padding: '6px 18px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem' }}
+                  >
+                    Guardar Perfil
+                  </button>
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <p style={{ color: '#ddd', margin: 0, lineHeight: '1.5' }}>{perfilData.biografia || perfilData.bio || "Agregue su biografía..."}</p>
-                <button onClick={() => setEditandoBio(true)} style={{ background: 'transparent', color: 'var(--accent-color)', border: 'none', cursor: 'pointer' }}><i className="fa-solid fa-pen"></i></button>
+              <div>
+                <p style={{ color: '#ddd', margin: 0, lineHeight: '1.6', fontSize: '0.92rem' }}>
+                  {perfilData.biografia || perfilData.bio || "Sin biografía registrada. Haz clic en 'Editar Perfil' para personalizar tu expediente sónico."}
+                </p>
               </div>
             )}
           </div>
@@ -338,24 +475,79 @@ export default function Perfil() {
             {misBeats.length === 0 ? (
               <p style={{ color: '#444', textAlign: 'center' }}>Aún no has guardado beats.</p>
             ) : (
-              misBeats.map(beat => (
-                <Link
-                  to={`/beat-it?beatId=${encodeURIComponent(beat.id)}`}
-                  state={{ beatData: beat }}
+              misBeats.map((beat) => (
+                <div
                   key={beat.id}
-                  style={{ textDecoration: 'none', background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: '0.2s' }}
-                  onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent-color)'}
-                  onMouseOut={e => e.currentTarget.style.borderColor = '#222'}
+                  style={{
+                    background: '#111',
+                    padding: '13px 15px',
+                    borderRadius: '8px',
+                    border: '1px solid #222',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: '0.2s',
+                    gap: '10px'
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.borderColor = 'var(--accent-color)')}
+                  onMouseOut={(e) => (e.currentTarget.style.borderColor = '#222')}
                 >
-                  <div>
-                    <h4 style={{ color: '#fff', margin: 0 }}>{beat.name}</h4>
-                    <span style={{ fontSize: '0.7rem', color: '#666' }}>{beat.kit} • {beat.tempo} BPM</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Abrir</span>
-                    <i className="fa-solid fa-chevron-right" style={{ color: 'var(--accent-color)', fontSize: '0.8rem' }}></i>
-                  </div>
-                </Link>
+                  <Link
+                    to={`/beat-it?beatId=${encodeURIComponent(beat.id)}`}
+                    state={{ beatData: beat }}
+                    style={{
+                      textDecoration: 'none',
+                      flex: 1,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ color: '#fff', margin: 0 }}>{beat.name}</h4>
+                      <span style={{ fontSize: '0.7rem', color: '#666' }}>
+                        {beat.kit} • {beat.tempo} BPM
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          color: 'var(--accent-color)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        Abrir
+                      </span>
+                      <i className="fa-solid fa-chevron-right" style={{ color: 'var(--accent-color)', fontSize: '0.8rem' }} />
+                    </div>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setBeatAEliminar(beat)}
+                    title="Eliminar esta cinta de tu Bóveda"
+                    style={{
+                      background: 'rgba(255, 68, 68, 0.08)',
+                      color: '#ff5555',
+                      border: '1px solid rgba(255, 68, 68, 0.3)',
+                      borderRadius: '6px',
+                      padding: '7px 10px',
+                      cursor: 'pointer',
+                      transition: '0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255, 68, 68, 0.22)')}
+                    onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255, 68, 68, 0.08)')}
+                  >
+                    <i className="fa-solid fa-trash-can" style={{ fontSize: '0.82rem' }} />
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -372,22 +564,74 @@ export default function Perfil() {
             {misReportes.length === 0 ? (
               <p style={{ color: '#444', textAlign: 'center', marginTop: '20px' }}>Aún no has mapeado ninguna zona.</p>
             ) : (
-              misReportes.map(rep => (
-                <div key={rep.id} style={{ background: '#111', padding: '15px', borderRadius: '8px', borderLeft: `4px solid ${rep.db > 75 ? '#f43f5e' : '#00ffcc'}`, borderTop: '1px solid #222', borderRight: '1px solid #222', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ overflow: 'hidden' }}>
-                    <h4 style={{ color: '#fff', margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {rep.db} dB 
-                      <span style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'normal' }}>
-                        {rep.fecha ? rep.fecha.split(',')[0] : 'Reciente'}
-                      </span>
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#aaa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
-                      {rep.descripcion}
-                    </p>
+                            misReportes.map((rep) => {
+                const hasCoords = rep.lat && rep.lng;
+                return (
+                  <div
+                    key={rep.id}
+                    onClick={() => {
+                      if (hasCoords) {
+                        navigate('/echo-safe', {
+                          state: {
+                            targetCoords: [Number(rep.lat), Number(rep.lng)],
+                            reportId: rep.id
+                          }
+                        });
+                      }
+                    }}
+                    title={hasCoords ? "Clic para volar y enfocar este nodo en el Radar Echo-Safe" : "Reporte registrado"}
+                    style={{
+                      background: '#111',
+                      padding: '13px 16px',
+                      borderRadius: '8px',
+                      borderLeft: `4px solid ${rep.db > 75 ? '#f43f5e' : '#00ffcc'}`,
+                      borderTop: '1px solid #222',
+                      borderRight: '1px solid #222',
+                      borderBottom: '1px solid #222',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: hasCoords ? 'pointer' : 'default',
+                      transition: '0.2s',
+                      gap: '10px'
+                    }}
+                    onMouseOver={(e) => {
+                      if (hasCoords) {
+                        e.currentTarget.style.borderColor = rep.db > 75 ? '#f43f5e' : '#00ffcc';
+                        e.currentTarget.style.transform = 'translateX(4px)';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (hasCoords) {
+                        e.currentTarget.style.borderTopColor = '#222';
+                        e.currentTarget.style.borderRightColor = '#222';
+                        e.currentTarget.style.borderBottomColor = '#222';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                      }
+                    }}
+                  >
+                    <div style={{ overflow: 'hidden' }}>
+                      <h4 style={{ color: '#fff', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {rep.db} dB 
+                        <span style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'normal' }}>
+                          {rep.fecha ? rep.fecha.split(',')[0] : 'Reciente'}
+                        </span>
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#aaa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '210px' }}>
+                        {rep.descripcion || 'Sin observaciones'}
+                      </p>
+                    </div>
+                    {hasCoords ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-color)' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 'bold', letterSpacing: '0.5px' }}>VER MAPA</span>
+                        <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.75rem' }} />
+                      </div>
+                    ) : (
+                      <i className="fa-solid fa-satellite-dish" style={{ color: rep.db > 75 ? '#f43f5e' : '#00ffcc', opacity: 0.6, fontSize: '1.2rem' }} />
+                    )}
                   </div>
-                  <i className="fa-solid fa-satellite-dish" style={{ color: rep.db > 75 ? '#f43f5e' : '#00ffcc', opacity: 0.6, fontSize: '1.2rem' }}></i>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
@@ -466,6 +710,101 @@ export default function Perfil() {
                 style={{ background: 'var(--accent-color)', color: '#000', border: 'none', padding: '9px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: (guardandoFoto || !tempFotoURL.trim()) ? 'not-allowed' : 'pointer', opacity: (guardandoFoto || !tempFotoURL.trim()) ? 0.5 : 1 }}
               >
                 {guardandoFoto ? 'GUARDANDO...' : 'GUARDAR FOTO'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN PARA ELIMINAR CINTA DESDE PERFIL */}
+      {beatAEliminar && (
+        <div
+          onClick={() => !eliminandoBeat && setBeatAEliminar(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#0d0d14',
+              border: '1px solid rgba(255, 68, 68, 0.45)',
+              borderRadius: '16px',
+              padding: '1.8rem',
+              width: '100%',
+              maxWidth: '420px',
+              boxShadow: '0 0 35px rgba(255, 68, 68, 0.25)',
+              textAlign: 'center'
+            }}
+          >
+            <div
+              style={{
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                background: 'rgba(255, 68, 68, 0.12)',
+                border: '1px solid rgba(255, 68, 68, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#ff5555',
+                fontSize: '1.4rem'
+              }}
+            >
+              <i className="fa-solid fa-trash-can" />
+            </div>
+            <h3 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '1.15rem' }}>
+              ¿Eliminar cinta de tu Bóveda?
+            </h3>
+            <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+              Se eliminará permanentemente <strong style={{ color: '#fff' }}>"{beatAEliminar.name}"</strong> de Cloud Firestore. Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                disabled={eliminandoBeat}
+                onClick={() => setBeatAEliminar(null)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.06)',
+                  color: '#ccc',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                disabled={eliminandoBeat}
+                onClick={handleConfirmarEliminarBeat}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #ff4444 0%, #cc0033 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: eliminandoBeat ? 'wait' : 'pointer',
+                  boxShadow: '0 0 12px rgba(255, 68, 68, 0.4)'
+                }}
+              >
+                {eliminandoBeat ? 'ELIMINANDO...' : 'ELIMINAR'}
               </button>
             </div>
           </div>

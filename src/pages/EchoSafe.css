@@ -349,10 +349,25 @@
   animation: waveBar 0.9s infinite ease-in-out alternate;
 }
 
-.echosafe-soundwaves-icon span:nth-child(2) { animation-delay: 0.2s; height: 18px; }
-.echosafe-soundwaves-icon span:nth-child(3) { animation-delay: 0.4s; height: 26px; }
-.echosafe-soundwaves-icon span:nth-child(4) { animation-delay: 0.1s; height: 14px; }
-.echosafe-soundwaves-icon span:nth-child(5) { animation-delay: 0.3s; height: 20px; }
+.echosafe-soundwaves-icon span:nth-child(2) {
+  animation-delay: 0.2s;
+  height: 18px;
+}
+
+.echosafe-soundwaves-icon span:nth-child(3) {
+  animation-delay: 0.4s;
+  height: 26px;
+}
+
+.echosafe-soundwaves-icon span:nth-child(4) {
+  animation-delay: 0.1s;
+  height: 14px;
+}
+
+.echosafe-soundwaves-icon span:nth-child(5) {
+  animation-delay: 0.3s;
+  height: 20px;
+}
 
 /* FORMULARIO DE TRANSMISIÓN TRAS EL ESCANEO */
 .echosafe-form-container {
@@ -963,27 +978,82 @@
   font-family: 'Space Grotesk', system-ui, sans-serif !important;
 }
 
+/* ATENUACIÓN TÁCTICA PARA LAS CALLES DE CARTO */
+/* Suaviza el brillo agresivo de las calles blancas para que los nodos neón resalten */
+/* SEPARACIÓN VISUAL CARTO: CALLES ATENUADAS VS ETIQUETAS FLOTANTES */
+/* 1. Las calles se apagan a un tono carbón profundo para no saturar */
+.echosafe-map-viewport-wrap .echosafe-roads-tile {
+  filter: brightness(0.38) contrast(1.15) !important;
+  opacity: 0.65 !important;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 2. Los nombres de barrios y ciudades flotan nítidos con micro-halo oscuro protector */
+.echosafe-map-viewport-wrap .echosafe-labels-tile {
+  filter: brightness(0.95) contrast(1.2) drop-shadow(0px 1px 3px rgba(0, 0, 0, 0.95)) drop-shadow(0px 0px 5px rgba(0, 0, 0, 0.9)) !important;
+  opacity: 0.88 !important;
+  transition: opacity 0.3s ease;
+}
+
+.echosafe-map-viewport-wrap .leaflet-tile-pane-legacy {
+  filter: brightness(0.55) contrast(1.1);
+  opacity: 0.82;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
 /* ANIMACIONES */
 @keyframes beaconPulse {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(0, 240, 255, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7);
+  }
+
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 8px rgba(0, 240, 255, 0);
+  }
+
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 240, 255, 0);
+  }
 }
 
 @keyframes telemetryPulse {
-  0% { opacity: 0.8; }
-  50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.3)); }
-  100% { opacity: 0.8; }
+  0% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.3));
+  }
+
+  100% {
+    opacity: 0.8;
+  }
 }
 
 @keyframes waveBar {
-  0% { height: 6px; }
-  100% { height: 26px; }
+  0% {
+    height: 6px;
+  }
+
+  100% {
+    height: 26px;
+  }
 }
 
 @keyframes formSlideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* --- RESPONSIVIDAD (TABLET Y MÓVIL) --- */
@@ -991,6 +1061,7 @@
   .echosafe-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .echosafe-main-grid {
     grid-template-columns: 380px 1fr;
   }
@@ -1000,10 +1071,12 @@
   .echosafe-wrapper {
     padding: 1.5rem 4% 3rem 4%;
   }
+
   .echosafe-main-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
+
   .echosafe-map-viewport-wrap {
     height: 480px;
   }
@@ -1014,17 +1087,21 @@
     grid-template-columns: 1fr;
     gap: 0.8rem;
   }
+
   .echosafe-control-panel,
   .echosafe-map-panel {
     padding: 1.25rem;
   }
+
   .echosafe-gauge-container {
     width: 210px;
     height: 210px;
   }
+
   .echosafe-gauge-number {
     font-size: 4.2rem;
   }
+
   .echosafe-map-viewport-wrap {
     height: 400px;
   }
@@ -1100,4 +1177,3 @@
   transform: scale(1.04);
   box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
 }
-

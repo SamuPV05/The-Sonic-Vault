@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { getSpotifyNewReleases } from '../services/spotifyService';
 
 const FALLBACK_RELEASES = [
@@ -6,6 +7,7 @@ const FALLBACK_RELEASES = [
     id: '4czdORIRfl2HGviYKAv508',
     name: 'Hackney Diamonds',
     artist: 'The Rolling Stones',
+    artistId: '22bE4uQ6baNwSHPVcDx4eJ',
     releaseDate: '2023-10-20',
     totalTracks: 12,
     type: 'album',
@@ -16,6 +18,7 @@ const FALLBACK_RELEASES = [
     id: '2guirTSE4bF0L8zJVR8G9v',
     name: 'HIT ME HARD AND SOFT',
     artist: 'Billie Eilish',
+    artistId: '6qqNVTkY8uBg9cP3Jd7DAH',
     releaseDate: '2024-05-17',
     totalTracks: 10,
     type: 'album',
@@ -438,20 +441,43 @@ export default function SpotifyNewReleases() {
                     {album.name}
                   </h4>
                   
-                  <p 
-                    title={album.artist}
-                    style={{ 
-                      color: 'var(--accent-color, #00ffcc)', 
-                      margin: '0 0 6px 0', 
-                      fontSize: '0.78rem',
-                      whiteSpace: 'nowrap', 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis',
-                      fontWeight: '500'
-                    }}
-                  >
-                    {album.artist}
-                  </p>
+                                    {album.artistId ? (
+                    <Link
+                      to={`/artistas/sp_${album.artistId}`}
+                      title={`Ver archivo de ${album.artist} en The Sonic Vault`}
+                      style={{
+                        color: 'var(--accent-color, #00ffcc)',
+                        margin: '0 0 6px 0',
+                        fontSize: '0.78rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        fontWeight: '600',
+                        textDecoration: 'none',
+                        display: 'block',
+                        transition: '0.2s'
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                      onMouseOut={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                    >
+                      {album.artist}
+                    </Link>
+                  ) : (
+                    <p
+                      title={album.artist}
+                      style={{
+                        color: 'var(--accent-color, #00ffcc)',
+                        margin: '0 0 6px 0',
+                        fontSize: '0.78rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        fontWeight: '500'
+                      }}
+                    >
+                      {album.artist}
+                    </p>
+                  )}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#666', fontSize: '0.68rem' }}>
                     <i className="fa-regular fa-calendar"></i>

@@ -6,6 +6,7 @@ import {
   INSTRUMENTS,
   exportPatternToWav
 } from '../services/beatItAudioEngine';
+import { generateEuclideanPattern } from '../utils/euclideanRhythm';
 import {
   TOTAL_MAX_STEPS,
   DEFAULT_FX_SETTINGS,
@@ -36,6 +37,7 @@ export function useBeatItScheduler({ showToast }) {
 
   // --- PRESETS Y TAP TEMPO ---
   const [showPresets, setShowPresets] = useState(false);
+  const [showEuclidean, setShowEuclidean] = useState(false);
   const tapTimesRef = useRef([]);
   const [isTapping, setIsTapping] = useState(false);
 
@@ -223,10 +225,74 @@ export function useBeatItScheduler({ showToast }) {
   }, [grid]);
 
   const handleClearGrid = useCallback(() => {
-    if (window.confirm('¿Limpiar el patrón del secuenciador?')) {
-      setGrid(createEmptyGrid());
-    }
+    setGrid(createEmptyGrid());
   }, []);
+
+  // --- GENERADOR DE PATRONES EUCLIDIANOS E(k, 16, r) (ALGORITMO DE BJORKLUND) ---
+  const applyEuclideanToChannel = useCallback(
+    (instrument, pulses, rotation = 0, accentFirst = true) => {
+      if (!INSTRUMENTS.includes(instrument)) return;
+
+      const pattern16 = generateEuclideanPattern(pulses, 16, rotation, accentFirst);
+      setGrid((prevGrid) => {
+        const newGrid = { ...prevGrid };
+        const row = [...(newGrid[instrument] || Array(TOTAL_MAX_STEPS).fill(0))];
+
+        if (totalSteps === 32) {
+          const offset = activeBar * 16;
+          for (let i = 0; i < 16; i++) {
+            row[offset + i] = pattern16[i];
+          }
+        } else {
+          for (let i = 0; i < 16; i++) {
+            row[i] = pattern16[i];
+            row[i + 16] = pattern16[i];
+          }
+        }
+
+        newGrid[instrument] = row;
+        return newGrid;
+      });
+
+      if (pulses > 0) {
+        triggerSound(
+          instrument,
+          currentKit,
+          isLoFi,
+          null,
+          trackVolumes[instrument] !== undefined ? trackVolumes[instrument] : 0.85,
+          accentFirst
+        );
+      }
+    },
+    [totalSteps, activeBar, currentKit, isLoFi, trackVolumes]
+  );
+
+  const applyEuclideanEnsemble = useCallback(
+    (ensemble) => {
+      if (!ensemble?.layers) return;
+
+      const newGrid = createEmptyGrid();
+      ensemble.layers.forEach(({ inst, pulses, rotation = 0, accentFirst = false }) => {
+        if (!INSTRUMENTS.includes(inst)) return;
+        const pattern16 = generateEuclideanPattern(pulses, 16, rotation, accentFirst);
+        const row = Array(TOTAL_MAX_STEPS).fill(0);
+        for (let i = 0; i < 16; i++) {
+          row[i] = pattern16[i];
+          row[i + 16] = pattern16[i];
+        }
+        newGrid[inst] = row;
+      });
+
+      setGrid(newGrid);
+      showToast?.(
+        'success',
+        'Polirritmia Euclidiana',
+        `"${ensemble.name}" (${ensemble.badge}) generada con el algoritmo de Bjorklund.`
+      );
+    },
+    [showToast]
+  );
 
   const applyPresetToScheduler = useCallback(
     (preset) => {
@@ -431,6 +497,8 @@ export function useBeatItScheduler({ showToast }) {
     // Estados de Presets y Tap Tempo
     showPresets,
     setShowPresets,
+    showEuclidean,
+    setShowEuclidean,
     isTapping,
     // Estados de Exportación WAV
     showExportModal,
@@ -455,6 +523,8 @@ export function useBeatItScheduler({ showToast }) {
     toggleStep,
     handleDuplicateBar1ToBar2,
     handleClearGrid,
+    applyEuclideanToChannel,
+    applyEuclideanEnsemble,
     applyPresetToScheduler,
     applyLoadedBeatToScheduler,
     handleExportWav

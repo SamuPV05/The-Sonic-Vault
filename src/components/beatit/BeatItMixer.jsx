@@ -2,6 +2,7 @@ import { triggerSound } from '../../services/beatItAudioEngine';
 
 export default function BeatItMixer({
   inst,
+  keyIndex,
   cfg,
   currentKit,
   isLoFi,
@@ -66,6 +67,23 @@ export default function BeatItMixer({
         >
           {cfg.label}
         </span>
+        {keyIndex !== undefined && (
+          <span
+            style={{
+              fontSize: '0.6rem',
+              color: '#888',
+              background: 'rgba(255,255,255,0.08)',
+              padding: '1px 4px',
+              borderRadius: '3px',
+              marginLeft: 'auto',
+              fontFamily: 'monospace',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}
+            title={`Atajo de teclado: Tecla ${keyIndex + 1} o fila QWERTY`}
+          >
+            {keyIndex + 1}
+          </span>
+        )}
       </div>
 
       {/* Mixer Buttons & Fader Container */}

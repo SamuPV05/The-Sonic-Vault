@@ -49,13 +49,18 @@ function buildAWeights(sampleRate, binCount) {
  *
  * Nota: es una estimación con micrófonos de consumo, no una medición certificada.
  */
-export default function useAudioMeter({ onComplete, onError } = {}) {
+export default function useAudioMeter({ onComplete, onError, calibrationOffset = 0 } = {}) {
   const [isListening, setIsListening] = useState(false);
   const [progress, setProgress] = useState(0);
   const [liveDb, setLiveDb] = useState(0);
   const [analyser, setAnalyser] = useState(null);
 
   const callbacksRef = useRef({ onComplete, onError });
+  const calibrationRef = useRef(calibrationOffset);
+
+  useEffect(() => {
+    calibrationRef.current = calibrationOffset;
+  }, [calibrationOffset]);
   const resourcesRef = useRef({ ctx: null, stream: null, source: null, timer: null, onVisibility: null });
   const runningRef = useRef(false);
   const mountedRef = useRef(true);
@@ -237,7 +242,8 @@ export default function useAudioMeter({ onComplete, onError } = {}) {
       const correction = powerTotal > 0 && powerA > 0 ? 10 * Math.log10(powerA / powerTotal) : 0;
 
       // 3) Calibración a dB estimados y ponderación temporal Fast
-      const dba = clamp(dbfs + correction + CALIBRATION_OFFSET, MIN_DB, MAX_DB);
+      const userOffset = Number(calibrationRef.current) || 0;
+      const dba = clamp(dbfs + correction + CALIBRATION_OFFSET + userOffset, MIN_DB, MAX_DB);
       const energy = 10 ** (dba / 10);
       smoothedEnergy = smoothedEnergy === null ? energy : smoothedEnergy + FAST_ALPHA * (energy - smoothedEnergy);
       const fastDb = 10 * Math.log10(smoothedEnergy);

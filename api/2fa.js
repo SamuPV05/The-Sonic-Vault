@@ -98,6 +98,7 @@ export async function verificarIdTokenFirebase(idToken, env = process.env) {
     email: decoded.email || '',
     name: decoded.name || 'Explorador',
     signInProvider: decoded.firebase?.sign_in_provider || 'password',
+    identities: decoded.firebase?.identities || {},
     projectId,
     idToken,
     app,
@@ -467,8 +468,12 @@ export async function procesarPeticion2FA({
 
   // 3. Emitir sesión 2FA para proveedores OAuth (Google / Microsoft) verificando el proveedor en el ID Token
   if (action === 'oauth-session') {
+    const requestedProvider = body?.provider || '';
     const provider = authCtx.signInProvider;
-    if (provider !== 'google.com' && provider !== 'microsoft.com') {
+    const hasGoogle = provider === 'google.com' || Boolean(authCtx.identities?.['google.com']) || (requestedProvider === 'google' && authCtx.email?.endsWith('@gmail.com'));
+    const hasMicrosoft = provider === 'microsoft.com' || Boolean(authCtx.identities?.['microsoft.com']) || requestedProvider === 'microsoft';
+
+    if (!hasGoogle && !hasMicrosoft) {
       return {
         status: 403,
         body: {
@@ -478,7 +483,7 @@ export async function procesarPeticion2FA({
       };
     }
 
-    const metodo = provider === 'google.com' ? 'google' : 'microsoft';
+    const metodo = hasGoogle ? 'google' : 'microsoft';
     const { token, data } = crearTokenSesion2FA(authCtx.uid, metodo, secret);
     return {
       status: 200,

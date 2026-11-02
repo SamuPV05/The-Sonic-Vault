@@ -1,16 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
-  isSpotifyConnected,
   loginWithSpotify,
-  logoutSpotify,
   getSpotifyUserProfile,
   getUserTopArtists,
   getUserTopTracks,
-  getCurrentlyPlaying,
-  controlPlayback,
   getLastSpotifyError
 } from '../services/spotifyService';
+import { useSpotifyPlayer } from '../context/SpotifyPlayerContext';
 import HolographicPassport from './HolographicPassport';
 import SonicTimeCapsule from './SonicTimeCapsule';
 import {
@@ -20,12 +17,17 @@ import {
 } from '../utils/archetypeCalculator';
 
 export default function SpotifyProfileWidget({ userAuthName = '' }) {
-  const [conectado, setConectado] = useState(isSpotifyConnected());
+  const {
+    connected: conectado,
+    nowPlaying: activeTrack,
+    isPlaying: reproduciendo,
+    controlPlayback: handleControl,
+    logout: ctxLogout
+  } = useSpotifyPlayer();
+
   const [cargando, setCargando] = useState(false);
   const [perfilSpotify, setPerfilSpotify] = useState(null);
   const [rangoTiempo, setRangoTiempo] = useState('medium_term'); // 'short_term', 'medium_term', 'long_term'
-  const [nowPlaying, setNowPlaying] = useState(null);
-  const [reproduciendo, setReproduciendo] = useState(false);
 
   // Caché de artistas y tracks por rango temporal
   const [artistsByRange, setArtistsByRange] = useState({
@@ -83,18 +85,11 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
           canciones = await getUserTopTracks(rangoTiempo, 10);
         }
 
-        const actual = await getCurrentlyPlaying();
-
-        if (!cancelado) {
+                if (!cancelado) {
           cacheRef.current.artists[rangoTiempo] = artistas;
           cacheRef.current.tracks[rangoTiempo] = canciones;
           setArtistsByRange(prev => ({ ...prev, [rangoTiempo]: artistas }));
           setTracksByRange(prev => ({ ...prev, [rangoTiempo]: canciones }));
-
-          if (actual && actual.item) {
-            setNowPlaying(actual);
-            setReproduciendo(actual.is_playing);
-          }
 
           // Si falta cargar los otros rangos para la estabilidad, cargarlos en segundo plano
           setTimeout(async () => {
@@ -133,57 +128,22 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
 
     cargarDatos();
 
-    // Polling ligero para el reproductor en vivo cada 5 segundos
-    const intervalo = setInterval(async () => {
-      try {
-        const actual = await getCurrentlyPlaying();
-        if (!cancelado && isMounted.current) {
-          if (actual && actual.item) {
-            setNowPlaying(actual);
-            setReproduciendo(actual.is_playing);
-          } else {
-            setNowPlaying(null);
-          }
-        }
-      } catch {
-        // Silencioso
-      }
-    }, 5000);
-
     return () => {
       cancelado = true;
-      clearInterval(intervalo);
     };
   }, [conectado, rangoTiempo]);
 
-  const handleDesconectar = () => {
-    logoutSpotify();
+    const handleDesconectar = () => {
+    ctxLogout();
     cacheRef.current = {
       perfil: null,
       artists: { short_term: [], medium_term: [], long_term: [] },
       tracks: { short_term: [], medium_term: [], long_term: [] }
     };
-    setConectado(false);
     setPerfilSpotify(null);
     setArtistsByRange({ short_term: [], medium_term: [], long_term: [] });
     setTracksByRange({ short_term: [], medium_term: [], long_term: [] });
-    setNowPlaying(null);
     setStabilityData(null);
-  };
-
-  const handleControl = async (accion) => {
-    const ok = await controlPlayback(accion);
-    if (ok) {
-      if (accion === 'play') setReproduciendo(true);
-      if (accion === 'pause') setReproduciendo(false);
-      setTimeout(async () => {
-        const actual = await getCurrentlyPlaying();
-        if (actual && actual.item && isMounted.current) {
-          setNowPlaying(actual);
-          setReproduciendo(actual.is_playing);
-        }
-      }, 500);
-    }
   };
 
   // Artistas y canciones actuales
@@ -402,12 +362,12 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
         flexWrap: 'wrap',
         gap: '1.25rem'
       }}>
-        {nowPlaying?.item ? (
+        {activeTrack ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '260px' }}>
               <img
-                src={nowPlaying.item.album?.images?.[0]?.url}
-                alt={nowPlaying.item.name}
+                src={activeTrack.album?.images?.[0]?.url}
+                alt={activeTrack.name}
                 style={{
                   width: '60px',
                   height: '60px',
@@ -422,10 +382,10 @@ export default function SpotifyProfileWidget({ userAuthName = '' }) {
                   Reproduciendo Ahora en tu Spotify
                 </span>
                 <h4 style={{ color: '#fff', margin: '4px 0 2px 0', fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>
-                  {nowPlaying.item.name}
+                  {activeTrack.name}
                 </h4>
                 <p style={{ color: '#888', margin: 0, fontSize: '0.8rem' }}>
-                  {nowPlaying.item.artists?.map(a => a.name).join(', ')}
+                  {activeTrack.artists?.map(a => a.name).join(', ')}
                 </p>
               </div>
             </div>

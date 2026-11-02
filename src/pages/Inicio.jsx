@@ -6,6 +6,16 @@ import { db } from '../firebase/config';
 import SpotifyNewReleases from '../components/SpotifyNewReleases';
 
 
+
+const LEYENDAS_MARQUEE = [
+  { name: 'MICHAEL JACKSON', link: '/artistas/sp_3fMbdgg4jU18AjLCKBvRSm' },
+  { name: 'BRUNO MARS', link: '/artistas/sp_0du5cEVh5yTK9QJze8zA0C' },
+  { name: 'LADY GAGA', link: '/artistas/sp_1HY2Jd0NmPuamShAr6KMms' },
+  { name: 'LANA DEL REY', link: '/artistas/sp_00FQb4jTyendYWaN8pK0wa' },
+  { name: 'DAFT PUNK', link: '/artistas/sp_4tZwfgrHOc3mvqY8ACxv30' },
+  { name: 'THE WEEKND', link: '/artistas/sp_1Xyo4u8uXC1ZmMpatF05PJ' }
+];
+
 export default function Inicio() {
   const { user } = useAuth();
   
@@ -307,25 +317,36 @@ export default function Inicio() {
         {/* Contenedor del Marquee (Carrusel infinito) */}
         <div className="marquee-container" style={{ display: 'flex', whiteSpace: 'nowrap', width: '100%', overflow: 'hidden', position: 'relative' }}>
           {/* Duplicamos el contenido para que el bucle sea infinito y suave */}
-          <div className="marquee-content" style={{ display: 'flex', gap: '4rem', paddingRight: '4rem', alignItems: 'center' }}>
-            <span style={marqueeItemStyle}>MICHAEL JACKSON</span>
-            <span style={marqueeItemStyle}>•</span>
-            <span style={marqueeItemStyle}>BRUNO MARS</span>
-            <span style={marqueeItemStyle}>•</span>
-            <span style={marqueeItemStyle}>LADY GAGA</span>
-            <span style={marqueeItemStyle}>•</span>
-            <span style={marqueeItemStyle}>LANA DEL REY</span>
-            <span style={marqueeItemStyle}>•</span>
+          {/* Carrusel con enlaces directos a expedientes de artistas */}
+          <div className="marquee-content" style={{ display: 'flex', gap: '3rem', paddingRight: '3rem', alignItems: 'center' }}>
+            {LEYENDAS_MARQUEE.map((art, idx) => (
+              <span key={`m1-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '3rem' }}>
+                <Link
+                  to={art.link}
+                  style={marqueeItemStyle}
+                  title={`Explorar expediente oficial de ${art.name}`}
+                  className="marquee-artist-link"
+                >
+                  {art.name}
+                </Link>
+                <span style={{ color: '#444', fontSize: '1.5rem' }}>•</span>
+              </span>
+            ))}
           </div>
-          <div className="marquee-content" style={{ display: 'flex', gap: '4rem', paddingRight: '4rem', alignItems: 'center' }}>
-            <span style={marqueeItemStyle}>MICHAEL JACKSON</span>
-            <span style={marqueeItemStyle}>•</span>
-            <span style={marqueeItemStyle}>BRUNO MARS</span>
-            <span style={marqueeItemStyle}>•</span>
-            <span style={marqueeItemStyle}>LADY GAGA</span>
-            <span style={marqueeItemStyle}>•</span>
-            <span style={marqueeItemStyle}>LANA DEL REY</span>
-            <span style={marqueeItemStyle}>•</span>
+          <div className="marquee-content" style={{ display: 'flex', gap: '3rem', paddingRight: '3rem', alignItems: 'center' }}>
+            {LEYENDAS_MARQUEE.map((art, idx) => (
+              <span key={`m2-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '3rem' }}>
+                <Link
+                  to={art.link}
+                  style={marqueeItemStyle}
+                  title={`Explorar expediente oficial de ${art.name}`}
+                  className="marquee-artist-link"
+                >
+                  {art.name}
+                </Link>
+                <span style={{ color: '#444', fontSize: '1.5rem' }}>•</span>
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -351,7 +372,15 @@ export default function Inicio() {
       {/* Estilos inyectados para la animación del carrusel */}
       <style>{`
         .marquee-content {
-          animation: scrollMarquee 20s linear infinite;
+          animation: scrollMarquee 22s linear infinite;
+        }
+        .marquee-container:hover .marquee-content {
+          animation-play-state: paused;
+        }
+        .marquee-artist-link:hover {
+          color: var(--accent-color, #00F0FF) !important;
+          -webkit-text-stroke: 1px var(--accent-color, #00F0FF) !important;
+          text-shadow: 0 0 15px rgba(0, 240, 255, 0.6) !important;
         }
         @keyframes scrollMarquee {
           0% { transform: translateX(0%); }
@@ -369,5 +398,8 @@ const marqueeItemStyle = {
   fontWeight: '900', 
   letterSpacing: '2px',
   WebkitTextStroke: '1px #444',
-  textTransform: 'uppercase'
+  textTransform: 'uppercase',
+  textDecoration: 'none',
+  transition: '0.25s',
+  cursor: 'pointer'
 };

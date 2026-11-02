@@ -105,10 +105,22 @@ export async function searchSpotifyArtists(query, limit = 8) {
  * Obtiene los detalles de un artista por su ID de Spotify.
  */
 export async function getSpotifyArtist(artistId) {
-  const token = await getEffectiveSpotifyToken();
-  const response = await fetch(`${API_BASE}/artists/${artistId}`, {
+  let token = await getEffectiveSpotifyToken();
+  const url = `${API_BASE}/artists/${artistId}`;
+  let response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
+  if (response.status === 401) {
+    try {
+      token = await getPublicSpotifyToken();
+      response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Ignorar fallo de reintento
+    }
+  }
 
   if (!response.ok) return null;
   return await response.json();
@@ -117,14 +129,92 @@ export async function getSpotifyArtist(artistId) {
 /**
  * Obtiene las canciones más populares de un artista buscando en el catálogo.
  */
+
+/**
+ * Busca una pista individual en el catálogo de Spotify para preescucha de eras históricas.
+ */
+export async function searchSingleTrack(trackName, artistName = '') {
+  if (!trackName) return null;
+  let token = await getEffectiveSpotifyToken();
+
+  const query = artistName ? `track:"${trackName}" artist:"${artistName}"` : `track:"${trackName}"`;
+  const url = `${API_BASE}/search?q=${encodeURIComponent(query)}&type=track&limit=1`;
+
+  try {
+    let response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (response.status === 401) {
+      token = await getPublicSpotifyToken();
+      response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    const item = data.tracks?.items?.[0];
+    if (!item) return null;
+
+    return {
+      id: item.id,
+      name: item.name,
+      artist: item.artists?.map(a => a.name).join(', '),
+      uri: item.uri,
+      previewUrl: item.preview_url,
+      spotifyUrl: item.external_urls?.spotify || `https://open.spotify.com/track/${item.id}`,
+      image: item.album?.images?.[0]?.url || item.album?.images?.[1]?.url || ''
+    };
+  } catch (err) {
+    console.warn('Error buscando canción individual en Spotify:', err);
+    return null;
+  }
+}
+
 export async function getSpotifyArtistTopTracks(artistId, artistName = '', limit = 6) {
-  const token = await getEffectiveSpotifyToken();
-  
-  // Usamos la búsqueda de tracks por artista para garantizar compatibilidad con las nuevas directivas de Spotify API
+  const safeLimit = Math.min(Math.max(1, Number(limit) || 6), 10);
+  let token = await getEffectiveSpotifyToken();
+
+  // 1. Intentar endpoint oficial de Top Tracks del artista
+  try {
+    const topUrl = `${API_BASE}/artists/${artistId}/top-tracks?market=US`;
+    let topRes = await fetch(topUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (topRes.status === 401) {
+      token = await getPublicSpotifyToken();
+      topRes = await fetch(topUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+    if (topRes.ok) {
+      const topData = await topRes.json();
+      if (Array.isArray(topData.tracks) && topData.tracks.length > 0) {
+        return topData.tracks.slice(0, safeLimit);
+      }
+    }
+  } catch {
+    // Fallback a búsqueda por nombre de artista
+  }
+
+  // 2. Fallback: búsqueda de tracks por artista (compatible con modo desarrollo de Spotify API)
   const query = artistName ? `artist:"${artistName}"` : `artist:${artistId}`;
-  const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}&type=track&limit=${limit}`, {
+  const searchUrl = `${API_BASE}/search?q=${encodeURIComponent(query)}&type=track&limit=${safeLimit}`;
+  let response = await fetch(searchUrl, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
+  if (response.status === 401) {
+    try {
+      token = await getPublicSpotifyToken();
+      response = await fetch(searchUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Ignorar
+    }
+  }
 
   if (!response.ok) return [];
   const data = await response.json();
@@ -134,11 +224,24 @@ export async function getSpotifyArtistTopTracks(artistId, artistName = '', limit
 /**
  * Obtiene la discografía (álbumes y singles) de un artista.
  */
-export async function getSpotifyArtistAlbums(artistId, limit = 12) {
-  const token = await getEffectiveSpotifyToken();
-  const response = await fetch(`${API_BASE}/artists/${artistId}/albums?include_groups=album,single&limit=${limit}`, {
+export async function getSpotifyArtistAlbums(artistId, limit = 8) {
+  const safeLimit = Math.min(Math.max(1, Number(limit) || 8), 10);
+  let token = await getEffectiveSpotifyToken();
+  const url = `${API_BASE}/artists/${artistId}/albums?include_groups=album,single&limit=${safeLimit}`;
+  let response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
+
+  if (response.status === 401) {
+    try {
+      token = await getPublicSpotifyToken();
+      response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Ignorar
+    }
+  }
 
   if (!response.ok) return [];
   const data = await response.json();
@@ -566,7 +669,7 @@ const FALLBACK_BPM_TRACKS = {
     { id: 'fb_cy_1', name: 'Nightcall', artist: 'Kavinsky', album: 'OutRun', bpmMatch: 120, image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300', spotifyUrl: 'https://open.spotify.com/search/Nightcall%20Kavinsky', uri: 'spotify:track:0rQbvWkGzL9mN6L7p3f1xM' },
     { id: 'fb_cy_2', name: 'Turbo Killer', artist: 'Carpenter Brut', album: 'Trilogy', bpmMatch: 128, image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', spotifyUrl: 'https://open.spotify.com/search/Turbo%20Killer', uri: 'spotify:track:10nqz3vA7Fk7eE1kQ0C6bJ' },
     { id: 'fb_cy_3', name: 'Tech Noir', artist: 'GUNSHIP', album: 'GUNSHIP', bpmMatch: 110, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Tech%20Noir%20GUNSHIP', uri: 'spotify:track:5E585dD0B7x5tN8lP8QzL9' },
-    { id: 'fb_cy_4', name: 'Resonance', artist: 'HOME', album: 'Odyssey', bpmMatch: 124, image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', spotifyUrl: 'https://open.spotify.com/search/Resonance%20HOME', uri: 'spotify:track:1TuopWDI4Th T4kQ3w6m5Q' }
+    { id: 'fb_cy_4', name: 'Resonance', artist: 'HOME', album: 'Odyssey', bpmMatch: 124, image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300', spotifyUrl: 'https://open.spotify.com/search/Resonance%20HOME', uri: 'spotify:track:1TuopWDI4THT4kQ3w6m5Q' }
   ],
   'Analog 808': [
     { id: 'fb_an_1', name: 'Planet Rock', artist: 'Afrika Bambaataa', album: 'Planet Rock', bpmMatch: 126, image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', spotifyUrl: 'https://open.spotify.com/search/Planet%20Rock', uri: 'spotify:track:10sQ5z5Q3m4sR5x3W1E5R7' },

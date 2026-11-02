@@ -8,7 +8,7 @@ export default function ArbolEcos({ ecos }) {
 
     useEffect(() => {
         if (!ecos || ecos.length === 0) return;
-        
+
         const fetchEcos = async () => {
             const data = {};
             // Obtenemos de la nube la info de los artistas conectados
@@ -43,7 +43,7 @@ export default function ArbolEcos({ ecos }) {
                 {ecos.map((eco, index) => {
                     // Buscamos la info del artista conectado en el estado que acabamos de traer de la nube
                     const artistaRelacionado = artistasRelacionados[eco.id];
-                    
+
                     // Si por alguna razón el artista no existe o aún está cargando, no renderiza nada
                     if (!artistaRelacionado) return null;
 

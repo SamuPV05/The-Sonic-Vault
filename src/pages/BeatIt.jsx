@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBeatItScheduler } from '../hooks/useBeatItScheduler';
 import { useBeatItPersistence } from '../hooks/useBeatItPersistence';
@@ -8,11 +8,13 @@ import BeatItGrid from '../components/beatit/BeatItGrid';
 import BeatItSpotifyRadarModal from '../components/BeatItSpotifyRadarModal';
 import EchoToast from '../components/EchoToast';
 import { useToast } from '../hooks/useToast';
+import { triggerSound } from '../services/beatItAudioEngine';
 
 export default function BeatIt() {
   const { user } = useAuth();
   const { toasts, showToast, dismissToast } = useToast();
   const [showSpotifyRadar, setShowSpotifyRadar] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
 
   const scheduler = useBeatItScheduler({ showToast });
   const {
@@ -42,6 +44,8 @@ export default function BeatIt() {
     setFxSettings,
     showPresets,
     setShowPresets,
+    showEuclidean,
+    setShowEuclidean,
     isTapping,
     showExportModal,
     setShowExportModal,
@@ -52,9 +56,7 @@ export default function BeatIt() {
     activeKitColor,
     hasAnySolo,
     isFxActive,
-    getFilterReadout,
-    stopPlayback,
-    resetGrid,
+    getFilterReadout,    resetGrid,
     handleToggleMute,
     handleToggleSolo,
     handleVolumeChange,
@@ -62,28 +64,39 @@ export default function BeatIt() {
     handleTapTempo,
     toggleStep,
     handleDuplicateBar1ToBar2,
-    handleClearGrid,
+    applyEuclideanToChannel,
+    applyEuclideanEnsemble,
     applyPresetToScheduler,
     applyLoadedBeatToScheduler,
     handleExportWav: exportWavWithScheduler
   } = scheduler;
 
-  const {
+    const {
     beatName,
     setBeatName,
     savedBeats,
     isSaving,
+    isDeleting,
     loadedBeatNotice,
     setLoadedBeatNotice,
+    currentBeatId,
+    setCurrentBeatId,
+    activeSavedBeat,
+    canOverwriteCurrentBeat,
+    showSaveModal,
+    setShowSaveModal,
+    beatToDelete,
+    setBeatToDelete,
     handleSaveBeat,
+    executeSaveBeat,
+    confirmDeleteBeat,
+    handleShareBeat,
     loadBeat
   } = useBeatItPersistence({
     user,
     showToast,
     scheduler,
-    applyLoadedBeatToScheduler,
-    stopPlayback,
-    resetGrid
+    applyLoadedBeatToScheduler
   });
 
   const handleLoadPreset = (preset) => {
@@ -92,6 +105,72 @@ export default function BeatIt() {
   };
 
   const handleExportWav = (type = 'master') => exportWavWithScheduler(type, beatName);
+  // --- ATAJOS DE TECLADO EN VIVO (PERFORMANCE MODE) ---
+  useEffect(() => {
+    const KEY_INSTRUMENT_MAP = {
+      '1': 'kick',
+      '2': 'snare',
+      '3': 'clap',
+      '4': 'hihat',
+      '5': 'openhat',
+      '6': 'sub808',
+      '7': 'tom',
+      '8': 'crash',
+      q: 'kick',
+      w: 'snare',
+      e: 'clap',
+      r: 'hihat',
+      t: 'openhat',
+      y: 'sub808',
+      u: 'tom',
+      i: 'crash'
+    };
+
+    const handleKeyDown = (e) => {
+      // Ignorar atajos si el usuario escribe en un campo de texto
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) {
+        return;
+      }
+
+      // Ignorar si hay un modal bloqueante abierto
+      if (showClearModal || showExportModal || showSpotifyRadar || showSaveModal || Boolean(beatToDelete)) {
+        return;
+      }
+
+      // Barra Espaciadora: Play / Stop
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        handleTogglePlay();
+        return;
+      }
+
+      // Teclas 1-8 o Q-I: Disparar samples de percusión en vivo
+      const keyLower = e.key.toLowerCase();
+      const instrument = KEY_INSTRUMENT_MAP[keyLower];
+      if (instrument) {
+        e.preventDefault();
+        const vol = trackVolumes[instrument] !== undefined ? trackVolumes[instrument] : 0.85;
+        triggerSound(instrument, currentKit, isLoFi, null, vol, false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    handleTogglePlay,
+    currentKit,
+    isLoFi,
+    trackVolumes,
+    showClearModal,
+    showExportModal,
+    showSpotifyRadar,
+    showSaveModal,
+    beatToDelete
+  ]);
+
 
   return (
     <div
@@ -144,21 +223,45 @@ export default function BeatIt() {
                 {loadedBeatNotice.tempo} BPM)
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setLoadedBeatNotice(null)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#888',
-                cursor: 'pointer',
-                fontSize: '0.95rem',
-                padding: '2px 6px'
-              }}
-              title="Ocultar aviso"
-            >
-              ✕
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {loadedBeatNotice.id && (
+                <button
+                  type="button"
+                  onClick={() => handleShareBeat(loadedBeatNotice.id, loadedBeatNotice.name)}
+                  title="Copiar enlace compartible directo a este beat"
+                  style={{
+                    background: 'rgba(0, 255, 204, 0.15)',
+                    color: '#00ffcc',
+                    border: '1px solid rgba(0, 255, 204, 0.35)',
+                    borderRadius: '4px',
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <i className="fa-solid fa-share-nodes" /> COMPARTIR
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setLoadedBeatNotice(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#888',
+                  cursor: 'pointer',
+                  fontSize: '0.95rem',
+                  padding: '2px 6px'
+                }}
+                title="Ocultar aviso"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
 
@@ -187,6 +290,10 @@ export default function BeatIt() {
           showPresets={showPresets}
           setShowPresets={setShowPresets}
           handleLoadPreset={handleLoadPreset}
+          showEuclidean={showEuclidean}
+          setShowEuclidean={setShowEuclidean}
+          applyEuclideanToChannel={applyEuclideanToChannel}
+          applyEuclideanEnsemble={applyEuclideanEnsemble}
           showFxRack={showFxRack}
           setShowFxRack={setShowFxRack}
           isFxActive={isFxActive}
@@ -221,7 +328,7 @@ export default function BeatIt() {
           trackVolumes={trackVolumes}
           currentKit={currentKit}
           handleDuplicateBar1ToBar2={handleDuplicateBar1ToBar2}
-          handleClearGrid={handleClearGrid}
+          handleClearGrid={() => setShowClearModal(true)}
           handleToggleMute={handleToggleMute}
           handleToggleSolo={handleToggleSolo}
           handleVolumeChange={handleVolumeChange}
@@ -286,6 +393,36 @@ export default function BeatIt() {
             >
               <i className="fa-brands fa-spotify" style={{ fontSize: '0.95rem' }} /> PLAYLIST SPOTIFY
             </button>
+
+            <button
+              type="button"
+              onClick={() => handleShareBeat()}
+              title="Copiar enlace público de este Beat para compartirlo con otros productores"
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '9px 16px',
+                borderRadius: '6px',
+                fontWeight: 'bold',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: '0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = '#00ffcc';
+                e.currentTarget.style.color = '#00ffcc';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.color = '#fff';
+              }}
+            >
+              <i className="fa-solid fa-share-nodes" /> COMPARTIR
+            </button>
           </div>
 
           {/* Formulario Guardar en Firebase */}
@@ -327,7 +464,7 @@ export default function BeatIt() {
                 fontSize: '0.82rem'
               }}
             >
-              <i className="fa-solid fa-cloud-arrow-up" /> {isSaving ? 'GUARDANDO...' : 'GUARDAR EN NUBE'}
+              <i className="fa-solid fa-cloud-arrow-up" /> {isSaving ? 'GUARDANDO...' : canOverwriteCurrentBeat ? 'GUARDAR / ACTUALIZAR' : 'GUARDAR EN NUBE'}
             </button>
           </div>
         </div>
@@ -337,6 +474,327 @@ export default function BeatIt() {
           </p>
         )}
       </div>
+
+            {/* MODAL TEMÁTICO DE CONFIRMACIÓN DE LIMPIEZA */}
+      {showClearModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(8px)'
+          }}
+        >
+          <div
+            style={{
+              background: '#121620',
+              border: '1px solid rgba(255, 68, 68, 0.4)',
+              borderRadius: '14px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '420px',
+              boxShadow: '0 0 30px rgba(255, 68, 68, 0.25)',
+              textAlign: 'center'
+            }}
+          >
+            <div
+              style={{
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                background: 'rgba(255, 68, 68, 0.12)',
+                border: '1px solid rgba(255, 68, 68, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#ff5555',
+                fontSize: '1.5rem'
+              }}
+            >
+              <i className="fa-solid fa-triangle-exclamation" />
+            </div>
+            <h3 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '1.15rem' }}>
+              ¿Limpiar secuenciador?
+            </h3>
+            <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 20px 0', lineHeight: '1.4' }}>
+              Se vaciarán todas las pistas y compases activos en la cuadrícula. Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.06)',
+                  color: '#ccc',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetGrid();
+                  setCurrentBeatId(null);
+                  setLoadedBeatNotice(null);
+                  setShowClearModal(false);
+                  showToast?.('info', 'Secuenciador Limpio', 'El patrón ha sido reiniciado.');
+                }}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #ff4444 0%, #cc0033 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 12px rgba(255, 68, 68, 0.4)'
+                }}
+              >
+                LIMPIAR TODO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TEMÁTICO: SOBRESCRIBIR CINTA ACTUAL VS GUARDAR COMO NUEVA */}
+      {showSaveModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.82)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(8px)'
+          }}
+        >
+          <div
+            style={{
+              background: '#121620',
+              border: '1px solid rgba(0, 255, 204, 0.45)',
+              borderRadius: '14px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '460px',
+              boxShadow: '0 0 30px rgba(0, 255, 204, 0.2)',
+              textAlign: 'center'
+            }}
+          >
+            <div
+              style={{
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                background: 'rgba(0, 255, 204, 0.12)',
+                border: '1px solid rgba(0, 255, 204, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#00ffcc',
+                fontSize: '1.4rem'
+              }}
+            >
+              <i className="fa-solid fa-cloud-arrow-up" />
+            </div>
+            <h3 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '1.15rem' }}>
+              Sincronización de Cinta en la Bóveda
+            </h3>
+            <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+              Tienes cargada la cinta{' '}
+              <strong style={{ color: '#00ffcc' }}>
+                "{activeSavedBeat?.name || loadedBeatNotice?.name || beatName}"
+              </strong>
+              . ¿Deseas sobrescribir esa cinta existente o guardar{' '}
+              <strong style={{ color: '#fff' }}>"{beatName.trim()}"</strong> como una copia nueva?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => executeSaveBeat('overwrite')}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #00ffcc 0%, #00bfff 100%)',
+                  color: '#000',
+                  border: 'none',
+                  padding: '11px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.84rem',
+                  cursor: isSaving ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 0 14px rgba(0, 255, 204, 0.35)'
+                }}
+              >
+                <i className="fa-solid fa-arrows-rotate" /> SOBRESCRIBIR CINTA ACTUAL
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => executeSaveBeat('new')}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#fff',
+                  border: '1px solid rgba(0, 255, 204, 0.4)',
+                  padding: '11px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.84rem',
+                  cursor: isSaving ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <i className="fa-solid fa-plus" /> GUARDAR COMO COPIA NUEVA
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => setShowSaveModal(false)}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  color: '#888',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '9px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer'
+                }}
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TEMÁTICO DE CONFIRMACIÓN PARA ELIMINAR CINTA */}
+      {beatToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.82)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(8px)'
+          }}
+        >
+          <div
+            style={{
+              background: '#121620',
+              border: '1px solid rgba(255, 68, 68, 0.45)',
+              borderRadius: '14px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '420px',
+              boxShadow: '0 0 30px rgba(255, 68, 68, 0.25)',
+              textAlign: 'center'
+            }}
+          >
+            <div
+              style={{
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                background: 'rgba(255, 68, 68, 0.12)',
+                border: '1px solid rgba(255, 68, 68, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#ff5555',
+                fontSize: '1.4rem'
+              }}
+            >
+              <i className="fa-solid fa-trash-can" />
+            </div>
+            <h3 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '1.15rem' }}>
+              ¿Eliminar cinta de la Bóveda?
+            </h3>
+            <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 20px 0', lineHeight: '1.4' }}>
+              Estás a punto de eliminar permanentemente{' '}
+              <strong style={{ color: '#fff' }}>"{beatToDelete.name}"</strong> de la nube. Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setBeatToDelete(null)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.06)',
+                  color: '#ccc',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteBeat}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #ff4444 0%, #cc0033 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: isDeleting ? 'wait' : 'pointer',
+                  boxShadow: '0 0 12px rgba(255, 68, 68, 0.4)'
+                }}
+              >
+                {isDeleting ? 'ELIMINANDO...' : 'ELIMINAR'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE EXPORTACIÓN DE AUDIO WAV (FASE 7) */}
       {showExportModal && (
@@ -546,71 +1004,151 @@ export default function BeatIt() {
               gap: '15px'
             }}
           >
-            {savedBeats.map((beat) => (
-              <div
-                key={beat.id}
-                style={{
-                  background: 'rgba(0,0,0,0.4)',
-                  border: '1px solid var(--border-alt)',
-                  borderRadius: '8px',
-                  padding: '15px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem' }}>{beat.name}</span>
-                  {beat.isLoFi && (
-                    <span
-                      style={{
-                        background: '#ffaa00',
-                        color: '#000',
-                        fontSize: '0.6rem',
-                        padding: '2px 6px',
-                        borderRadius: '10px',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      LO-FI
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#888' }}>
-                  <span>
-                    <i className="fa-solid fa-drum" /> {beat.kit}
-                  </span>
-                  <span>
-                    <i className="fa-solid fa-stopwatch" /> {beat.tempo} BPM
-                  </span>
-                  {beat.swing && beat.swing > 50 && (
-                    <span>
-                      <i className="fa-solid fa-shuffle" /> {beat.swing}%
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => loadBeat(beat)}
+            {savedBeats.map((beat) => {
+              const isCurrent = beat.id === currentBeatId;
+              return (
+                <div
+                  key={beat.id}
                   style={{
-                    background: 'var(--surface-alt)',
-                    color: '#fff',
-                    border: '1px solid var(--border-alt)',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    width: '100%',
-                    marginTop: '5px',
+                    background: isCurrent ? 'rgba(0, 255, 204, 0.06)' : 'rgba(0,0,0,0.4)',
+                    border: isCurrent ? '1px solid #00ffcc' : '1px solid var(--border-alt)',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    boxShadow: isCurrent ? '0 0 15px rgba(0, 255, 204, 0.15)' : 'none',
                     transition: '0.2s'
                   }}
-                  onMouseOver={(e) => (e.target.style.background = 'var(--accent-color)')}
-                  onMouseOut={(e) => (e.target.style.background = 'var(--surface-alt)')}
                 >
-                  <i className="fa-solid fa-download" /> CARGAR AL ESTUDIO
-                </button>
-              </div>
-            ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.05rem', wordBreak: 'break-word' }}>
+                      {beat.name}
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      {isCurrent && (
+                        <span
+                          style={{
+                            background: 'rgba(0, 255, 204, 0.2)',
+                            color: '#00ffcc',
+                            border: '1px solid #00ffcc',
+                            fontSize: '0.58rem',
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          ACTIVA
+                        </span>
+                      )}
+                      {beat.isLoFi && (
+                        <span
+                          style={{
+                            background: '#ffaa00',
+                            color: '#000',
+                            fontSize: '0.6rem',
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          LO-FI
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem', color: '#888' }}>
+                    <span>
+                      <i className="fa-solid fa-drum" /> {beat.kit}
+                    </span>
+                    <span>
+                      <i className="fa-solid fa-stopwatch" /> {beat.tempo} BPM
+                    </span>
+                    {beat.swing && beat.swing > 50 && (
+                      <span>
+                        <i className="fa-solid fa-shuffle" /> {beat.swing}%
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                    <button
+                      type="button"
+                      onClick={() => loadBeat(beat)}
+                      style={{
+                        flex: 1,
+                        background: isCurrent ? 'rgba(0, 255, 204, 0.2)' : 'var(--surface-alt)',
+                        color: isCurrent ? '#00ffcc' : '#fff',
+                        border: isCurrent ? '1px solid rgba(0, 255, 204, 0.4)' : '1px solid var(--border-alt)',
+                        padding: '8px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: '0.2s',
+                        fontWeight: 'bold',
+                        fontSize: '0.8rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'var(--accent-color)';
+                        e.currentTarget.style.color = '#000';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = isCurrent ? 'rgba(0, 255, 204, 0.2)' : 'var(--surface-alt)';
+                        e.currentTarget.style.color = isCurrent ? '#00ffcc' : '#fff';
+                      }}
+                    >
+                      <i className="fa-solid fa-download" /> {isCurrent ? 'RECARGAR' : 'CARGAR'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShareBeat(beat.id, beat.name)}
+                      title="Copiar enlace público para compartir este beat"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: '#00ffcc',
+                        border: '1px solid rgba(0, 255, 204, 0.3)',
+                        padding: '8px 11px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: '0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(0, 255, 204, 0.15)')}
+                      onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
+                    >
+                      <i className="fa-solid fa-share-nodes" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBeatToDelete(beat)}
+                      title="Eliminar esta cinta de la Bóveda"
+                      style={{
+                        background: 'rgba(255, 68, 68, 0.08)',
+                        color: '#ff5555',
+                        border: '1px solid rgba(255, 68, 68, 0.3)',
+                        padding: '8px 11px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: '0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255, 68, 68, 0.22)')}
+                      onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255, 68, 68, 0.08)')}
+                    >
+                      <i className="fa-solid fa-trash-can" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

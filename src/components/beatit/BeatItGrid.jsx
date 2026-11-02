@@ -167,6 +167,24 @@ export default function BeatItGrid({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span
+            style={{
+              fontSize: '0.68rem',
+              color: '#bbb',
+              background: 'rgba(255,255,255,0.05)',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}
+            title="Atajos en vivo: Espacio (Play/Stop), Teclas 1-8 o Q-I (Disparar Pads)"
+          >
+            <i className="fa-solid fa-keyboard" style={{ color: activeKitColor }} />
+            <span>[Espacio] Play • [1-8] Pads</span>
+          </span>
+
           <span style={{ fontSize: '0.68rem', color: '#666' }}>
             <i className="fa-solid fa-circle-info" style={{ color: activeKitColor }} /> Clic: Normal • 2º: Acento • 3º: Apagar
           </span>
@@ -192,7 +210,7 @@ export default function BeatItGrid({
 
       {/* Canales del Secuenciador (8 Pistas con Consola y Matriz de Acentos) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginBottom: '1.5rem' }}>
-        {INSTRUMENTS.map((inst) => {
+        {INSTRUMENTS.map((inst, instIdx) => {
           const cfg = INSTRUMENT_CONFIG[inst] || { label: inst, color: activeKitColor, tag: 'TRK' };
           const isMuted = !!mutes[inst];
           const isSoloActive = !!solos[inst];
@@ -203,6 +221,7 @@ export default function BeatItGrid({
             <div key={inst} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <BeatItMixer
                 inst={inst}
+                keyIndex={instIdx}
                 cfg={cfg}
                 currentKit={currentKit}
                 isLoFi={isLoFi}

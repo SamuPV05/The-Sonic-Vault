@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import ReCAPTCHA from 'react-google-recaptcha';
 
@@ -30,7 +32,9 @@ export default function Login() {
     loginWithMicrosoft,
     cancelarRegistroPendiente,
     user,
+    pending2FAUser,
     is2FAPassed,
+    is2FAPending,
     oauthEnCurso,
     send2FACode,
     verify2FA
@@ -48,6 +52,13 @@ export default function Login() {
   const [captchaPass, setCaptchaPass] = useState(() => leerPaseCaptcha());
   const [verificandoCaptcha, setVerificandoCaptcha] = useState(false);
   const recaptchaRef = useRef(null);
+
+  // Estados para Recuperación de Contraseña
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState(null);
+  const [resetSuccess, setResetSuccess] = useState(null);
 
   // Llave pública del Captcha. La clave de prueba de Google solo se permite en desarrollo.
   const TEST_RECAPTCHA_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
@@ -68,7 +79,8 @@ export default function Login() {
       navigate('/perfil');
       return;
     }
-    if (!user || is2FAPassed || oauthEnCurso || codigoEnviado || envioEnCursoRef.current) return;
+    const targetUser = pending2FAUser || (is2FAPending ? auth.currentUser : null);
+    if (!targetUser || is2FAPassed || oauthEnCurso || codigoEnviado || envioEnCursoRef.current) return;
 
     const paseActivo = captchaPass || leerPaseCaptcha();
     envioEnCursoRef.current = true;
@@ -89,7 +101,7 @@ export default function Login() {
       .finally(() => {
         envioEnCursoRef.current = false;
       });
-  }, [user, is2FAPassed, oauthEnCurso, codigoEnviado, captchaPass, send2FACode, navigate]);
+  }, [user, pending2FAUser, is2FAPending, is2FAPassed, oauthEnCurso, codigoEnviado, captchaPass, send2FACode, navigate]);
 
   const handleVerificar2FA = async () => {
     setIsLoading(true);
@@ -191,6 +203,35 @@ export default function Login() {
     recaptchaRef.current?.reset();
   };
 
+  // Manejo de Recuperación de Contraseña
+  const handleSendPasswordReset = async (e) => {
+    e?.preventDefault();
+    if (!resetEmail || !resetEmail.trim()) {
+      setResetError('Por favor ingresa tu correo electrónico registrado.');
+      return;
+    }
+    setIsResetting(true);
+    setResetError(null);
+    setResetSuccess(null);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail.trim());
+      setResetSuccess(`Se ha enviado un enlace de recuperación a ${resetEmail.trim()}. Revisa tu bandeja de entrada o la carpeta de spam.`);
+    } catch (err) {
+      console.error('Error al enviar correo de recuperación:', err);
+      if (err.code === 'auth/user-not-found') {
+        setResetError('No existe ninguna cuenta registrada con este correo.');
+      } else if (err.code === 'auth/invalid-email') {
+        setResetError('El formato del correo no es válido.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setResetError('Demasiados intentos. Por favor espera unos minutos antes de reintentar.');
+      } else {
+        setResetError(getFirebaseErrorMessage(err.code) || err.message || 'Error al enviar el enlace de recuperación.');
+      }
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   // Traducción de errores de Firebase a mensajes amigables
   const getFirebaseErrorMessage = (errorCode) => {
     const errorMessages = {
@@ -290,7 +331,8 @@ export default function Login() {
     }
   };
 
-  if (user && !is2FAPassed && !oauthEnCurso) {
+  const target2FAUser = pending2FAUser || (is2FAPending ? auth.currentUser : null);
+  if (target2FAUser && !is2FAPassed && !oauthEnCurso) {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
         <div style={{ background: 'var(--surface-bg)', backdropFilter: 'blur(20px)', padding: '3rem', borderRadius: '16px', border: '1px solid var(--accent-color)', width: '100%', maxWidth: '450px', textAlign: 'center', boxShadow: '0 0 20px rgba(0,240,255,0.2)' }}>
@@ -298,8 +340,8 @@ export default function Login() {
           <h2 style={{ color: '#fff', letterSpacing: '2px', marginBottom: '1rem' }}>VERIFICACIÓN EN DOS PASOS</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
             {codigoEnviado
-              ? <>Hemos enviado un código numérico a <b>{user.email}</b>. Caducará en 5 minutos (máximo 5 intentos).</>
-              : <>Solicitando al servidor un código de verificación para <b>{user.email}</b>...</>}
+              ? <>Hemos enviado un código numérico a <b>{target2FAUser.email}</b>. Caducará en 5 minutos (máximo 5 intentos).</>
+              : <>Solicitando al servidor un código de verificación para <b>{target2FAUser.email}</b>...</>}
           </p>
 
           {codigoPrueba && (
@@ -416,6 +458,32 @@ export default function Login() {
             style={inputStyle}
           />
 
+          {!isRegistering && (
+            <div style={{ textAlign: 'right', marginTop: '-4px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetEmail(email || '');
+                  setResetError(null);
+                  setResetSuccess(null);
+                  setShowResetModal(true);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--accent-color)',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontFamily: 'inherit',
+                  padding: '2px 0'
+                }}
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0', gap: '8px' }}>
             {RECAPTCHA_SITE_KEY ? (
               <ReCAPTCHA
@@ -494,9 +562,154 @@ export default function Login() {
             style={{ color: 'var(--accent-color)', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline', textShadow: '0 0 8px var(--accent-color)' }}>
             {isRegistering ? 'Entra a la Bóveda' : 'Solicita Acceso Oficial'}
           </span>
-        </p>
+        </p>      </div>
 
-      </div>
+      {/* MODAL RECUPERACIÓN DE CONTRASEÑA CYBERPUNK */}
+      {showResetModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(5, 5, 15, 0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '1.5rem'
+        }}>
+          <div style={{
+            background: 'var(--surface-bg)',
+            border: '1px solid var(--accent-color)',
+            borderRadius: '16px',
+            padding: '2.5rem',
+            maxWidth: '440px',
+            width: '100%',
+            boxShadow: '0 0 35px rgba(0, 240, 255, 0.3)',
+            position: 'relative'
+          }}>
+            {/* Línea de neón superior */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '3px', background: 'linear-gradient(90deg, var(--accent-color), var(--accent-secondary))' }}></div>
+            
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <i className="fa-solid fa-key" style={{ fontSize: '2.5rem', color: 'var(--accent-color)', marginBottom: '0.8rem', filter: 'drop-shadow(0 0 10px var(--accent-color))' }}></i>
+              <h3 style={{ color: '#fff', letterSpacing: '2px', margin: '0 0 0.5rem 0' }}>RECUPERAR ACCESO</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0, lineHeight: 1.5 }}>
+                Ingresa el correo electrónico asociado a tu cuenta para recibir las instrucciones de restablecimiento de contraseña.
+              </p>
+            </div>
+
+            {resetError && (
+              <div style={{
+                background: 'rgba(255, 0, 122, 0.1)',
+                border: '1px solid var(--accent-secondary)',
+                color: 'var(--accent-secondary)',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                marginBottom: '1.2rem',
+                fontSize: '0.85rem',
+                textAlign: 'left'
+              }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
+                {resetError}
+              </div>
+            )}
+
+            {resetSuccess && (
+              <div style={{
+                background: 'rgba(0, 255, 204, 0.1)',
+                border: '1px solid #00ffcc',
+                color: '#00ffcc',
+                padding: '12px 14px',
+                borderRadius: '8px',
+                marginBottom: '1.2rem',
+                fontSize: '0.85rem',
+                lineHeight: 1.4,
+                textAlign: 'left'
+              }}>
+                <i className="fa-solid fa-circle-check" style={{ marginRight: '8px' }}></i>
+                {resetSuccess}
+              </div>
+            )}
+
+            {!resetSuccess ? (
+              <form onSubmit={handleSendPasswordReset} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input
+                  type="email"
+                  placeholder="ejemplo@correo.com"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                  autoFocus
+                  style={inputStyle}
+                />
+                <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetModal(false)}
+                    disabled={isResetting}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    CANCELAR
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isResetting || !resetEmail.trim()}
+                    style={{
+                      flex: 1.4,
+                      padding: '12px',
+                      background: 'linear-gradient(45deg, var(--accent-color), var(--accent-tertiary, #9D00FF))',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      cursor: isResetting ? 'wait' : 'pointer',
+                      opacity: isResetting || !resetEmail.trim() ? 0.6 : 1,
+                      fontFamily: 'inherit',
+                      letterSpacing: '1px',
+                      boxShadow: '0 0 15px rgba(0, 240, 255, 0.3)'
+                    }}
+                  >
+                    {isResetting ? (
+                      <><i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }}></i>ENVIANDO...</>
+                    ) : (
+                      'ENVIAR ENLACE'
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'var(--accent-color)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#000',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  letterSpacing: '1px'
+                }}
+              >
+                CERRAR Y REGRESAR
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

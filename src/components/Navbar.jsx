@@ -1,21 +1,36 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 import NavbarSpotifyPlayer from './NavbarSpotifyPlayer';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, is2FAPending, logout, cancelarRegistroPendiente } = useAuth();
   const { isMobile } = useWindowSize();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const location = useLocation();
 
-  // Patrón estándar de React para sincronizar estado con cambio de ruta sin cascading renders en useEffect
+  // Sincronizar estado con cambio de ruta
   const [prevPathname, setPrevPathname] = useState(location.pathname);
   if (location.pathname !== prevPathname) {
     setPrevPathname(location.pathname);
     setMenuAbierto(false);
   }
+
+  const getNavLinkStyle = ({ isActive }) => ({
+    fontSize: isMobile ? '0.95rem' : '1rem',
+    textDecoration: 'none',
+    color: isActive ? 'var(--accent-color)' : '#fff',
+    fontWeight: isActive ? '700' : '500',
+    textShadow: isActive ? '0 0 10px rgba(0, 240, 255, 0.65)' : 'none',
+    borderBottom: isActive ? '2px solid var(--accent-color)' : '2px solid transparent',
+    paddingBottom: '2px',
+    transition: 'all 0.2s ease',
+    display: 'inline-flex',
+    alignItems: 'center',
+    opacity: is2FAPending ? 0.45 : 1,
+    cursor: is2FAPending ? 'not-allowed' : 'pointer'
+  });
 
   return (
     <header style={{ 
@@ -36,14 +51,21 @@ export default function Navbar() {
     }}>
       {/* Barra superior (Logo + Botón menú en móvil) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: isMobile ? '100%' : 'auto' }}>
-        <Link to="/" className="logo" style={{ 
-          fontSize: isMobile ? '1.25rem' : '1.5rem',
-          textDecoration: 'none',
-          letterSpacing: '2px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: isMobile ? '10px' : '12px'
-        }}>
+        <Link 
+          to="/" 
+          className="logo" 
+          onClick={(e) => { if (is2FAPending) e.preventDefault(); }}
+          style={{ 
+            fontSize: isMobile ? '1.25rem' : '1.5rem',
+            textDecoration: 'none',
+            letterSpacing: '2px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: isMobile ? '10px' : '12px',
+            opacity: is2FAPending ? 0.6 : 1,
+            cursor: is2FAPending ? 'not-allowed' : 'pointer'
+          }}
+        >
           <img
             src="/sonic-vault-logo.png"
             alt="The Sonic Vault Logo"
@@ -86,7 +108,7 @@ export default function Navbar() {
       {(!isMobile || menuAbierto) && (
         <nav style={{ 
           display: 'flex', 
-          flexDirection: isMobile ? 'column' : 'row',
+          flexDirection: isMobile ? 'column' : 'row', 
           alignItems: 'center', 
           gap: isMobile ? '12px' : '18px', 
           width: isMobile ? '100%' : 'auto',
@@ -95,10 +117,35 @@ export default function Navbar() {
           borderTop: isMobile ? '1px solid rgba(255,255,255,0.08)' : 'none',
           animation: isMobile ? 'fadeIn 0.25s ease' : 'none'
         }}>
-          <Link to="/" style={{ fontSize: isMobile ? '0.95rem' : '1rem', textDecoration: 'none' }}>Inicio</Link>
-          <Link to="/artistas" style={{ fontSize: isMobile ? '0.95rem' : '1rem', textDecoration: 'none' }}>Artistas</Link>
-          <Link to="/beat-it" style={{ fontSize: isMobile ? '0.95rem' : '1rem', textDecoration: 'none' }}>Beat It</Link>
-          <Link to="/echo-safe" style={{ fontSize: isMobile ? '0.95rem' : '1rem', textDecoration: 'none' }}>Echo Safe</Link>
+          <NavLink 
+            to="/" 
+            end 
+            style={getNavLinkStyle}
+            onClick={(e) => { if (is2FAPending) e.preventDefault(); }}
+          >
+            Inicio
+          </NavLink>
+          <NavLink 
+            to="/artistas" 
+            style={getNavLinkStyle}
+            onClick={(e) => { if (is2FAPending) e.preventDefault(); }}
+          >
+            Artistas
+          </NavLink>
+          <NavLink 
+            to="/beat-it" 
+            style={getNavLinkStyle}
+            onClick={(e) => { if (is2FAPending) e.preventDefault(); }}
+          >
+            Beat It
+          </NavLink>
+          <NavLink 
+            to="/echo-safe" 
+            style={getNavLinkStyle}
+            onClick={(e) => { if (is2FAPending) e.preventDefault(); }}
+          >
+            Echo Safe
+          </NavLink>
 
           {/* MINI REPRODUCTOR NOW PLAYING SPOTIFY (FASE 3) */}
           <NavbarSpotifyPlayer />
@@ -116,9 +163,54 @@ export default function Navbar() {
             alignItems: 'center', 
             gap: '12px' 
           }}>
-            {user ? (
+            {is2FAPending ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(255, 170, 0, 0.15)',
+                    color: '#ffaa00',
+                    border: '1px solid rgba(255, 170, 0, 0.4)',
+                    padding: '4px 10px',
+                    borderRadius: '15px',
+                    fontSize: isMobile ? '0.72rem' : '0.78rem',
+                    fontWeight: 'bold',
+                    letterSpacing: '0.5px'
+                  }}
+                  title="Segundo factor requerido para acceder"
+                >
+                  <i className="fa-solid fa-shield-halved" /> 2FA PENDIENTE
+                </span>
+                <button
+                  type="button"
+                  onClick={cancelarRegistroPendiente}
+                  className="btn-logout"
+                  style={{ fontSize: isMobile ? '0.72rem' : '0.78rem', padding: '4px 8px' }}
+                  title="Cancelar y salir"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : user ? (
               <>
-                <Link to="/perfil" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }} title="Ir al Centro de Mando">
+                <NavLink 
+                  to="/perfil" 
+                  style={({ isActive }) => ({ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    textDecoration: 'none',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    background: isActive ? 'rgba(0, 240, 255, 0.12)' : 'transparent',
+                    border: isActive ? '1px solid var(--accent-color)' : '1px solid transparent',
+                    boxShadow: isActive ? '0 0 12px rgba(0, 240, 255, 0.25)' : 'none',
+                    transition: 'all 0.2s ease'
+                  })} 
+                  title="Ir al Centro de Mando"
+                >
                   {user.photoURL ? (
                     <img 
                       src={user.photoURL} 
@@ -133,7 +225,7 @@ export default function Navbar() {
                   <span style={{ fontSize: isMobile ? '0.82rem' : '0.85rem', fontWeight: 'bold', color: '#fff' }}>
                     {user.displayName ? user.displayName.split(' ')[0] : 'Explorador'}
                   </span>
-                </Link>
+                </NavLink>
 
                 <button 
                   onClick={logout}
@@ -144,12 +236,24 @@ export default function Navbar() {
                 </button>
               </>
             ) : (
-              <Link 
+              <NavLink 
                 to="/login"
-                style={{ background: 'var(--accent-color)', color: '#000', textDecoration: 'none', padding: isMobile ? '6px 14px' : '8px 16px', borderRadius: '5px', fontWeight: 'bold', fontSize: isMobile ? '0.82rem' : '0.85rem', display: 'flex', alignItems: 'center' }}
+                style={({ isActive }) => ({
+                  background: isActive ? 'linear-gradient(45deg, var(--accent-color), var(--accent-secondary))' : 'var(--accent-color)', 
+                  color: '#000', 
+                  textDecoration: 'none', 
+                  padding: isMobile ? '6px 14px' : '8px 16px', 
+                  borderRadius: '5px', 
+                  fontWeight: 'bold', 
+                  fontSize: isMobile ? '0.82rem' : '0.85rem', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  boxShadow: isActive ? '0 0 15px rgba(0, 240, 255, 0.5)' : 'none',
+                  transition: 'all 0.2s ease'
+                })}
               >
                 <i className="fa-solid fa-user-lock" style={{ marginRight: '6px', fontSize: '0.9rem' }}></i> Entrar
-              </Link>
+              </NavLink>
             )}
           </div>
         </nav>

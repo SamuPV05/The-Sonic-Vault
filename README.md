@@ -1,43 +1,53 @@
 # 💽 The Sonic Vault & Radar Echo-Safe
 
-**The Sonic Vault** es una aplicación web de página única (SPA) de vanguardia diseñada para coleccionistas musicales, audiófilos, productores y exploradores sónicos. Integra catálogo de culto con líneas de tiempo históricas y genealogía musical (*Árbol de Ecos*), síntesis e interactividad en tiempo real (Estudio Pro "Beat It"), geolocalización de niveles sonoros ("Radar Echo-Safe"), un ecosistema completo de 5 fases con la **API de Spotify** y un sistema robusto de autenticación, seguridad y rendimiento de nivel empresarial.
+**The Sonic Vault** es una plataforma web integral (SPA) de vanguardia diseñada para coleccionistas musicales, audiófilos, productores y exploradores sónicos. Integra catálogo de culto con líneas de tiempo históricas y genealogía musical (*Árbol de Ecos*), síntesis e interactividad en tiempo real (Estudio Pro "Beat It"), geolocalización de niveles sonoros ("Radar Echo-Safe"), un ecosistema completo de 5 fases con la **API de Spotify** y un sistema robusto de autenticación, seguridad y rendimiento de nivel empresarial.
 
 ---
 
 ## 🛡️ Seguridad, Autenticación y Control de Acceso
 
-La plataforma incorpora una suite completa de seguridad moderna conforme a los estándares de desarrollo seguro:
+La plataforma incorpora una suite completa de seguridad moderna conforme a los más altos estándares de desarrollo seguro:
 
-1. **Autenticación Multi-Factor en Servidor (MFA / 2FA con Firebase Admin & OTP):**
-   - **Generación criptográfica de OTP:** Códigos numéricos de 6 dígitos generados exclusivamente en el backend (`/api/2fa`) con `crypto.randomInt`.
-   - **Almacenamiento seguro sin texto plano:** En Cloud Firestore (`2fa_codes/{userId}`) solo se almacena el hash HMAC-SHA256 (`codeHash`) y una firma de integridad (`sig`).
-   - **Rate Limiting y ventana estricta:** Límite estricto de 5 intentos fallidos antes de bloquear la cuenta por fuerza bruta (`locked: true`, HTTP 429) y expiración automática tras 5 minutos.
-   - **Pase anti-automatización:** Emisión de OTP condicionada a la presentación de un `captchaPass` válido y firmado criptográficamente por `/api/verify-captcha`.
-   - **Cooldown anti-bombardeo:** Ventana obligatoria de enfriamiento de 60 segundos por usuario que previene el agotamiento abusivo de la cuota transaccional de EmailJS.
-   - **Guardia anti-Rollback:** Control de versiones monotónico en Firestore y memoria que neutraliza cualquier intento de reinyectar estados previos con `attempts: 0`.
-   - **Falla cerrada en producción:** Bloqueo automático de claves de respaldo estáticas si faltan secretos en entornos de producción (`HTTP 500`).
-   - **Sesión verificada:** Cookie segura `HttpOnly` (`sv_2fa_session`) firmada con HMAC-SHA256 o token de sesión que desbloquea rutas protegidas (`/perfil`) y resiste intentos de suplantación.
-   - **Despacho transaccional:** Envío del OTP mediante API REST de EmailJS desde el servidor, con modo de prueba en desarrollo.
+### 1. Modelo de Cuarentena 2FA y Aislamiento Estricto de Sesión
+- **Principio de Mínimo Privilegio en Cliente:** El objeto global `user` en `AuthContext` es estrictamente `null` a menos que `is2FAPassed === true`. El usuario no existe para el resto de la aplicación (Navbar, BeatIt, EchoSafe, Perfil) hasta que apruebe el segundo factor.
+- **Cuarentena en Enrutador (`<Cuarentena2FA>`):** Componente guardián global en `src/App.jsx` que intercepta cualquier navegación fuera de `/login` mientras el usuario tenga un segundo factor pendiente (`is2FAPending === true`), impidiendo saltarse el reto de seguridad.
+- **Navbar Blindado:** Mientras el 2FA esté en curso, el Navbar muestra una insignia reactiva `🛡️ 2FA PENDIENTE` con botón de cancelación limpia, y bloquea/atenúa los accesos de navegación.
+- **Cancelación Atómica:** Al presionar *"Cancelar / Cambiar cuenta"*, el sistema purga el token pendiente, destruye la sesión previa en Firebase Auth y borra de Firestore cuentas de registro no confirmadas.
 
-2. **Google reCAPTCHA v2 con Validación en Backend y Token Firmado:**
-   - Desafío *"No soy un robot"* integrado con el tema Cyberpunk oscuro de la interfaz.
-   - Verificación del token del lado del servidor (`POST /api/verify-captcha`) utilizando la clave secreta oficial contra la API de Google reCAPTCHA.
-   - Emisión de un pase efímero firmado (`captchaPass`) que previene el bypass de formularios y reinicio automático ante desafíos fallidos.
+### 2. Autenticación Multi-Factor en Servidor (MFA / 2FA con Firebase Admin & OTP)
+- **Generación criptográfica de OTP:** Códigos numéricos de 6 dígitos generados exclusivamente en el backend (`/api/2fa`) con `crypto.randomInt`.
+- **Almacenamiento seguro sin texto plano:** En Cloud Firestore (`2fa_codes/{userId}`) solo se almacena el hash HMAC-SHA256 (`codeHash`) y una firma de integridad (`sig`).
+- **Rate Limiting y ventana estricta:** Límite estricto de 5 intentos fallidos antes de bloquear la cuenta por fuerza bruta (`locked: true`, HTTP 429) y expiración automática tras 5 minutos.
+- **Pase anti-automatización:** Emisión de OTP condicionada a la presentación de un `captchaPass` válido y firmado criptográficamente por `/api/verify-captcha`.
+- **Cooldown anti-bombardeo:** Ventana obligatoria de enfriamiento de 60 segundos por usuario que previene el agotamiento abusivo de la cuota transaccional de EmailJS.
+- **Guardia anti-Rollback:** Control de versiones monotónico en Firestore y memoria que neutraliza cualquier intento de reinyectar estados previos con `attempts: 0`.
+- **Falla cerrada en producción:** Bloqueo automático de claves de respaldo estáticas si faltan secretos en entornos de producción (`HTTP 500`).
+- **Sesión verificada:** Cookie segura `HttpOnly` (`sv_2fa_session`) firmada con HMAC-SHA256 o token de sesión que desbloquea rutas protegidas (`/perfil`) y resiste intentos de suplantación.
+- **Despacho transaccional:** Envío del OTP mediante API REST de EmailJS desde el servidor, con modo de prueba en desarrollo.
 
-3. **Single Sign-On (SSO) y Protección OAuth:**
-   - **Google Identity:** Autenticación fluida con cuentas de Google y verificación de ID tokens en backend con `firebase-admin`.
-   - **Microsoft Entra ID / OAuth:** Autenticación empresarial y personal con cuentas Microsoft (Hotmail, Outlook, Office 365, cuentas educativas).
-   - **Protección anti-CSRF en Spotify OAuth:** Generación y validación de parámetro criptográfico `state` (RFC 6749) y purga de tokens al cerrar sesión en The Sonic Vault.
+### 3. Google reCAPTCHA v2 con Validación en Backend y Token Firmado
+- Desafío *"No soy un robot"* integrado con el tema Cyberpunk oscuro de la interfaz.
+- Verificación del token del lado del servidor (`POST /api/verify-captcha`) utilizando la clave secreta oficial contra la API de Google reCAPTCHA.
+- Emisión de un pase efímero firmado (`captchaPass`) que previene el bypass de formularios y reinicio automático ante desafíos fallidos.
 
-4. **Reglas de Seguridad Declarativas en Firestore (`firestore.rules`):**
-   - Control de acceso por colección versionado en el repositorio (`firestore.rules` y `firebase.json`).
-   - Protección estricta: usuarios solo pueden leer y escribir su propio perfil; los beats tienen inmutabilidad de propietario (`userId`) y límites de nombre; reportes de ruido protegidos con validación de esquema; contadores globales de solo lectura pública y actualización atómica; colección `2fa_codes` con reglas anti-Rollback de intentos.
+### 4. Single Sign-On (SSO) y Detección de Identidades OAuth
+- **Google Identity & Microsoft Entra ID:** Autenticación fluida con cuentas de Google y Microsoft (Hotmail, Outlook, Office 365, cuentas educativas).
+- **Inspección de Identidades en Backend:** `/api/2fa` inspecciona tanto el `signInProvider` como el mapa `decoded.firebase.identities` para cuentas vinculadas, emitiendo la sesión verificada sin falsos rechazos 403.
+- **Limpieza Inmediata ante Fallos:** Si la validación del servidor falla durante un login OAuth, el cliente ejecuta `signOut(auth)` de inmediato para no dejar sesiones en un limbo inconsistente.
+- **Protección anti-CSRF en Spotify OAuth:** Generación y validación de parámetro criptográfico `state` (RFC 6749) y purga de tokens al cerrar sesión en The Sonic Vault.
 
-5. **Defensa en Profundidad y Cabeceras HTTP (`nginx.conf`):**
-   - **Content-Security-Policy (CSP):** Restricción de orígenes permitidos para scripts, estilos, fuentes, conexiones de red, frames y multimedia (Spotify API/Embeds, Firebase Auth/Firestore, Google reCAPTCHA, Google Fonts, FontAwesome CDN y blobs de audio).
-   - Cabeceras `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin` replicadas en estáticos (`/assets/`) con `server_tokens off;`.
-   - Control de payload en microservicio API: límite estricto de 100 KB (`HTTP 413 Payload Too Large`) y rechazo de JSON malformado (`HTTP 400`).
-   - Aislamiento estricto de secretos: `SPOTIFY_CLIENT_SECRET`, `RECAPTCHA_SECRET_KEY`, `EMAILJS_PRIVATE_KEY` y `SESSION_2FA_SECRET` jamás se exponen en el bundle del cliente.
+### 5. Recuperación de Contraseña 100% Real
+- Integración nativa con `sendPasswordResetEmail` de Firebase Auth a través de un modal dedicado en la pantalla de acceso, con validación de sintaxis, mensajes de error contextualizados y protección contra solicitudes masivas.
+
+### 6. Reglas de Seguridad Declarativas en Firestore (`firestore.rules`)
+- Control de acceso por colección versionado en el repositorio (`firestore.rules` y `firebase.json`).
+- Protección estricta: usuarios solo pueden leer y escribir su propio perfil; los beats tienen inmutabilidad de propietario (`userId`) y límites de nombre; reportes de ruido protegidos con validación de esquema; contadores globales de solo lectura pública y actualización atómica; colección `2fa_codes` con reglas anti-Rollback de intentos.
+
+### 7. Defensa en Profundidad y Cabeceras HTTP (`nginx.conf`)
+- **Content-Security-Policy (CSP):** Restricción de orígenes permitidos para scripts, estilos, fuentes, conexiones de red, frames y multimedia (Spotify API/Embeds, Firebase Auth/Firestore, Google reCAPTCHA, Google Fonts, FontAwesome CDN y blobs de audio).
+- Cabeceras `X-Content-Type-Options: nosniff` y `Referrer-Policy: strict-origin-when-cross-origin` replicadas en estáticos (`/assets/`) con `server_tokens off;`.
+- Control de payload en microservicio API: límite estricto de 100 KB (`HTTP 413 Payload Too Large`) y rechazo de JSON malformado (`HTTP 400`).
+- Aislamiento estricto de secretos: `SPOTIFY_CLIENT_SECRET`, `RECAPTCHA_SECRET_KEY`, `EMAILJS_PRIVATE_KEY` y `SESSION_2FA_SECRET` jamás se exponen en el bundle del cliente.
 
 ---
 
@@ -50,16 +60,18 @@ La plataforma incorpora una suite completa de seguridad moderna conforme a los e
   - `Inicio.jsx` utiliza suscripción reactiva `onSnapshot` sobre el documento público `stats/global`.
   - Operaciones atómicas `increment(1)` e `increment(-1)` al registrarse usuarios, guardar/eliminar beats o enviar reportes de ruido, eliminando la descarga de colecciones enteras de Firestore.
 * **Arquitectura Modular en Beat It Pro:**
-  - Desacoplamiento total del motor de audio (`useBeatItScheduler`), persistencia en la nube (`useBeatItPersistence`), presets musicales (`beatItPresets.js`) y componentes de interfaz dedicados (`BeatItTransport`, `BeatItFXRack`, `BeatItMixer`, `BeatItGrid`).
+  - Desacoplamiento total del motor de audio (`useBeatItScheduler`), persistencia en la nube (`useBeatItPersistence`), algoritmo euclidiano (`euclideanRhythm.js`), presets musicales (`beatItPresets.js`) y componentes de interfaz dedicados (`BeatItTransport`, `BeatItFXRack`, `BeatItMixer`, `BeatItGrid`).
 
 ---
 
 ## 🎹 Estudio "Beat It" Pro (Motor de Audio Web Audio API)
 
-Estudio de producción de ritmos de alta fidelidad con arquitectura modular y sincronía estricta:
+Estudio de producción de ritmos de alta fidelidad con arquitectura modular, síntesis pura y sincronía estricta:
 
 * **Motor Web Audio API Sin Jitter:** Programación anticipada (*lookahead scheduling*) en `useBeatItScheduler` para una reproducción rítmica con cero latencia y sincronización milimétrica.
 * **8 Canales de Audio:** Kick, Snare, Clap, HiHat Cerrado, OpenHat, Sub 808, Tom y Crash con 5 kits analógicos y futuristas (`Analog 808`, `Cyberpunk`, `Trap Bóveda`, `Lo-Fi Chill`, `80s Funk`, con retrocompatibilidad automática para `Acoustic Studio`).
+* **Generador de Ritmos Euclidianos (Algoritmo Bjorklund):** Distribución matemática óptima de pulsos rítmicos en compases de 16 y 32 pasos (`src/utils/euclideanRhythm.js`). Permite aplicar patrones euclidianos por canal individual o ensambles rítmicos generativos completos (Tresillo Latino, Afrobeat Polirrítmico, Bossa Nova, Techno Minimalista, Clave Cubana, Balkan 7/8).
+* **Performance Mode & Atajos de Teclado:** Disparo de sonidos en vivo mediante teclado numérico (`1`-`8`) o alfanumérico (`Q`-`I`), `Espacio` para reproducción y `T` para Tap Tempo.
 * **Síntesis Procedural de Vinilo Lo-Fi:** Generador nativo en Web Audio API de textura de vinilo (hiss cálido filtrado + micro-impulsos de aguja aleatorios) 100% autónomo y sin dependencias externas, integrado tanto en tiempo real como en la exportación offline a WAV.
 * **Consola de Mezcla de Estudio (`BeatItMixer`):** Faders de ganancia individuales por canal, conmutadores de `Mute` y `Solo` independientes y control de volumen maestro.
 * **Acentos de Velocidad Dinámicos (`BeatItGrid`):** Secuenciador por pasos con 3 niveles de energía (`Off` / `Normal` / `Punch con Acento`).
@@ -71,7 +83,20 @@ Estudio de producción de ritmos de alta fidelidad con arquitectura modular y si
   - **Dub Delay:** Eco estéreo con feedback resonante y sincronía de tiempo de retardo al tempo musical (1/16, 1/8, 1/8d, 1/4).
 * **Conexión Directa con Bóveda de Perfil (`useBeatItPersistence`):** Hidratación automática de composiciones guardadas en Cloud Firestore al abrirlas desde `/perfil` hacia `/beat-it?beatId=...`.
 * **Presets de Fábrica & Tap Tempo (`BeatItTransport`):** Carga instantánea de géneros clásicos (Trap, Boom Bap 90s, Synthwave 80s, Dembow, House, Lo-Fi) y detección de BPM al toque rítmico (*Tap Tempo*).
-* **Exportador de Audio WAV 16-bit:** Renderizado offline de alta calidad en formato WAV PCM a 44.1 kHz sin compresión con opción de exportar el Master estéreo (incluyendo cadena FX y textura Lo-Fi) o los 8 canales individuales por separado.
+* **Exportador de Audio WAV Dual:** Renderizado offline de alta calidad en formato WAV PCM a 44.1 kHz sin compresión con opción de exportar el Master estéreo (incluyendo cadena FX y textura Lo-Fi) o los 8 canales (*stems*) individuales por separado.
+
+---
+
+## 🗺️ Radar Echo-Safe & Recuperación Acústica
+
+Mapa colaborativo de monitoreo ambiental y bienestar acústico:
+
+* **Cartografía Táctica Leaflet con Tema Dark:** Integración de OpenStreetMap con teselas oscuras CartoDB DarkMatter.
+* **Capas Conmutables:** Visualización mediante mapas de calor (`leaflet.heat`) o marcadores tácticos interactivos categorizados por colores y niveles de riesgo según la OMS.
+* **Algoritmo de Dispersión Anticolisión (Jitter Voronoi Concéntrico):** Evita la superposición de pines en reportes con coordenadas idénticas distribuyéndolos en un anillo concéntrico visualmente accesible.
+* **Sonómetro en Tiempo Real con Calibración de Sensibilidad:** Captura y análisis de señal de micrófono mediante Web Audio API (`useAudioMeter`) con persistencia del offset en `localStorage` y cálculo de Leq (nivel equivalente continuo), picos dB y clasificaciones OMS.
+* **Protocolo de Recuperación Sonora (Fase 2 Sound Healing):** Motor de audio dedicado (`src/services/soundHealingAudio.js`) con frecuencias binaurales de descompresión (528 Hz para regeneración celular y 432 Hz para relajación armónica, ruido rosa y drones ambientales continuos).
+* **Vuelo Geográfico Focalizado:** Navegación táctica directa (`flyTo`) al seleccionar cualquier reporte previo desde la Bóveda del Perfil.
 
 ---
 
@@ -197,28 +222,6 @@ El archivo `.env` requiere las siguientes claves (ver [.env.example](.env.exampl
 | `EMAILJS_PRIVATE_KEY` | Private Key / Access Token de EmailJS (opcional para API REST de backend) | Backend / Servidor |
 | `SESSION_2FA_SECRET` | Clave secreta HMAC para firmar tokens y cookies de sesión 2FA | Backend / Servidor |
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | JSON de cuenta de servicio de Firebase Admin (opcional para privilegios avanzados) | Backend / Servidor |
-
----
-
-## 🧪 Scripts de Verificación y Calidad
-
-* `npm run dev` — Levanta el entorno de desarrollo con HMR y middlewares locales `/api/*`.
-* `npm run lint` — Ejecuta ESLint 9 sobre todo el repositorio (`0 errors`, `0 warnings`).
-* `npm run build` — Genera el bundle optimizado de producción en `dist/`.
-* `npm run preview` — Previsualiza localmente el build de producción.
-
----
-
-## 🎓 Información Académica
-
-* **Autor:** Samuel Pérez Valencia
-* **Programa Académico:** Desarrollo de Software
-* **Institución:** Universidad Católica Luis Amigó
-* **Ubicación:** Medellín, Antioquia, Colombia
-
----
-
-*"La tecnología y la música, codificadas en un solo lugar."*
 
 ---
 
