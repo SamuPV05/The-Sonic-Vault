@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useSpotifyPlayer } from '../context/SpotifyPlayerContext';
 
 export default function NavbarSpotifyPlayer() {
+  const { user, is2FAPending } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     connected,
     nowPlaying,
@@ -30,6 +35,11 @@ export default function NavbarSpotifyPlayer() {
     };
   }, [showPopover]);
 
+  // Ocultar widget durante la cuarentena de segundo factor
+  if (is2FAPending) {
+    return null;
+  }
+
   const formatMs = (ms) => {
     if (!ms || isNaN(ms)) return '0:00';
     const totalSecs = Math.floor(ms / 1000);
@@ -40,13 +50,26 @@ export default function NavbarSpotifyPlayer() {
 
   const progressPct = durationMs > 0 ? Math.min(100, (progressMs / durationMs) * 100) : 0;
 
-  // CASO 1: No conectado a Spotify
-  if (!connected) {
+  const handleConnectClick = () => {
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: location.pathname,
+          notice: 'Inicia sesión en The Sonic Vault antes de vincular tu cuenta personal de Spotify.'
+        }
+      });
+      return;
+    }
+    login();
+  };
+
+  // CASO 1: No autenticado en la bóveda o no conectado a Spotify
+  if (!user || !connected) {
     return (
       <button
         type="button"
-        onClick={login}
-        title="Conectar tu cuenta de Spotify para activar el reproductor en vivo"
+        onClick={handleConnectClick}
+        title={user ? 'Conectar tu cuenta de Spotify para activar el reproductor en vivo' : 'Inicia sesión en The Sonic Vault para conectar tu Spotify'}
         style={{
           background: 'rgba(29, 185, 84, 0.1)',
           color: '#1db954',

@@ -1,15 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleSpotifyCallback } from '../services/spotifyService';
 
 export default function SpotifyCallback() {
   const navigate = useNavigate();
+  const procesadoRef = useRef(false);
   const [error, setError] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('error') ? 'Acceso denegado o cancelado en Spotify.' : null;
   });
 
   useEffect(() => {
+    // Evitar doble ejecución en React StrictMode que consume dos veces el código OAuth
+    if (procesadoRef.current) return;
+    procesadoRef.current = true;
+
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     const state = params.get('state');
@@ -17,22 +22,22 @@ export default function SpotifyCallback() {
 
     if (err) {
       console.error('Spotify Auth error:', err);
-      const timer = setTimeout(() => navigate('/perfil'), 3000);
+      const timer = setTimeout(() => navigate('/perfil', { replace: true }), 3000);
       return () => clearTimeout(timer);
     }
 
     if (code) {
       handleSpotifyCallback(code, state)
         .then(() => {
-          navigate('/perfil?spotify=connected');
+          navigate('/perfil?spotify=connected', { replace: true });
         })
         .catch((e) => {
           console.error('Error al procesar callback de Spotify:', e);
           setError(e.message || 'Error sincronizando con la API de Spotify.');
-          setTimeout(() => navigate('/perfil'), 3500);
+          setTimeout(() => navigate('/perfil', { replace: true }), 3500);
         });
     } else {
-      navigate('/perfil');
+      navigate('/perfil', { replace: true });
     }
   }, [navigate]);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +40,8 @@ export default function Login() {
     verify2FA
   } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectNotice = location.state?.notice || null;
 
   // Estados del formulario
   const [isRegistering, setIsRegistering] = useState(false);
@@ -415,6 +417,24 @@ export default function Login() {
         <h2 style={{ color: '#fff', marginBottom: '2rem', letterSpacing: '2px', textShadow: '0 0 10px var(--accent-color)' }}>
           {isRegistering ? 'NUEVO EXPLORADOR' : 'ACCESO RESTRINGIDO'}
         </h2>
+
+        {/* Aviso informativo (ej. redirección al intentar conectar Spotify sin sesión) */}
+        {!error && redirectNotice && (
+          <div style={{
+            background: 'rgba(29, 185, 84, 0.12)',
+            border: '1px solid rgba(29, 185, 84, 0.5)',
+            color: '#1db954',
+            padding: '12px 15px',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+            fontSize: '0.85rem',
+            textAlign: 'left',
+            boxShadow: '0 0 15px rgba(29, 185, 84, 0.15)'
+          }}>
+            <i className="fa-brands fa-spotify" style={{ marginRight: '8px' }}></i>
+            {redirectNotice}
+          </div>
+        )}
 
         {/* Mensaje de Error */}
         {error && (

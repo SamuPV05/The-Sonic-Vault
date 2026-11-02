@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import { useAuth } from '../context/AuthContext';
 import {
   isSpotifyConnected,
   loginWithSpotify,
@@ -15,6 +17,8 @@ export default function BeatItSpotifyRadarModal({
   currentKit = 'Cyberpunk',
   beatName = ''
 }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [tracks, setTracks] = useState([]);
   const [selectedUris, setSelectedUris] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -24,7 +28,7 @@ export default function BeatItSpotifyRadarModal({
   const [userProfile, setUserProfile] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const isConnected = isSpotifyConnected();
+  const isConnected = Boolean(user && isSpotifyConnected());
 
   // Inicializar nombre y buscar tracks de referencia al abrir
   useEffect(() => {
@@ -87,6 +91,17 @@ export default function BeatItSpotifyRadarModal({
   };
 
   const handleCreatePlaylist = async () => {
+    if (!user) {
+      onClose();
+      navigate('/login', {
+        state: {
+          from: '/beat-it',
+          notice: 'Inicia sesión en The Sonic Vault antes de sincronizar Spotify y exportar playlists.'
+        }
+      });
+      return;
+    }
+
     if (!isConnected) {
       loginWithSpotify();
       return;

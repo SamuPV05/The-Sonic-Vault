@@ -4,18 +4,7 @@ import { getSpotifyNewReleases } from '../services/spotifyService';
 
 const FALLBACK_RELEASES = [
   {
-    id: '4czdORIRfl2HGviYKAv508',
-    name: 'Hackney Diamonds',
-    artist: 'The Rolling Stones',
-    artistId: '22bE4uQ6baNwSHPVcDx4eJ',
-    releaseDate: '2023-10-20',
-    totalTracks: 12,
-    type: 'album',
-    image: 'https://i.scdn.co/image/ab67616d0000b273b400a4fb16efbc9e73f8430b',
-    spotifyUrl: 'https://open.spotify.com/album/4czdORIRfl2HGviYKAv508'
-  },
-  {
-    id: '2guirTSE4bF0L8zJVR8G9v',
+    id: '7aJuG4TFXa2hmE4z1yxc3n',
     name: 'HIT ME HARD AND SOFT',
     artist: 'Billie Eilish',
     artistId: '6qqNVTkY8uBg9cP3Jd7DAH',
@@ -23,27 +12,84 @@ const FALLBACK_RELEASES = [
     totalTracks: 10,
     type: 'album',
     image: 'https://i.scdn.co/image/ab67616d0000b27371d62ea7ea8a5be92d3c1f62',
-    spotifyUrl: 'https://open.spotify.com/album/2guirTSE4bF0L8zJVR8G9v'
+    spotifyUrl: 'https://open.spotify.com/album/7aJuG4TFXa2hmE4z1yxc3n'
   },
   {
-    id: '3Uqu1m845ZMsxqrhP9KGj5',
+    id: '10FLjwfpbxLmW8c25Xyc2N',
     name: 'Die With A Smile',
     artist: 'Lady Gaga, Bruno Mars',
+    artistId: '1HY2Jd0NmPuamShAr6KMms',
     releaseDate: '2024-08-16',
     totalTracks: 1,
     type: 'single',
-    image: 'https://i.scdn.co/image/ab67616d0000b27382ea2e9e1f582d6e32a4e230',
-    spotifyUrl: 'https://open.spotify.com/album/3Uqu1m845ZMsxqrhP9KGj5'
+    image: 'https://i.scdn.co/image/ab67616d0000b27382ea2e9e1858aa012c57cd45',
+    spotifyUrl: 'https://open.spotify.com/album/10FLjwfpbxLmW8c25Xyc2N'
   },
   {
-    id: '1NAmidJlEaVgA3MpcZTqui',
-    name: 'Dancing in the Flames',
+    id: '3OxfaVgvTxUTy7276t7SPU',
+    name: 'Hurry Up Tomorrow',
     artist: 'The Weeknd',
-    releaseDate: '2024-09-13',
+    artistId: '1Xyo4u8uXC1ZmMpatF05PJ',
+    releaseDate: '2025-01-31',
+    totalTracks: 22,
+    type: 'album',
+    image: 'https://i.scdn.co/image/ab67616d0000b273de79f330bc297af3fae736da',
+    spotifyUrl: 'https://open.spotify.com/album/3OxfaVgvTxUTy7276t7SPU'
+  },
+  {
+    id: '1AxMcdQRLguJqSZMxvRNdO',
+    name: 'Hackney Diamonds',
+    artist: 'The Rolling Stones',
+    artistId: '22bE4uQ6baNwSHPVcDxLCe',
+    releaseDate: '2023-10-20',
+    totalTracks: 12,
+    type: 'album',
+    image: 'https://i.scdn.co/image/ab67616d0000b273683680975bf153c97ea8ad8d',
+    spotifyUrl: 'https://open.spotify.com/album/1AxMcdQRLguJqSZMxvRNdO'
+  },
+  {
+    id: '7bDd1p7E9lfMcU6RR1ZsPR',
+    name: 'PARADIXE (REMIX)',
+    artist: 'Feid, Omar Courtz, Pirlo',
+    artistId: '2LRoIwlKmHjgvigdNGBHNo',
+    releaseDate: '2026-11-01',
     totalTracks: 1,
     type: 'single',
-    image: 'https://i.scdn.co/image/ab67616d0000b273c5649add07ed3720be093046',
-    spotifyUrl: 'https://open.spotify.com/album/1NAmidJlEaVgA3MpcZTqui'
+    image: 'https://i.scdn.co/image/ab67616d0000b2736d7b297a26f05e662231aaea',
+    spotifyUrl: 'https://open.spotify.com/album/7bDd1p7E9lfMcU6RR1ZsPR'
+  },
+  {
+    id: '5YEDDnQxM5ebCTsRotIcoy',
+    name: 'Cuando Yo Me Muera',
+    artist: 'Grupo Firme, El Esparza',
+    artistId: '1dKdetem2xEmjgvyymzytS',
+    releaseDate: '2026-11-02',
+    totalTracks: 1,
+    type: 'single',
+    image: 'https://i.scdn.co/image/ab67616d0000b273efd92e29af487eeab6c638b6',
+    spotifyUrl: 'https://open.spotify.com/album/5YEDDnQxM5ebCTsRotIcoy'
+  },
+  {
+    id: '1HTo8oFgBr8czXYfEZmJpf',
+    name: 'Vulnerable (Acústico)',
+    artist: 'Luister La Voz',
+    artistId: '4FoMtKClFtTNsfQN7ivDII',
+    releaseDate: '2026-11-01',
+    totalTracks: 1,
+    type: 'single',
+    image: 'https://i.scdn.co/image/ab67616d0000b27349894947dc086cf215d9d590',
+    spotifyUrl: 'https://open.spotify.com/album/1HTo8oFgBr8czXYfEZmJpf'
+  },
+  {
+    id: '55xtucVzZNKwTvfrQKE6zn',
+    name: 'Parea Me Tin Ioulia, Vol. 2',
+    artist: 'Ioulia Kallimani',
+    artistId: '6HsM9NbNIunWMEFLOk4d9p',
+    releaseDate: '2026-11-02',
+    totalTracks: 58,
+    type: 'album',
+    image: 'https://i.scdn.co/image/ab67616d0000b273322d7614090c83aefe8722cb',
+    spotifyUrl: 'https://open.spotify.com/album/55xtucVzZNKwTvfrQKE6zn'
   }
 ];
 
@@ -380,6 +426,10 @@ export default function SpotifyNewReleases() {
                       src={album.image} 
                       alt={album.name} 
                       loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80';
+                      }}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} 
                     />
                   ) : (
