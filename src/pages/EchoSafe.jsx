@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { db } from '../firebase/config';
-import { collection, addDoc, onSnapshot, query, limit, orderBy, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, limit, serverTimestamp, doc, setDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -16,7 +16,7 @@ import EchoRecoveryModal from '../components/EchoRecoveryModal';
 import './EchoSafe.css';
 
 // Clave publica autorizada de CARTO Basemaps para renderizar teselas oscuras sin marca de agua
-const CARTO_API_KEY = (CARTO_API_KEY || 'cb1_4ypr_1_0fe0885a43f31cbe8ba0f931').trim();
+const CARTO_API_KEY = (import.meta.env.VITE_CARTO_API_KEY || 'cb1_4ypr_1_0fe0885a43f31cbe8ba0f931').trim();
 
 
 // --- ICONOS LIMPIOS Y MARCADORES TÁCTICOS ---
@@ -156,14 +156,9 @@ export default function EchoSafe() {
       return () => clearTimeout(t);
     }
   }, [location]);
-  // Consulta optimizada acotada a los 150 registros más recientes ordenados en el servidor
+  // Consulta comunitaria resiliente: recupera todos los nodos (legacy y modernos) sin excluir documentos
   useEffect(() => {
-    let q;
-    try {
-      q = query(collection(db, "echo_reports"), orderBy("createdAt", "desc"), limit(150));
-    } catch {
-      q = query(collection(db, "echo_reports"), limit(150));
-    }
+    const q = query(collection(db, "echo_reports"), limit(150));
 
     const unsubscribe = onSnapshot(
       q,
@@ -171,35 +166,31 @@ export default function EchoSafe() {
         const data = [];
         s.forEach((d) => data.push({ id: d.id, ...d.data() }));
 
-        // Ordenar cronológicamente (más recientes primero) combinando serverTimestamp y strings
+        // Ordenar cronológicamente (más recientes primero) combinando serverTimestamp, timestamps numéricos y strings
         data.sort((a, b) => {
-          const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.fecha ? new Date(a.fecha).getTime() || 0 : 0);
-          const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.fecha ? new Date(b.fecha).getTime() || 0 : 0);
-          return timeB - timeA;
+          const parseTime = (item) => {
+            if (item.createdAt?.toDate) return item.createdAt.toDate().getTime();
+            if (item.createdAt?.toMillis) return item.createdAt.toMillis();
+            if (item.createdAt?.seconds) return item.createdAt.seconds * 1000;
+            if (item.fecha) {
+              const parsed = Date.parse(item.fecha);
+              if (!isNaN(parsed)) return parsed;
+              const match = item.fecha.match(/(\d+)\/(\d+)\/(\d+)/);
+              if (match) {
+                const d = new Date(match[3], match[2] - 1, match[1]);
+                if (!isNaN(d.getTime())) return d.getTime();
+              }
+            }
+            return 0;
+          };
+          return parseTime(b) - parseTime(a);
         });
 
         setReportes(data);
       },
       (error) => {
-        console.error("Error al sincronizar reportes de Firestore con ordenación de servidor:", error);
-        // Fallback resiliente a consulta sin orderBy si la colección contiene docs legacy sin createdAt
-        const fallbackQ = query(collection(db, "echo_reports"), limit(150));
-        onSnapshot(
-          fallbackQ,
-          (fallbackSnap) => {
-            const fallbackData = [];
-            fallbackSnap.forEach((d) => fallbackData.push({ id: d.id, ...d.data() }));
-            fallbackData.sort((a, b) => {
-              const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.fecha ? new Date(a.fecha).getTime() || 0 : 0);
-              const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.fecha ? new Date(b.fecha).getTime() || 0 : 0);
-              return timeB - timeA;
-            });
-            setReportes(fallbackData);
-          },
-          () => {
-            showToast('error', 'Error de enlace', 'No se pudieron sincronizar los datos de la red sonora.');
-          }
-        );
+        console.error("Error al sincronizar reportes de Firestore:", error);
+        showToast('error', 'Error de enlace', 'No se pudieron sincronizar los datos de la red sonora.');
       }
     );
 
