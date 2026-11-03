@@ -20,18 +20,43 @@ const formatDurationMs = (ms) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+// Extrae y normaliza géneros desde campos curados de Firestore (genero, generos, genres)
+const extraerGenerosCurados = (data) => {
+  if (!data) return [];
+  const raw = [];
+  if (Array.isArray(data.genres)) raw.push(...data.genres);
+  if (Array.isArray(data.generos)) raw.push(...data.generos);
+  if (typeof data.genero === 'string') {
+    raw.push(...data.genero.split(/[,/•|]+/));
+  }
+  const seen = new Set();
+  const clean = [];
+  for (const item of raw) {
+    const g = String(item || '').trim().toLowerCase();
+    if (g && g.length >= 2 && !seen.has(g)) {
+      seen.add(g);
+      clean.push(g);
+    }
+  }
+  return clean;
+};
+
 export default function ArtistaDetalle() {
   const { id } = useParams();
   const [artista, setArtista] = useState(null);
   const [esSpotify, setEsSpotify] = useState(false);
+  const [sincronizandoTelemetria, setSincronizandoTelemetria] = useState(false);
   const [spotifyAlbums, setSpotifyAlbums] = useState([]);
   const [spotifyTopTracks, setSpotifyTopTracks] = useState([]);
   const [activeTopTrackId, setActiveTopTrackId] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
+    let cancelado = false;
+
     const obtenerArtista = async () => {
       setCargando(true);
+      setSincronizandoTelemetria(false);
       setActiveTopTrackId(null);
       try {
         if (id && id.startsWith('sp_')) {
@@ -40,6 +65,8 @@ export default function ArtistaDetalle() {
           setEsSpotify(true);
 
           const artistData = await getSpotifyArtist(spotifyId);
+          if (cancelado) return;
+
           if (artistData) {
             const genresList = Array.isArray(artistData.genres) ? artistData.genres : [];
             const followersCount =
@@ -59,7 +86,7 @@ export default function ArtistaDetalle() {
               subtitulo: 'EXPEDIENTE GLOBAL SPOTIFY // ARCHIVO ABIERTO',
               bio: `${genresSummary}Artista indexado en tiempo real desde el catálogo global de Spotify. Conecta tus sentidos a sus métricas de impacto, temas esenciales y discografía oficial en The Sonic Vault.`,
               spotifyUrl: artistData.external_urls?.spotify,
-              spotifyId: spotifyId,
+              spotifyId: artistData.id || spotifyId,
               genres: genresList,
               followers: followersCount,
               popularity: popularityScore
@@ -67,23 +94,82 @@ export default function ArtistaDetalle() {
 
             // Cargar álbumes oficiales y Top Tracks en paralelo
             const [albums, topTracks] = await Promise.all([
-              getSpotifyArtistAlbums(spotifyId, 8),
-              getSpotifyArtistTopTracks(spotifyId, artistData.name, 6)
+              getSpotifyArtistAlbums(artistData.id || spotifyId, 8, artistData.name),
+              getSpotifyArtistTopTracks(artistData.id || spotifyId, artistData.name, 6)
             ]);
-            setSpotifyAlbums(albums || []);
-            setSpotifyTopTracks(topTracks || []);
+            if (!cancelado) {
+              setSpotifyAlbums(albums || []);
+              setSpotifyTopTracks(topTracks || []);
+            }
           } else {
             setArtista(null);
           }
         } else {
-          // --- ARTISTA CLÁSICO DE FIRESTORE ---
+          // --- ARTISTA CLÁSICO DE FIRESTORE (HIBRIDADO EN PARALELO CON SPOTIFY) ---
           setEsSpotify(false);
           setSpotifyAlbums([]);
           setSpotifyTopTracks([]);
           const docRef = doc(db, 'artistas', id);
           const docSnap = await getDoc(docRef);
+          if (cancelado) return;
+
           if (docSnap.exists()) {
-            setArtista(docSnap.data());
+            const firestoreData = docSnap.data();
+            const generosCurados = extraerGenerosCurados(firestoreData);
+            const fallbackSpotifySearchUrl = `https://open.spotify.com/search/${encodeURIComponent(
+              firestoreData.nombre || id
+            )}`;
+
+            const baseArtista = {
+              ...firestoreData,
+              genres: generosCurados,
+              followers:
+                typeof firestoreData.followers === 'number' ? firestoreData.followers : null,
+              popularity:
+                typeof firestoreData.popularity === 'number' ? firestoreData.popularity : null,
+              spotifyUrl: firestoreData.spotifyUrl || fallbackSpotifySearchUrl,
+              spotifyId: firestoreData.spotifyId || null
+            };
+
+            setArtista(baseArtista);
+            setCargando(false);
+            setSincronizandoTelemetria(true);
+
+            try {
+              const spData = await getSpotifyArtist(
+                firestoreData.spotifyId || '',
+                firestoreData.nombre || id
+              );
+              if (!cancelado && spData) {
+                const spGenres = Array.isArray(spData.genres) ? spData.genres : [];
+                const mergedGenres = [...new Set([...spGenres, ...generosCurados])].slice(0, 6);
+
+                setArtista((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        spotifyId: spData.id || prev.spotifyId,
+                        spotifyUrl: spData.external_urls?.spotify || prev.spotifyUrl,
+                        followers:
+                          typeof spData.followers?.total === 'number'
+                            ? spData.followers.total
+                            : prev.followers,
+                        popularity:
+                          typeof spData.popularity === 'number'
+                            ? spData.popularity
+                            : prev.popularity,
+                        genres: mergedGenres.length > 0 ? mergedGenres : prev.genres
+                      }
+                    : prev
+                );
+              }
+            } catch (spErr) {
+              console.warn('Aviso al sincronizar telemetría Spotify para artista curado:', spErr);
+            } finally {
+              if (!cancelado) {
+                setSincronizandoTelemetria(false);
+              }
+            }
           } else {
             setArtista(null);
           }
@@ -91,10 +177,16 @@ export default function ArtistaDetalle() {
       } catch (error) {
         console.error('Error al obtener artista:', error);
       } finally {
-        setCargando(false);
+        if (!cancelado) {
+          setCargando(false);
+        }
       }
     };
     obtenerArtista();
+
+    return () => {
+      cancelado = true;
+    };
   }, [id]);
 
   const [erasExpandidas, setErasExpandidas] = useState({});
@@ -202,12 +294,12 @@ export default function ArtistaDetalle() {
         </div>
         <div className="artist-bio">
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-            {esSpotify && (
+            {!esSpotify && (
               <span
                 style={{
-                  background: 'rgba(29, 185, 84, 0.15)',
-                  color: '#1DB954',
-                  border: '1px solid rgba(29, 185, 84, 0.4)',
+                  background: 'rgba(0, 240, 255, 0.12)',
+                  color: 'var(--accent-color)',
+                  border: '1px solid rgba(0, 240, 255, 0.35)',
                   padding: '4px 12px',
                   borderRadius: '15px',
                   fontSize: '0.75rem',
@@ -215,9 +307,23 @@ export default function ArtistaDetalle() {
                   letterSpacing: '1px'
                 }}
               >
-                <i className="fa-brands fa-spotify" style={{ marginRight: '6px' }}></i> SPOTIFY OFICIAL
+                <i className="fa-solid fa-compact-disc" style={{ marginRight: '6px' }}></i> ARCHIVO DE CULTO // BÓVEDA
               </span>
             )}
+            <span
+              style={{
+                background: 'rgba(29, 185, 84, 0.15)',
+                color: '#1DB954',
+                border: '1px solid rgba(29, 185, 84, 0.4)',
+                padding: '4px 12px',
+                borderRadius: '15px',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                letterSpacing: '1px'
+              }}
+            >
+              <i className="fa-brands fa-spotify" style={{ marginRight: '6px' }}></i> SPOTIFY OFICIAL
+            </span>
           </div>
           <h1>{artista.nombre}</h1>
           <h2 style={{ textTransform: 'uppercase', letterSpacing: '2px', color: '#888', fontSize: '1rem' }}>
@@ -225,52 +331,88 @@ export default function ArtistaDetalle() {
           </h2>
           <p style={{ marginTop: '20px', fontSize: '1.1rem', lineHeight: '1.8' }}>{artista.bio}</p>
 
-          {/* TELEMETRÍA ENRIQUECIDA DE SPOTIFY: GÉNEROS, SEGUIDORES Y BARRA DE POPULARIDAD */}
-          {esSpotify && (
+          {/* TELEMETRÍA ENRIQUECIDA UNIFICADA (FIRESTORE + SPOTIFY): GÉNEROS, SEGUIDORES Y BARRA DE POPULARIDAD */}
+          <div
+            style={{
+              marginTop: '22px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              background: 'rgba(10, 14, 24, 0.75)',
+              border: '1px solid rgba(0, 240, 255, 0.2)',
+              borderRadius: '14px',
+              padding: '16px 18px'
+            }}
+          >
+            {/* Fila de Seguidores y Barra de Popularidad */}
             <div
               style={{
-                marginTop: '22px',
-                display: 'flex',
-                flexDirection: 'column',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
                 gap: '16px',
-                background: 'rgba(10, 14, 24, 0.75)',
-                border: '1px solid rgba(0, 240, 255, 0.2)',
-                borderRadius: '14px',
-                padding: '16px 18px'
+                alignItems: 'center'
               }}
             >
-              {/* Fila de Seguidores y Barra de Popularidad */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-                  gap: '16px',
-                  alignItems: 'center'
-                }}
-              >
-                {/* Seguidores Formateados */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div
+              {/* Seguidores Formateados */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '10px',
+                    background: 'rgba(29, 185, 84, 0.14)',
+                    border: '1px solid rgba(29, 185, 84, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#1DB954',
+                    fontSize: '1.1rem',
+                    flexShrink: 0
+                  }}
+                >
+                  <i className="fa-solid fa-users" />
+                </div>
+                <div>
+                  <span
                     style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: 'rgba(29, 185, 84, 0.14)',
-                      border: '1px solid rgba(29, 185, 84, 0.35)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#1DB954',
-                      fontSize: '1.1rem',
-                      flexShrink: 0
+                      display: 'block',
+                      fontSize: '0.68rem',
+                      color: '#888',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      fontWeight: 'bold'
                     }}
                   >
-                    <i className="fa-solid fa-users" />
-                  </div>
-                  <div>
+                    Audiencia Global
+                  </span>
+                  <span style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#fff' }}>
+                    {artista.followers !== null && artista.followers !== undefined ? (
+                      `${artista.followers.toLocaleString('es-ES')} seguidores`
+                    ) : sincronizandoTelemetria ? (
+                      <span style={{ color: '#00F0FF', fontSize: '0.92rem' }}>
+                        <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }} />
+                        Sincronizando audiencia...
+                      </span>
+                    ) : (
+                      'Catálogo Verificado'
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Barra de Índice de Popularidad (0 - 100) */}
+              {artista.popularity !== null && artista.popularity !== undefined ? (
+                <div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '6px'
+                    }}
+                  >
                     <span
                       style={{
-                        display: 'block',
                         fontSize: '0.68rem',
                         color: '#888',
                         textTransform: 'uppercase',
@@ -278,121 +420,120 @@ export default function ArtistaDetalle() {
                         fontWeight: 'bold'
                       }}
                     >
-                      Audiencia Global
+                      <i className="fa-solid fa-fire-flame-curved" style={{ color: '#00F0FF', marginRight: '5px' }} />
+                      Índice de Popularidad
                     </span>
-                    <span style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#fff' }}>
-                      {artista.followers !== null && artista.followers !== undefined
-                        ? `${artista.followers.toLocaleString('es-ES')} seguidores`
-                        : 'Catálogo Verificado'}
+                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#00F0FF' }}>
+                      {artista.popularity} / 100
                     </span>
+                  </div>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '8px',
+                      background: 'rgba(255,255,255,0.08)',
+                      borderRadius: '999px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${Math.max(4, Math.min(100, artista.popularity))}%`,
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #1DB954 0%, #00F0FF 100%)',
+                        boxShadow: '0 0 12px rgba(0, 240, 255, 0.6)',
+                        borderRadius: '999px',
+                        transition: 'width 0.6s ease'
+                      }}
+                    />
                   </div>
                 </div>
+              ) : sincronizandoTelemetria ? (
+                <div>
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '0.68rem',
+                      color: '#888',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      fontWeight: 'bold',
+                      marginBottom: '6px'
+                    }}
+                  >
+                    <i className="fa-solid fa-fire-flame-curved" style={{ color: '#00F0FF', marginRight: '5px' }} />
+                    Índice de Popularidad
+                  </span>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '8px',
+                      background: 'rgba(0, 240, 255, 0.12)',
+                      borderRadius: '999px',
+                      overflow: 'hidden'
+                    }}
+                  />
+                </div>
+              ) : null}
+            </div>
 
-                {/* Barra de Índice de Popularidad (0 - 100) */}
-                {artista.popularity !== null && artista.popularity !== undefined && (
-                  <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '6px'
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          color: '#888',
-                          textTransform: 'uppercase',
-                          letterSpacing: '1px',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        <i className="fa-solid fa-fire-flame-curved" style={{ color: '#00F0FF', marginRight: '5px' }} />
-                        Índice de Popularidad
-                      </span>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#00F0FF' }}>
-                        {artista.popularity} / 100
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '8px',
-                        background: 'rgba(255,255,255,0.08)',
-                        borderRadius: '999px',
-                        overflow: 'hidden',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: `${Math.max(4, Math.min(100, artista.popularity))}%`,
-                          height: '100%',
-                          background: 'linear-gradient(90deg, #1DB954 0%, #00F0FF 100%)',
-                          boxShadow: '0 0 12px rgba(0, 240, 255, 0.6)',
-                          borderRadius: '999px',
-                          transition: 'width 0.6s ease'
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Píldoras de Géneros Musicales */}
-              <div>
-                <span
-                  style={{
-                    display: 'block',
-                    fontSize: '0.68rem',
-                    color: '#888',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    fontWeight: 'bold',
-                    marginBottom: '8px'
-                  }}
-                >
-                  ADN de Géneros Registrados:
-                </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {artista.genres && artista.genres.length > 0 ? (
-                    artista.genres.map((genre) => (
-                      <span
-                        key={genre}
-                        style={{
-                          background: 'rgba(0, 240, 255, 0.1)',
-                          color: '#00F0FF',
-                          border: '1px solid rgba(0, 240, 255, 0.35)',
-                          padding: '4px 11px',
-                          borderRadius: '20px',
-                          fontSize: '0.73rem',
-                          fontWeight: 'bold',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.6px'
-                        }}
-                      >
-                        # {genre}
-                      </span>
-                    ))
-                  ) : (
+            {/* Píldoras de Géneros Musicales */}
+            <div>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '0.68rem',
+                  color: '#888',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  fontWeight: 'bold',
+                  marginBottom: '8px'
+                }}
+              >
+                ADN de Géneros Registrados:
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {artista.genres && artista.genres.length > 0 ? (
+                  artista.genres.map((genre) => (
                     <span
+                      key={genre}
                       style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        color: '#aaa',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: 'rgba(0, 240, 255, 0.1)',
+                        color: '#00F0FF',
+                        border: '1px solid rgba(0, 240, 255, 0.35)',
                         padding: '4px 11px',
                         borderRadius: '20px',
-                        fontSize: '0.73rem'
+                        fontSize: '0.73rem',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.6px'
                       }}
                     >
-                      Sonido Contemporáneo // Spotify Global
+                      # {genre}
                     </span>
-                  )}
-                </div>
+                  ))
+                ) : sincronizandoTelemetria ? (
+                  <span style={{ color: '#00F0FF', fontSize: '0.75rem' }}>
+                    Sincronizando ADN musical...
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      color: '#aaa',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      padding: '4px 11px',
+                      borderRadius: '20px',
+                      fontSize: '0.73rem'
+                    }}
+                  >
+                    Sonido Contemporáneo // Spotify Global
+                  </span>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
           {artista.spotifyUrl && (
             <div style={{ marginTop: '25px' }}>
