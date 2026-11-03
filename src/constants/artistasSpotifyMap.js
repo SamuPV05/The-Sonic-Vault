@@ -181,6 +181,22 @@ export const ARTISTAS_SPOTIFY_MAP = {
 };
 
 /**
+ * Lista canónica de slugs de los 10 expedientes de culto registrados en la Bóveda de Firestore.
+ */
+export const CURATED_VAULT_SLUGS = [
+  'michael-jackson',
+  'bruno-mars',
+  'kendrick-lamar',
+  'billie-eilish',
+  'lana-del-rey',
+  'eminem',
+  'rihanna',
+  'dr-dre',
+  'the-weeknd',
+  'lady-gaga'
+];
+
+/**
  * Normaliza un término para búsqueda insensible a mayúsculas, tildes y caracteres especiales.
  */
 function normalizarTermino(texto = '') {
@@ -236,4 +252,37 @@ export function getCuratedSpotifyId(slugOrName = '') {
   const match = getCuratedSpotifyMapping(slugOrName);
   return match?.spotifyId || null;
 }
+
+/**
+ * Determina si un artista devuelto por Spotify API corresponde a uno de los 10 expedientes
+ * de culto de la Bóveda de Firestore.
+ * @param {object} spotifyArtist - Objeto artista de Spotify con id y name.
+ * @returns {object|null} Metadatos curados con el slug de Firestore, o null si es solo streaming abierto.
+ */
+export function getCuratedVaultMatch(spotifyArtist) {
+  if (!spotifyArtist) return null;
+  const sId = spotifyArtist.id || '';
+  const sName = String(spotifyArtist.name || '').trim().toLowerCase();
+  const normName = normalizarTermino(spotifyArtist.name || '');
+
+  for (const slug of CURATED_VAULT_SLUGS) {
+    const item = ARTISTAS_SPOTIFY_MAP[slug];
+    if (item) {
+      if (
+        (sId && item.spotifyId === sId) ||
+        item.name.toLowerCase() === sName ||
+        normalizarTermino(item.name) === normName ||
+        slug === normName
+      ) {
+        return {
+          slug,
+          ...item
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 

@@ -763,3 +763,447 @@
 .spotify-artist-card:hover .spotify-card-action {
   color: var(--accent-color, #00f0ff);
 }
+
+/* ==========================================================================
+   SINERGIA ARQUITECTÓNICA: BÓVEDA CURADA VS RADAR SPOTIFY API
+   ========================================================================== */
+
+/* 1. Leyenda de Arquitectura (Nivel 1 vs Nivel 2) */
+.artistas-architecture-legend {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.2rem;
+  margin-top: 1.5rem;
+}
+
+.legend-card {
+  background: rgba(14, 18, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1.1rem 1.3rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.legend-card:hover {
+  transform: translateY(-2px);
+}
+
+.legend-card.legend-boveda:hover,
+.legend-card.legend-boveda.is-current {
+  border-color: rgba(255, 215, 0, 0.45);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.07) 0%, rgba(14, 18, 26, 0.9) 100%);
+  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.12);
+}
+
+.legend-card.legend-radar:hover,
+.legend-card.legend-radar.is-current {
+  border-color: rgba(29, 185, 84, 0.45);
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.07) 0%, rgba(14, 18, 26, 0.9) 100%);
+  box-shadow: 0 8px 25px rgba(29, 185, 84, 0.12);
+}
+
+.legend-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.legend-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+.boveda-badge {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.radar-badge {
+  color: #1DB954;
+  background: rgba(29, 185, 84, 0.12);
+  border: 1px solid rgba(29, 185, 84, 0.3);
+}
+
+.legend-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted, #8a99ad);
+}
+
+.legend-card h4 {
+  margin: 0 0 0.3rem 0;
+  font-size: 0.98rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.legend-card p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #9ab0c4;
+}
+
+/* 2. Fila Maestra de Navegación y Pestañas */
+.artistas-nav-master-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  margin-top: 1.2rem;
+}
+
+.artistas-collection-tabs {
+  display: inline-flex;
+  background: rgba(12, 15, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 35px;
+  padding: 5px;
+  gap: 6px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.collection-tab-btn {
+  background: transparent;
+  border: none;
+  color: #8a99ad;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-radius: 25px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.collection-tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.collection-tab-btn.active {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(0, 240, 255, 0.25) 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
+}
+
+.collection-tab-btn.radar-btn.active {
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.25) 0%, rgba(0, 240, 255, 0.15) 100%);
+  color: #fff;
+  border: 1px solid rgba(29, 185, 84, 0.6);
+  box-shadow: 0 0 16px rgba(29, 185, 84, 0.25);
+}
+
+.tab-pill-counter {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.tab-pill-live {
+  background: #1DB954;
+  color: #000;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  animation: pulseLiveBadge 2s infinite;
+}
+
+@keyframes pulseLiveBadge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.95); }
+}
+
+/* 3. Badges de Expediente Maestro en las Tarjetas */
+.vault-master-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 165, 0, 0.15) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.6);
+  color: #ffd700;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.card-specs-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0.6rem 0 0.8rem 0;
+}
+
+.card-spec-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ccd7e4;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.card-spec-chip i {
+  color: var(--accent-color, #00f0ff);
+}
+
+.is-vault-card .grid-card-badge-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+}
+
+/* 4. Radar Spotify: Frecuencias Rápidas y Banner de Bienvenida */
+.spotify-quick-frequencies {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 2rem;
+  padding: 0.8rem 1.2rem;
+  background: rgba(20, 24, 32, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.quick-freq-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted, #8a99ad);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-freq-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.freq-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.25s ease;
+}
+
+.freq-chip:hover {
+  background: rgba(29, 185, 84, 0.2);
+  border-color: #1DB954;
+  color: #1DB954;
+  transform: translateY(-2px);
+}
+
+.freq-chip.active {
+  background: #1DB954;
+  color: #000;
+  font-weight: 700;
+  border-color: #1DB954;
+  box-shadow: 0 0 12px rgba(29, 185, 84, 0.5);
+}
+
+.freq-chip-tag {
+  font-size: 0.65rem;
+  color: #8a99ad;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.freq-chip.active .freq-chip-tag {
+  color: #000;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.radar-welcome-banner {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: radial-gradient(circle at center, rgba(29, 185, 84, 0.08) 0%, transparent 70%);
+  border: 1px dashed rgba(29, 185, 84, 0.25);
+  border-radius: 16px;
+  max-width: 650px;
+  margin: 1rem auto;
+}
+
+.radar-welcome-icon {
+  font-size: 3rem;
+  color: #1DB954;
+  margin-bottom: 1rem;
+  animation: pulseRadarIcon 2.5s infinite;
+}
+
+@keyframes pulseRadarIcon {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; text-shadow: 0 0 20px rgba(29, 185, 84, 0.6); }
+}
+
+.radar-welcome-banner h3 {
+  font-size: 1.4rem;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 0.6rem 0;
+}
+
+.radar-welcome-banner p {
+  color: #8a99ad;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.back-to-vault-btn {
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  color: #ffd700;
+}
+
+.back-to-vault-btn:hover {
+  background: rgba(255, 215, 0, 0.18);
+  border-color: #ffd700;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* 5. Smart Curated Match en Resultados de Spotify */
+.spotify-artist-card.is-curated-match {
+  border-color: rgba(255, 215, 0, 0.5);
+  background: linear-gradient(180deg, rgba(30, 26, 15, 0.9) 0%, rgba(14, 16, 22, 0.98) 100%);
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.12);
+}
+
+.spotify-artist-card.is-curated-match:hover {
+  border-color: #ffd700;
+  box-shadow: 0 16px 40px rgba(255, 215, 0, 0.25), 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+.curated-match-banner {
+  background: linear-gradient(90deg, #ffd700 0%, #ff8800 100%);
+  color: #050508;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+}
+
+.vault-badge-match {
+  border-color: rgba(255, 215, 0, 0.6) !important;
+  color: #ffd700 !important;
+}
+
+.curated-match-note {
+  font-size: 0.78rem;
+  color: #c9d5e3;
+  line-height: 1.5;
+  margin: 0.4rem 0 1.2rem 0;
+}
+
+.curated-match-note strong {
+  color: #ffd700;
+}
+
+.curated-match-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1rem;
+}
+
+.btn-open-curated {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #ffd700 0%, #e6a800 100%);
+  color: #050508;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.btn-open-curated:hover {
+  transform: translateY(-2px);
+  background: #ffea75;
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+  color: #000;
+}
+
+.btn-open-raw-spotify {
+  text-align: center;
+  font-size: 0.72rem;
+  color: #8a99ad;
+  text-decoration: none;
+  transition: color 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.btn-open-raw-spotify:hover {
+  color: #1DB954;
+  text-decoration: underline;
+}
