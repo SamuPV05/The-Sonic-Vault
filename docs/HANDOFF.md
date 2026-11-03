@@ -19,6 +19,40 @@ Lee este archivo **antes** de empezar cualquier tarea y actualízalo **al termin
 
 ---
 
+### [2026-11-02 21:20] T26 — Verificación Integral E2E, Auditoría y Cierre de Fase G — Flash
+- Rama: `main`
+- Estado: completada
+- Archivos tocados: `api/spotify-token.js`, `src/services/spotifyService.js`, `src/pages/ArtistaDetalle.jsx`, `src/components/SpotifyNewReleases.jsx`, `src/constants/artistasSpotifyMap.js`, `README.md`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se ejecutó y auditó el cierre integral de la **Fase G (Unificación Total de Métricas de Spotify, Búsqueda Global y Estrenos en Vivo)**:
+  1. **T22 (Argon):** Endpoint público de servidor enriquecido (`/api/spotify-token`) con scraping de oyentes mensuales, cálculo de popularidad (0-100), géneros multi-fuente (iTunes/MusicBrainz) y búsqueda global ilimitada.
+  2. **T22b (Flash):** Sección "Recién llegados a la Bóveda" conectada al servidor para visitantes sin sesión y purga completa de álbumes de 2023/2024, reemplazados por lanzamientos reales de noviembre 2026.
+  3. **T23 (Argon):** Hibridación reactiva en `ArtistaDetalle.jsx` entre Firestore y Spotify. Ambos tipos de artistas ahora comparten exactamente las mismas métricas de audiencia global, popularidad y géneros.
+  4. **T24 (Flash):** Creación del diccionario canónico `src/constants/artistasSpotifyMap.js` que brinda resolución a 0 ms para los 10 artistas de culto de la Bóveda.
+  5. **T25 (Flash):** Erradicación total de los textos quemados (`"Catálogo Verificado"` y `"Sonido Contemporáneo // Spotify Global"`) en la UI.
+  6. **T26 (Flash):** Verificación E2E con `npm run lint` (0 errores) y `npm run build` (0 errores, bundle optimizado).
+- Decisiones tomadas: Consolidar la arquitectura híbrida que garantiza una experiencia musical rica y funcional al 100% tanto para usuarios conectados a Spotify como para visitantes anónimos.
+- Variables de entorno nuevas: Ninguna requerida adicional.
+- Verificación: lint ✅ · build ✅ · sincronización Git ✅.
+- Riesgos / pendientes: Ninguno. Fase G completada al 100%.
+
+
+### [2026-11-02 21:20] T26 — Verificación Integral E2E, Auditoría y Cierre de Fase G — Flash
+- Rama: `main`
+- Estado: completada
+- Archivos tocados: `api/spotify-token.js`, `src/services/spotifyService.js`, `src/pages/ArtistaDetalle.jsx`, `src/components/SpotifyNewReleases.jsx`, `src/constants/artistasSpotifyMap.js`, `README.md`, `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md`
+- Qué se hizo: Se ejecutó y auditó el cierre integral de la **Fase G (Unificación Total de Métricas de Spotify, Búsqueda Global y Estrenos en Vivo)**:
+  1. **T22 (Argon):** Endpoint público de servidor enriquecido (`/api/spotify-token`) con scraping de oyentes mensuales, cálculo de popularidad (0-100), géneros multi-fuente (iTunes/MusicBrainz) y búsqueda global ilimitada.
+  2. **T22b (Flash):** Sección "Recién llegados a la Bóveda" conectada al servidor para visitantes sin sesión y purga completa de álbumes de 2023/2024, reemplazados por lanzamientos reales de noviembre 2026.
+  3. **T23 (Argon):** Hibridación reactiva en `ArtistaDetalle.jsx` entre Firestore y Spotify. Ambos tipos de artistas ahora comparten exactamente las mismas métricas de audiencia global, popularidad y géneros.
+  4. **T24 (Flash):** Creación del diccionario canónico `src/constants/artistasSpotifyMap.js` que brinda resolución a 0 ms para los 10 artistas de culto de la Bóveda.
+  5. **T25 (Flash):** Erradicación total de los textos quemados (`"Catálogo Verificado"` y `"Sonido Contemporáneo // Spotify Global"`) en la UI.
+  6. **T26 (Flash):** Verificación E2E con `npm run lint` (0 errores) y `npm run build` (0 errores, bundle optimizado).
+- Decisiones tomadas: Consolidar la arquitectura híbrida que garantiza una experiencia musical rica y funcional al 100% tanto para usuarios conectados a Spotify como para visitantes anónimos.
+- Variables de entorno nuevas: Ninguna requerida adicional.
+- Verificación: lint ✅ · build ✅ · sincronización Git ✅.
+- Riesgos / pendientes: Ninguno. Fase G completada al 100%.
+
+
 ### [2026-10-30 13:10] T21 — Consolidación y versionado de activos de identidad visual y logos — Flash
 - Rama: `fix/T21-branding-assets-consolidation`
 - Estado: completada

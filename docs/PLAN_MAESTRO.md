@@ -48,8 +48,17 @@ Fuente de verdad de las tareas de estabilización. Marca cada casilla al termina
 - [x] **T20** (2, Flash) Herencia de cabeceras de seguridad en `nginx.conf` (`/assets/`) y control de payload `413` en `server/captcha-server.js`.
 - [x] **T21** (1, Flash) Consolidación y versionado de activos de identidad visual, iconos y logos.
 
-## Decisiones resueltas en la estabilización (Fases A a E completadas)
+## Fase G — Unificación Total de Métricas de Spotify, Búsqueda Global y Estrenos en Vivo
+- [x] **T22** (4, Argon) Endpoint central `/api/spotify-token` enriquecido con `action=enrich` y `action=search`. Scraping de OpenGraph, extracción de oyentes mensuales, cálculo de popularidad calibrada (0-100), cruce de géneros con iTunes/MusicBrainz y búsqueda ilimitada en servidor con fallback abierto a Deezer.
+- [x] **T22b** (3, Flash) Estrenos en vivo "Recién llegados a la Bóveda" (`SpotifyNewReleases.jsx`): conexión a `/api/spotify-token?action=new-releases` para usuarios sin sesión y purga total de álbumes estáticos de 2023/2024, reemplazados por lanzamientos verificados de noviembre 2026 (*PARADIXE*, *Vulnerable*, *Tu Mil Jaaye*, *TO US*, etc.).
+- [x] **T23** (4, Argon) Hibridación dinámica en `ArtistaDetalle.jsx` (Firestore + Spotify): resolución en paralelo de audiencia global, índice de popularidad (0-100), ADN de géneros e integración con Spotify tanto para fichas curadas (`/artistas/<slug>`) como dinámicas (`/artistas/sp_<id>`).
+- [x] **T24** (3, Flash) Diccionario canónico de enlace `src/constants/artistasSpotifyMap.js`: mapeo instantáneo a 0 ms para los 10 artistas de culto de la Bóveda (`michael-jackson`, `bruno-mars`, `kendrick-lamar`, `the-weeknd`, `lady-gaga`, etc.) y utilidades `getCuratedSpotifyMapping()` y `getCuratedSpotifyId()`.
+- [x] **T25** (2, Flash) Purgado definitivo de textos quemados (`"Catálogo Verificado"` y `"Sonido Contemporáneo // Spotify Global"`) en `ArtistaDetalle.jsx`, con estados reactivos elegantes de carga, métricas en vivo y etiquetas de espectro sonoro.
+- [x] **T26** (1, Flash) Verificación integral E2E, validación de calidad (`npm run lint` y `npm run build` con 0 errores) y actualización exhaustiva de `docs/PLAN_MAESTRO.md`, `docs/HANDOFF.md` y `README.md`.
+
+## Decisiones resueltas en la estabilización (Fases A a G completadas)
 - Reglas de Firestore: diseñadas desde cero y versionadas en `firestore.rules` + `firebase.json` (T10).
 - Plan gratuito de Firebase Spark: documentado y soportado sin Cloud Functions; contadores atómicos con `stats/global` (T09).
 - EmailJS: mantenido e integrado mediante API REST desde el backend (`/api/2fa`) con fallback de prueba en desarrollo (T11).
 - Despliegue: paridad completa garantizada para Vercel Serverless Functions y Docker Compose (Nginx + API) (T11, T14, T15).
+- Catálogo y Métricas de Spotify: Unificación total de contratos de datos entre Firestore y Spotify Web API, eliminando fallbacks obsoletos de 2023/2024 y garantizando telemetría de audiencia (seguidores reales), popularidad (0-100) y géneros para cualquier artista del planeta sin importar si el usuario ha iniciado sesión o navega como anónimo (T22 a T26).

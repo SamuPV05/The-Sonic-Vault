@@ -100,7 +100,19 @@ Mapa colaborativo de monitoreo ambiental y bienestar acústico:
 
 ---
 
-## 🟢 Ecosistema Spotify API (5 Fases Completas)
+## 🌐 Ecosistema Spotify API & Arquitectura Híbrida de Catálogo (Fases 1 a 5 + Fase G)
+
+Integración profunda y resiliente con la Spotify Web API, combinando un proxy de servidor con caché, enriquecimiento multi-fuente y flujo OAuth 2.0 PKCE en cliente:
+
+### 🌟 Fase G: Unificación de Métricas, Búsqueda Global y Estrenos 2026
+- **Estrenos Mundiales en Tiempo Real para Todos (`SpotifyNewReleases.jsx`):**
+  Tanto usuarios conectados como visitantes anónimos disfrutan de los estrenos discográficos vigentes de noviembre 2026 (*PARADIXE*, *Vulnerable*, *Tu Mil Jaaye*, *TO US*, etc.) a través de `/api/spotify-token?action=new-releases` con canal Spotify y respaldo abierto en vivo.
+- **Búsqueda Global Irrestricta en Spotify (`Artistas.jsx`):**
+  Desbloqueada para consultar y reproducir cualquier artista entre los más de 100 millones de tracks del catálogo mundial, con fallback híbrido al buscador de servidor.
+- **Telemetría Universal de Artistas (`ArtistaDetalle.jsx`):**
+  Tanto los 10 artistas de culto de Firestore como cualquier artista buscado de Spotify disponen de métricas enriquecidas: **Audiencia Global (seguidores reales)**, **Índice de Popularidad calibrado (0 a 100)** y **ADN de Géneros Musicales** interactivo, erradicando textos quemados.
+- **Diccionario Canónico de Enlace a 0 ms (`artistasSpotifyMap.js`):**
+  Enlace directo instantáneo para los artistas de la Bóveda (*Michael Jackson*, *Bruno Mars*, *Kendrick Lamar*, *The Weeknd*, *Lady Gaga*, *Billie Eilish*, *Lana Del Rey*, *Eminem*, *Rihanna*, *Dr. Dre*, etc.) con resolución inmediata en el primer renderizado.
 
 Integración profunda con Spotify Web API (Flujo público seguro con proxy de backend y OAuth PKCE de usuario):
 
