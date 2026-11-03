@@ -59,6 +59,8 @@ export default function ArtistaDetalle() {
       setCargando(true);
       setSincronizandoTelemetria(false);
       setActiveTopTrackId(null);
+      setActiveSongTrack(null);
+      setErasExpandidas({});
       try {
         if (id && id.startsWith('sp_')) {
           // --- ARTISTA DINÁMICO DE SPOTIFY ---
@@ -160,36 +162,57 @@ export default function ArtistaDetalle() {
             setSincronizandoTelemetria(!baseArtista.followers);
 
             try {
-              const spData = await getSpotifyArtist(
-                effectiveSpotifyId || '',
-                firestoreData.nombre || id
-              );
-              if (!cancelado && spData) {
-                const spGenres = Array.isArray(spData.genres) ? spData.genres : [];
-                const mergedGenres = [
-                  ...new Set([...spGenres, ...generosCurados])
-                ].slice(0, 6);
+              const targetName = firestoreData.nombre || id;
+              let spData = null;
+              let albums = [];
+              let topTracks = [];
 
-                setArtista((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        spotifyId: spData.id || prev.spotifyId,
-                        spotifyUrl: spData.external_urls?.spotify || prev.spotifyUrl,
-                        followers:
-                          typeof spData.followers?.total === 'number' &&
-                          spData.followers.total > 0
-                            ? spData.followers.total
-                            : prev.followers,
-                        popularity:
-                          typeof spData.popularity === 'number' &&
-                          spData.popularity > 0
-                            ? spData.popularity
-                            : prev.popularity,
-                        genres: mergedGenres.length > 0 ? mergedGenres : prev.genres
-                      }
-                    : prev
-                );
+              if (effectiveSpotifyId) {
+                [spData, albums, topTracks] = await Promise.all([
+                  getSpotifyArtist(effectiveSpotifyId, targetName),
+                  getSpotifyArtistAlbums(effectiveSpotifyId, 8, targetName),
+                  getSpotifyArtistTopTracks(effectiveSpotifyId, targetName, 6)
+                ]);
+              } else {
+                spData = await getSpotifyArtist('', targetName);
+                const resolvedId = spData?.id || '';
+                [albums, topTracks] = await Promise.all([
+                  getSpotifyArtistAlbums(resolvedId, 8, targetName),
+                  getSpotifyArtistTopTracks(resolvedId, targetName, 6)
+                ]);
+              }
+
+              if (!cancelado) {
+                if (spData) {
+                  const spGenres = Array.isArray(spData.genres) ? spData.genres : [];
+                  const mergedGenres = [
+                    ...new Set([...spGenres, ...generosCurados])
+                  ].slice(0, 6);
+
+                  setArtista((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          spotifyId: spData.id || prev.spotifyId,
+                          spotifyUrl: spData.external_urls?.spotify || prev.spotifyUrl,
+                          followers:
+                            typeof spData.followers?.total === 'number' &&
+                            spData.followers.total > 0
+                              ? spData.followers.total
+                              : prev.followers,
+                          popularity:
+                            typeof spData.popularity === 'number' &&
+                            spData.popularity > 0
+                              ? spData.popularity
+                              : prev.popularity,
+                          genres: mergedGenres.length > 0 ? mergedGenres : prev.genres
+                        }
+                      : prev
+                  );
+                }
+
+                setSpotifyAlbums(albums || []);
+                setSpotifyTopTracks(topTracks || []);
               }
             } catch (spErr) {
               console.warn('Aviso al sincronizar telemetría Spotify para artista curado:', spErr);
@@ -227,6 +250,7 @@ export default function ArtistaDetalle() {
       return;
     }
 
+    setActiveTopTrackId(null);
     setLoadingTrackTitle(songTitle);
     try {
       const result = await searchSingleTrack(songTitle, artista?.nombre || '');
@@ -622,336 +646,8 @@ export default function ArtistaDetalle() {
         </div>
       </section>
 
-      {/* 2. SI ES UN ARTISTA DE SPOTIFY: TOP TRACKS, REPRODUCTOR Y DISCOGRAFÍA */}
-      {esSpotify ? (
-        <section
-          className="catalog-section"
-          style={{
-            borderTop: '1px solid #1a1a1a',
-            paddingTop: '3.5rem',
-            maxWidth: '1200px',
-            margin: '0 auto',
-            padding: '3.5rem 5% 5rem 5%',
-            boxSizing: 'border-box'
-          }}
-        >
-          {/* SECCIÓN NUEVA: TOP TRACKS INTERACTIVOS DE SPOTIFY */}
-          {spotifyTopTracks && spotifyTopTracks.length > 0 && (
-            <div style={{ marginBottom: '4.5rem' }}>
-              <div
-                className="section-header"
-                style={{ justifyContent: 'center', textAlign: 'center', border: 'none', marginBottom: '2rem' }}
-              >
-                <h2>
-                  Top Tracks <span className="accent">Esenciales</span>
-                </h2>
-                <p style={{ color: '#888', marginTop: '8px' }}>
-                  Las piezas de mayor rotación del artista con preescucha directa integrada en la Bóveda.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esMovil ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))',
-                  gap: '14px',
-                  maxWidth: '1040px',
-                  margin: '0 auto'
-                }}
-              >
-                {spotifyTopTracks.map((track, idx) => {
-                  const isTrackActive = activeTopTrackId === track.id;
-                  const albumCover =
-                    track.album?.images?.[1]?.url ||
-                    track.album?.images?.[0]?.url ||
-                    artista.imagen;
-                  const trackSpotifyUrl =
-                    track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`;
-
-                  return (
-                    <div
-                      key={track.id || idx}
-                      style={{
-                        background: isTrackActive ? 'rgba(0, 240, 255, 0.08)' : '#0c0e14',
-                        border: isTrackActive
-                          ? '1px solid var(--accent-color)'
-                          : '1px solid rgba(255, 255, 255, 0.08)',
-                        borderRadius: '12px',
-                        padding: '12px 14px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        transition: '0.2s',
-                        boxShadow: isTrackActive ? '0 0 20px rgba(0, 240, 255, 0.15)' : 'none'
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '12px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-                          <span
-                            style={{
-                              fontFamily: 'monospace',
-                              fontSize: '0.82rem',
-                              fontWeight: 'bold',
-                              color: isTrackActive ? 'var(--accent-color)' : '#555',
-                              minWidth: '22px'
-                            }}
-                          >
-                            {(idx + 1).toString().padStart(2, '0')}
-                          </span>
-                          <img
-                            src={albumCover}
-                            alt={track.name}
-                            style={{
-                              width: '46px',
-                              height: '46px',
-                              borderRadius: '8px',
-                              objectFit: 'cover',
-                              flexShrink: 0,
-                              border: '1px solid rgba(255,255,255,0.1)'
-                            }}
-                          />
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <h4
-                              style={{
-                                margin: '0 0 3px 0',
-                                fontSize: '0.92rem',
-                                color: '#fff',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis'
-                              }}
-                            >
-                              {track.name}
-                            </h4>
-                            <span
-                              style={{
-                                fontSize: '0.74rem',
-                                color: '#888',
-                                display: 'block',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis'
-                              }}
-                            >
-                              {track.album?.name || artista.nombre} • {formatDurationMs(track.duration_ms)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => setActiveTopTrackId(isTrackActive ? null : track.id)}
-                            style={{
-                              background: isTrackActive ? 'var(--accent-color)' : 'rgba(29, 185, 84, 0.16)',
-                              color: isTrackActive ? '#000' : '#1DB954',
-                              border: isTrackActive ? 'none' : '1px solid rgba(29, 185, 84, 0.4)',
-                              padding: '6px 12px',
-                              borderRadius: '20px',
-                              fontSize: '0.73rem',
-                              fontWeight: 'bold',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              transition: '0.2s'
-                            }}
-                          >
-                            <i className={`fa-solid ${isTrackActive ? 'fa-Stop' : 'fa-play'}`.toLowerCase()} />
-                            <span>{isTrackActive ? 'CERRAR' : 'ESCUCHAR'}</span>
-                          </button>
-
-                          <a
-                            href={trackSpotifyUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Abrir canción en Spotify"
-                            style={{
-                              color: '#888',
-                              fontSize: '0.9rem',
-                              padding: '4px 6px',
-                              textDecoration: 'none'
-                            }}
-                          >
-                            <i className="fa-solid fa-arrow-up-right-from-square" />
-                          </a>
-                        </div>
-                      </div>
-
-                      {isTrackActive && (
-                        <div style={{ marginTop: '4px', borderRadius: '8px', overflow: 'hidden' }}>
-                          <iframe
-                            src={`https://open.spotify.com/embed/track/${track.id}?utm_source=generator&theme=0`}
-                            width="100%"
-                            height="80"
-                            frameBorder="0"
-                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                            loading="lazy"
-                            style={{ borderRadius: '8px', border: 'none', display: 'block' }}
-                            title={`Reproductor Top Track ${track.name}`}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* REPRODUCTOR EMBEBIDO OFICIAL DE SPOTIFY */}
-          <div style={{ marginBottom: '4rem' }}>
-            <div
-              className="section-header"
-              style={{ justifyContent: 'center', textAlign: 'center', border: 'none', marginBottom: '2rem' }}
-            >
-              <h2>
-                Transmisión <span className="accent">Oficial</span>
-              </h2>
-              <p style={{ color: '#888', marginTop: '8px' }}>
-                Escucha su catálogo completo en vivo a través de la terminal de Spotify.
-              </p>
-            </div>
-
-            <div
-              style={{
-                maxWidth: '850px',
-                margin: '0 auto',
-                background: '#08080c',
-                borderRadius: '18px',
-                padding: '10px',
-                border: '1px solid rgba(29, 185, 84, 0.25)',
-                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6)'
-              }}
-            >
-              <iframe
-                src={`https://open.spotify.com/embed/artist/${artista.spotifyId}?utm_source=generator&theme=0`}
-                width="100%"
-                height="380"
-                frameBorder="0"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-                title={`Reproductor Spotify de ${artista.nombre}`}
-                style={{ borderRadius: '14px', display: 'block' }}
-              />
-            </div>
-          </div>
-
-          {/* DISCOGRAFÍA OFICIAL */}
-          {spotifyAlbums && spotifyAlbums.length > 0 && (
-            <div>
-              <div
-                className="section-header"
-                style={{ justifyContent: 'center', textAlign: 'center', border: 'none', marginBottom: '2.5rem' }}
-              >
-                <h2>
-                  Discografía <span className="accent">Indexada</span>
-                </h2>
-                <p style={{ color: '#888', marginTop: '8px' }}>
-                  Álbumes y lanzamientos oficiales registrados en la Bóveda.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: '2rem'
-                }}
-              >
-                {spotifyAlbums.map((album) => {
-                  const cover =
-                    album.images?.[0]?.url ||
-                    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=500&q=80';
-                  const releaseYear = album.release_date ? album.release_date.split('-')[0] : 'N/A';
-                  const linkAlbum = album.external_urls?.spotify;
-
-                  return (
-                    <a
-                      key={album.id}
-                      href={linkAlbum}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        background: '#0c0e12',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        transition: 'transform 0.3s ease, border-color 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-6px)';
-                        e.currentTarget.style.borderColor = '#1DB954';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                      }}
-                    >
-                      <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden' }}>
-                        <img
-                          src={cover}
-                          alt={album.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          loading="lazy"
-                        />
-                      </div>
-                      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                        <span
-                          style={{
-                            fontSize: '0.75rem',
-                            color: '#1DB954',
-                            fontWeight: 'bold',
-                            letterSpacing: '1px',
-                            textTransform: 'uppercase'
-                          }}
-                        >
-                          {album.album_type || 'ÁLBUM'} • {releaseYear}
-                        </span>
-                        <h4
-                          style={{
-                            margin: '6px 0 10px 0',
-                            fontSize: '0.95rem',
-                            color: '#fff',
-                            lineHeight: '1.4'
-                          }}
-                        >
-                          {album.name}
-                        </h4>
-                        <span
-                          style={{
-                            marginTop: 'auto',
-                            fontSize: '0.8rem',
-                            color: '#888',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          <i className="fa-brands fa-spotify" style={{ color: '#1DB954' }}></i>
-                          Escuchar en Spotify
-                        </span>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </section>
-      ) : (
-        /* 2. SI ES UN ARTISTA CLÁSICO DE FIRESTORE: ERAS HISTÓRICAS */
+      {/* 2. NIVEL EXCLUSIVO BÓVEDA (SOLO ARTISTAS DE CULTO EN FIRESTORE): ERAS HISTÓRICAS Y ÁRBOL DE ECOS */}
+      {!esSpotify && (
         <>
           <section
             className="catalog-section"
@@ -1273,6 +969,343 @@ export default function ArtistaDetalle() {
           </section>
           <ArbolEcos ecos={artista.ecos} />
         </>
+      )}
+
+      {/* 3. CATÁLOGO OFICIAL Y TRANSMISIÓN EN VIVO DE SPOTIFY (UNIFICADO PARA PERFILES CURADOS Y DINÁMICOS) */}
+      {((spotifyTopTracks && spotifyTopTracks.length > 0) ||
+        (spotifyAlbums && spotifyAlbums.length > 0) ||
+        (artista.spotifyId && !String(artista.spotifyId).startsWith('dz_'))) && (
+        <section
+          className="catalog-section"
+          style={{
+            borderTop: '1px solid #1a1a1a',
+            paddingTop: '3.5rem',
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '3.5rem 5% 5rem 5%',
+            boxSizing: 'border-box'
+          }}
+        >
+          {/* TOP TRACKS INTERACTIVOS DE SPOTIFY */}
+          {spotifyTopTracks && spotifyTopTracks.length > 0 && (
+            <div style={{ marginBottom: '4.5rem' }}>
+              <div
+                className="section-header"
+                style={{ justifyContent: 'center', textAlign: 'center', border: 'none', marginBottom: '2rem' }}
+              >
+                <h2>
+                  Top Tracks <span className="accent">Esenciales</span>
+                </h2>
+                <p style={{ color: '#888', marginTop: '8px' }}>
+                  Las piezas de mayor rotación del artista con preescucha directa integrada en la Bóveda.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: esMovil ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))',
+                  gap: '14px',
+                  maxWidth: '1040px',
+                  margin: '0 auto'
+                }}
+              >
+                {spotifyTopTracks.map((track, idx) => {
+                  const isTrackActive = activeTopTrackId === track.id;
+                  const albumCover =
+                    track.album?.images?.[1]?.url ||
+                    track.album?.images?.[0]?.url ||
+                    artista.imagen;
+                  const trackSpotifyUrl =
+                    track.external_urls?.spotify || `https://open.spotify.com/track/${track.id}`;
+
+                  return (
+                    <div
+                      key={track.id || idx}
+                      style={{
+                        background: isTrackActive ? 'rgba(0, 240, 255, 0.08)' : '#0c0e14',
+                        border: isTrackActive
+                          ? '1px solid var(--accent-color)'
+                          : '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '12px',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        transition: '0.2s',
+                        boxShadow: isTrackActive ? '0 0 20px rgba(0, 240, 255, 0.15)' : 'none'
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                          <span
+                            style={{
+                              fontFamily: 'monospace',
+                              fontSize: '0.82rem',
+                              fontWeight: 'bold',
+                              color: isTrackActive ? 'var(--accent-color)' : '#555',
+                              minWidth: '22px'
+                            }}
+                          >
+                            {(idx + 1).toString().padStart(2, '0')}
+                          </span>
+                          <img
+                            src={albumCover}
+                            alt={track.name}
+                            style={{
+                              width: '46px',
+                              height: '46px',
+                              borderRadius: '8px',
+                              objectFit: 'cover',
+                              flexShrink: 0,
+                              border: '1px solid rgba(255,255,255,0.1)'
+                            }}
+                          />
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <h4
+                              style={{
+                                margin: '0 0 3px 0',
+                                fontSize: '0.92rem',
+                                color: '#fff',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {track.name}
+                            </h4>
+                            <span
+                              style={{
+                                fontSize: '0.74rem',
+                                color: '#888',
+                                display: 'block',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {track.album?.name || artista.nombre} • {formatDurationMs(track.duration_ms)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveSongTrack(null);
+                              setActiveTopTrackId(isTrackActive ? null : track.id);
+                            }}
+                            style={{
+                              background: isTrackActive ? 'var(--accent-color)' : 'rgba(29, 185, 84, 0.16)',
+                              color: isTrackActive ? '#000' : '#1DB954',
+                              border: isTrackActive ? 'none' : '1px solid rgba(29, 185, 84, 0.4)',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              fontSize: '0.73rem',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              transition: '0.2s'
+                            }}
+                          >
+                            <i className={`fa-solid ${isTrackActive ? 'fa-Stop' : 'fa-play'}`.toLowerCase()} />
+                            <span>{isTrackActive ? 'CERRAR' : 'ESCUCHAR'}</span>
+                          </button>
+
+                          <a
+                            href={trackSpotifyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Abrir canción en Spotify"
+                            style={{
+                              color: '#888',
+                              fontSize: '0.9rem',
+                              padding: '4px 6px',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <i className="fa-solid fa-arrow-up-right-from-square" />
+                          </a>
+                        </div>
+                      </div>
+
+                      {isTrackActive && (
+                        <div style={{ marginTop: '4px', borderRadius: '8px', overflow: 'hidden' }}>
+                          <iframe
+                            src={`https://open.spotify.com/embed/track/${track.id}?utm_source=generator&theme=0`}
+                            width="100%"
+                            height="80"
+                            frameBorder="0"
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                            loading="lazy"
+                            style={{ borderRadius: '8px', border: 'none', display: 'block' }}
+                            title={`Reproductor Top Track ${track.name}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* REPRODUCTOR EMBEBIDO OFICIAL DE SPOTIFY */}
+          {artista.spotifyId && !String(artista.spotifyId).startsWith('dz_') && (
+            <div style={{ marginBottom: '4rem' }}>
+              <div
+                className="section-header"
+                style={{ justifyContent: 'center', textAlign: 'center', border: 'none', marginBottom: '2rem' }}
+              >
+                <h2>
+                  Transmisión <span className="accent">Oficial</span>
+                </h2>
+                <p style={{ color: '#888', marginTop: '8px' }}>
+                  Escucha su catálogo completo en vivo a través de la terminal de Spotify.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  maxWidth: '850px',
+                  margin: '0 auto',
+                  background: '#08080c',
+                  borderRadius: '18px',
+                  padding: '10px',
+                  border: '1px solid rgba(29, 185, 84, 0.25)',
+                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6)'
+                }}
+              >
+                <iframe
+                  src={`https://open.spotify.com/embed/artist/${artista.spotifyId}?utm_source=generator&theme=0`}
+                  width="100%"
+                  height="380"
+                  frameBorder="0"
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy"
+                  title={`Reproductor Spotify de ${artista.nombre}`}
+                  style={{ borderRadius: '14px', display: 'block' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* DISCOGRAFÍA OFICIAL */}
+          {spotifyAlbums && spotifyAlbums.length > 0 && (
+            <div>
+              <div
+                className="section-header"
+                style={{ justifyContent: 'center', textAlign: 'center', border: 'none', marginBottom: '2.5rem' }}
+              >
+                <h2>
+                  Discografía <span className="accent">Indexada</span>
+                </h2>
+                <p style={{ color: '#888', marginTop: '8px' }}>
+                  Álbumes y lanzamientos oficiales registrados en la Bóveda.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                  gap: '2rem'
+                }}
+              >
+                {spotifyAlbums.map((album) => {
+                  const cover =
+                    album.images?.[0]?.url ||
+                    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=500&q=80';
+                  const releaseYear = album.release_date ? album.release_date.split('-')[0] : 'N/A';
+                  const linkAlbum = album.external_urls?.spotify;
+
+                  return (
+                    <a
+                      key={album.id}
+                      href={linkAlbum}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: '#0c0e12',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '14px',
+                        overflow: 'hidden',
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'transform 0.3s ease, border-color 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-6px)';
+                        e.currentTarget.style.borderColor = '#1DB954';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                      }}
+                    >
+                      <div style={{ width: '100%', aspectRatio: '1/1', overflow: 'hidden' }}>
+                        <img
+                          src={cover}
+                          alt={album.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          loading="lazy"
+                        />
+                      </div>
+                      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            color: '#1DB954',
+                            fontWeight: 'bold',
+                            letterSpacing: '1px',
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          {album.album_type || 'ÁLBUM'} • {releaseYear}
+                        </span>
+                        <h4
+                          style={{
+                            margin: '6px 0 10px 0',
+                            fontSize: '0.95rem',
+                            color: '#fff',
+                            lineHeight: '1.4'
+                          }}
+                        >
+                          {album.name}
+                        </h4>
+                        <span
+                          style={{
+                            marginTop: 'auto',
+                            fontSize: '0.8rem',
+                            color: '#888',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <i className="fa-brands fa-spotify" style={{ color: '#1DB954' }}></i>
+                          Escuchar en Spotify
+                        </span>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
       )}
     </main>
   );
