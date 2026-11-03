@@ -4,59 +4,15 @@ import { getSpotifyNewReleases } from '../services/spotifyService';
 
 const FALLBACK_RELEASES = [
   {
-    id: '7aJuG4TFXa2hmE4z1yxc3n',
-    name: 'HIT ME HARD AND SOFT',
-    artist: 'Billie Eilish',
-    artistId: '6qqNVTkY8uBg9cP3Jd7DAH',
-    releaseDate: '2024-05-17',
-    totalTracks: 10,
-    type: 'album',
-    image: 'https://i.scdn.co/image/ab67616d0000b27371d62ea7ea8a5be92d3c1f62',
-    spotifyUrl: 'https://open.spotify.com/album/7aJuG4TFXa2hmE4z1yxc3n'
-  },
-  {
-    id: '10FLjwfpbxLmW8c25Xyc2N',
-    name: 'Die With A Smile',
-    artist: 'Lady Gaga, Bruno Mars',
-    artistId: '1HY2Jd0NmPuamShAr6KMms',
-    releaseDate: '2024-08-16',
-    totalTracks: 1,
-    type: 'single',
-    image: 'https://i.scdn.co/image/ab67616d0000b27382ea2e9e1858aa012c57cd45',
-    spotifyUrl: 'https://open.spotify.com/album/10FLjwfpbxLmW8c25Xyc2N'
-  },
-  {
-    id: '3OxfaVgvTxUTy7276t7SPU',
-    name: 'Hurry Up Tomorrow',
-    artist: 'The Weeknd',
-    artistId: '1Xyo4u8uXC1ZmMpatF05PJ',
-    releaseDate: '2025-01-31',
-    totalTracks: 22,
-    type: 'album',
-    image: 'https://i.scdn.co/image/ab67616d0000b273de79f330bc297af3fae736da',
-    spotifyUrl: 'https://open.spotify.com/album/3OxfaVgvTxUTy7276t7SPU'
-  },
-  {
-    id: '1AxMcdQRLguJqSZMxvRNdO',
-    name: 'Hackney Diamonds',
-    artist: 'The Rolling Stones',
-    artistId: '22bE4uQ6baNwSHPVcDxLCe',
-    releaseDate: '2023-10-20',
-    totalTracks: 12,
-    type: 'album',
-    image: 'https://i.scdn.co/image/ab67616d0000b273683680975bf153c97ea8ad8d',
-    spotifyUrl: 'https://open.spotify.com/album/1AxMcdQRLguJqSZMxvRNdO'
-  },
-  {
-    id: '7bDd1p7E9lfMcU6RR1ZsPR',
-    name: 'PARADIXE (REMIX)',
-    artist: 'Feid, Omar Courtz, Pirlo',
-    artistId: '2LRoIwlKmHjgvigdNGBHNo',
+    id: '1HTo8oFgBr8czXYfEZmJpf',
+    name: 'Vulnerable (Acústico)',
+    artist: 'Luister La Voz',
+    artistId: '4FoMtKClFtTNsfQN7ivDII',
     releaseDate: '2026-11-01',
     totalTracks: 1,
     type: 'single',
-    image: 'https://i.scdn.co/image/ab67616d0000b2736d7b297a26f05e662231aaea',
-    spotifyUrl: 'https://open.spotify.com/album/7bDd1p7E9lfMcU6RR1ZsPR'
+    image: 'https://i.scdn.co/image/ab67616d0000b27349894947dc086cf215d9d590',
+    spotifyUrl: 'https://open.spotify.com/album/1HTo8oFgBr8czXYfEZmJpf'
   },
   {
     id: '5YEDDnQxM5ebCTsRotIcoy',
@@ -70,15 +26,48 @@ const FALLBACK_RELEASES = [
     spotifyUrl: 'https://open.spotify.com/album/5YEDDnQxM5ebCTsRotIcoy'
   },
   {
-    id: '1HTo8oFgBr8czXYfEZmJpf',
-    name: 'Vulnerable (Acústico)',
-    artist: 'Luister La Voz',
-    artistId: '4FoMtKClFtTNsfQN7ivDII',
+    id: '7bDd1p7E9lfMcU6RR1ZsPR',
+    name: 'PARADIXE (REMIX)',
+    artist: 'Feid, El Americano 4KT, Omar Courtz, Pirlo',
+    artistId: '2LRoIwlKmHjgvigdNGBHNo',
     releaseDate: '2026-11-01',
     totalTracks: 1,
     type: 'single',
-    image: 'https://i.scdn.co/image/ab67616d0000b27349894947dc086cf215d9d590',
-    spotifyUrl: 'https://open.spotify.com/album/1HTo8oFgBr8czXYfEZmJpf'
+    image: 'https://i.scdn.co/image/ab67616d0000b2736d7b297a26f05e662231aaea',
+    spotifyUrl: 'https://open.spotify.com/album/7bDd1p7E9lfMcU6RR1ZsPR'
+  },
+  {
+    id: '35gdrKl5CajqPsMpjo2Q95',
+    name: 'A MILANO',
+    artist: 'Rkomi',
+    artistId: '056KMTw6IztdQjBmFfVyO3',
+    releaseDate: '2026-11-02',
+    totalTracks: 8,
+    type: 'album',
+    image: 'https://i.scdn.co/image/ab67616d0000b2737a867561dea6e3115c48fedf',
+    spotifyUrl: 'https://open.spotify.com/album/35gdrKl5CajqPsMpjo2Q95'
+  },
+  {
+    id: '6F5j7PZz7mKnYVfXfXq6uK',
+    name: 'Tu Mil Jaaye (From "KING")',
+    artist: 'Sachin-Jigar, Arijit Singh, Kumaar',
+    artistId: '1mYsTxnqsietFxj1OgoGbG',
+    releaseDate: '2026-11-02',
+    totalTracks: 1,
+    type: 'single',
+    image: 'https://i.scdn.co/image/ab67616d0000b2738c82ff2f654f15d2db7bc990',
+    spotifyUrl: 'https://open.spotify.com/search/Tu%20Mil%20Jaaye'
+  },
+  {
+    id: '4J8hKqWz8mKnYVfXfXq9uL',
+    name: 'TO US',
+    artist: 'TWS',
+    artistId: '5X4jx3Yq4KnYVfXfXq6uM',
+    releaseDate: '2026-11-02',
+    totalTracks: 3,
+    type: 'single',
+    image: 'https://i.scdn.co/image/ab67616d0000b273f5cf82bb3c81729c1f6d8920',
+    spotifyUrl: 'https://open.spotify.com/search/TO%20US%20TWS'
   },
   {
     id: '55xtucVzZNKwTvfrQKE6zn',
@@ -90,6 +79,17 @@ const FALLBACK_RELEASES = [
     type: 'album',
     image: 'https://i.scdn.co/image/ab67616d0000b273322d7614090c83aefe8722cb',
     spotifyUrl: 'https://open.spotify.com/album/55xtucVzZNKwTvfrQKE6zn'
+  },
+  {
+    id: '825634741',
+    name: 'La Vida Era Más Corta',
+    artist: 'Milo j',
+    artistId: '1Lh1dKdetem2xEmjgvyymzy',
+    releaseDate: '2026-11-01',
+    totalTracks: 12,
+    type: 'album',
+    image: 'https://cdn-images.dzcdn.net/images/cover/c72e7cab03e497eb005c3490f3be703d/1000x1000-000000-80-0-0.jpg',
+    spotifyUrl: 'https://open.spotify.com/search/La%20Vida%20Era%20M%C3%A1s%20Corta%20Milo%20j'
   }
 ];
 

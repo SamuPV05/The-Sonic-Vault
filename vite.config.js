@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { verificarCaptcha } from './api/verify-captcha.js'
-import { obtenerTokenSpotify } from './api/spotify-token.js'
+import { procesarPeticionSpotifyToken } from './api/spotify-token.js'
 import { procesarPeticion2FA } from './api/2fa.js'
 
 // En local (npm run dev) Vite no ejecuta la carpeta /api como hace Vercel.
@@ -46,12 +46,15 @@ function spotifyDevApi() {
       server.middlewares.use('/api/spotify-token', async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         try {
-          const env = loadEnv('development', process.cwd(), '');
-          const clientId = env.SPOTIFY_CLIENT_ID || env.VITE_SPOTIFY_CLIENT_ID || process.env.SPOTIFY_CLIENT_ID || process.env.VITE_SPOTIFY_CLIENT_ID;
-          const clientSecret = env.SPOTIFY_CLIENT_SECRET || process.env.SPOTIFY_CLIENT_SECRET;
-          const data = await obtenerTokenSpotify(clientId, clientSecret);
-          res.statusCode = 200;
-          res.end(JSON.stringify(data));
+          const fileEnv = loadEnv('development', process.cwd(), '');
+          const mergedEnv = { ...process.env, ...fileEnv };
+          const result = await procesarPeticionSpotifyToken({
+            method: req.method,
+            url: req.url || '/',
+            env: mergedEnv
+          });
+          res.statusCode = result.status;
+          res.end(JSON.stringify(result.body));
         } catch (err) {
           res.statusCode = 500;
           res.end(JSON.stringify({ error: err.message }));

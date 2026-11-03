@@ -3,7 +3,7 @@
 // No vive dentro de /api a propósito: Vercel trataría cualquier archivo ahí como una función.
 import http from 'node:http';
 import { verificarCaptcha } from '../api/verify-captcha.js';
-import { obtenerTokenSpotify } from '../api/spotify-token.js';
+import { procesarPeticionSpotifyToken } from '../api/spotify-token.js';
 import { procesarPeticion2FA } from '../api/2fa.js';
 
 const PORT = process.env.PORT || 3001;
@@ -52,17 +52,18 @@ const leerBodyJson = (req) =>
 const server = http.createServer(async (req, res) => {
   const pathname = new URL(req.url || '/', 'http://localhost').pathname;
 
-  // 1. Endpoint de token público de Spotify (Client Credentials seguro en servidor)
+  // 1. Endpoint de token público y enriquecimiento de Spotify
   if (pathname === '/api/spotify-token') {
-    if (req.method !== 'GET') {
-      return responder(res, 405, { error: 'Método no permitido.' });
-    }
     try {
-      const data = await obtenerTokenSpotify();
-      return responder(res, 200, data);
+      const result = await procesarPeticionSpotifyToken({
+        method: req.method,
+        url: req.url || '/',
+        env: process.env
+      });
+      return responder(res, result.status, result.body);
     } catch (err) {
-      console.error('Error obteniendo token de Spotify:', err);
-      return responder(res, 500, { error: err.message || 'Error interno al obtener token de Spotify.' });
+      console.error('Error en /api/spotify-token:', err);
+      return responder(res, 500, { error: err.message || 'Error interno al procesar petición de Spotify.' });
     }
   }
 

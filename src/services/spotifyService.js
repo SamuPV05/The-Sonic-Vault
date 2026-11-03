@@ -52,11 +52,15 @@ const FALLBACK_CATALOG_ARTISTS = [
 ];
 
 // ----------------------------------------------------------------------------
-// 1. FLUJO PÚBLICO (CLIENT CREDENTIALS) - Para explorar catálogo sin login
+// 1. FLUJO PÚBLICO (CLIENT CREDENTIALS + ENRIQUECIMIENTO) - Catálogo sin login
 // ----------------------------------------------------------------------------
 
 let publicTokenCache = null;
 let publicTokenExpiry = 0;
+let publicTokenFailCooldownUntil = 0;
+
+// Caché en memoria del cliente para metadatos enriquecidos (seguidores, popularidad, géneros)
+const clientEnrichCache = new Map();
 
 /**
  * Obtiene o reutiliza un token de acceso público para consultar el catálogo de Spotify.
@@ -68,23 +72,31 @@ export async function getPublicSpotifyToken() {
     return publicTokenCache;
   }
 
+  if (ahora < publicTokenFailCooldownUntil) {
+    throw new Error('Cooldown temporal de /api/spotify-token activo');
+  }
+
   try {
     const response = await fetch('/api/spotify-token');
     if (!response.ok) {
+      publicTokenFailCooldownUntil = Date.now() + 60000;
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.error || `HTTP ${response.status}`);
     }
 
     const data = await response.json();
     if (!data.access_token) {
+      publicTokenFailCooldownUntil = Date.now() + 60000;
       throw new Error('No se recibió token de acceso de Spotify');
     }
 
+    publicTokenFailCooldownUntil = 0;
     publicTokenCache = data.access_token;
     publicTokenExpiry = ahora + 3500 * 1000;
     return publicTokenCache;
   } catch (err) {
-    console.error('Error al solicitar token de Spotify vía /api/spotify-token:', err);
+    publicTokenFailCooldownUntil = Date.now() + 60000;
+    console.warn('Aviso al solicitar token de Spotify vía /api/spotify-token:', err.message);
     throw err;
   }
 }
@@ -108,8 +120,80 @@ export async function getEffectiveSpotifyToken() {
 }
 
 /**
+ * Enriquece cualquier artista de Spotify con métricas reales en vivo (followers, popularity 0-100, genres,
+ * y opcionalmente topTracks y albums), supliendo los campos que la API de Spotify en Developer Mode omite.
+ */
+export async function enrichSpotifyArtistData(artistId = '', artistName = '', includeMedia = false) {
+  const cleanId = String(artistId || '').trim();
+  const cleanName = String(artistName || '').trim();
+  const cacheKey = `${cleanId.toLowerCase()}::${cleanName.toLowerCase()}::${includeMedia ? '1' : '0'}`;
+
+  if (clientEnrichCache.has(cacheKey)) {
+    return clientEnrichCache.get(cacheKey);
+  }
+
+  const params = new URLSearchParams({ action: 'enrich' });
+  if (cleanId) params.set('artistId', cleanId);
+  if (cleanName) params.set('name', cleanName);
+  if (includeMedia) params.set('includeMedia', '1');
+
+  try {
+    const res = await fetch(`/api/spotify-token?${params.toString()}`);
+    if (res.ok) {
+      const data = await res.json();
+      clientEnrichCache.set(cacheKey, data);
+      return data;
+    }
+  } catch {
+    // Continuar con respaldo directo CORS desde el navegador
+  }
+
+  // Respaldo directo CORS (iTunes + MusicBrainz) si el endpoint local no responde
+  const genreSet = new Set();
+  if (cleanName) {
+    try {
+      const itRes = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(cleanName)}&entity=album&limit=8`
+      );
+      if (itRes.ok) {
+        const itData = await itRes.json();
+        for (const item of itData.results || []) {
+          const g = (item.primaryGenreName || '').trim().toLowerCase();
+          if (g && g !== 'music' && g !== 'música') genreSet.add(g);
+        }
+      }
+    } catch {
+      // Ignorar fallo de red
+    }
+  }
+
+  const fallbackEnriched = {
+    id: cleanId || null,
+    name: cleanName || null,
+    images: [],
+    followers: { total: null },
+    popularity: null,
+    genres: [...genreSet].slice(0, 5),
+    external_urls: {
+      spotify:
+        cleanId && !cleanId.startsWith('dz_')
+          ? `https://open.spotify.com/artist/${cleanId}`
+          : `https://open.spotify.com/search/${encodeURIComponent(cleanName)}`
+    },
+    topTracks: [],
+    albums: []
+  };
+
+  clientEnrichCache.set(cacheKey, fallbackEnriched);
+  return fallbackEnriched;
+}
+
+/**
  * Busca artistas en el catálogo global de Spotify por nombre.
- * Si el endpoint de token no está disponible, filtra sobre el catálogo verificado de respaldo.
+ * 1. Usa la API oficial de Spotify si hay token disponible (público o de usuario).
+ * 2. Si faltan credenciales en el servidor y el usuario no ha iniciado sesión en Spotify,
+ *    consulta el buscador global del servidor (/api/spotify-token?action=search) que indexa millones de artistas.
+ * 3. Como último recurso offline, filtra sobre el catálogo verificado de respaldo.
  */
 export async function searchSpotifyArtists(query, limit = 8) {
   if (!query || query.trim().length === 0) return [];
@@ -141,58 +225,147 @@ export async function searchSpotifyArtists(query, limit = 8) {
           headers: { Authorization: `Bearer ${token}` },
         });
       } catch {
-        // Fallback al catálogo verificado
+        // Fallback al buscador global del servidor
       }
     }
 
-    if (!response.ok) {
-      return filtrarRespaldo();
+    if (response.ok) {
+      const data = await response.json();
+      const items = data.artists?.items || [];
+      if (items.length > 0) return items;
     }
-
-    const data = await response.json();
-    const items = data.artists?.items || [];
-    return items.length > 0 ? items : filtrarRespaldo();
   } catch {
-    return filtrarRespaldo();
+    // Continuar con búsqueda global de servidor
   }
-}
 
-/**
- * Obtiene los detalles de un artista por su ID de Spotify.
- */
-export async function getSpotifyArtist(artistId) {
-  const buscarRespaldo = () => FALLBACK_CATALOG_ARTISTS.find((a) => a.id === artistId) || null;
-
+  // Fallback global en servidor (millones de artistas vía Spotify o Deezer sin límite de 18)
   try {
-    let token = await getEffectiveSpotifyToken();
-    const url = `${API_BASE}/artists/${artistId}`;
-    let response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      publicTokenCache = null;
-      publicTokenExpiry = 0;
-      try {
-        token = await getPublicSpotifyToken();
-        response = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch {
-        // Ignorar fallo de reintento
+    const serverSearchRes = await fetch(
+      `/api/spotify-token?action=search&q=${encodeURIComponent(cleanQuery)}&limit=${safeLimit}`
+    );
+    if (serverSearchRes.ok) {
+      const serverData = await serverSearchRes.json();
+      if (Array.isArray(serverData.items) && serverData.items.length > 0) {
+        return serverData.items;
       }
     }
-
-    if (!response.ok) return buscarRespaldo();
-    return await response.json();
   } catch {
-    return buscarRespaldo();
+    // Fallback offline final
   }
+
+  return filtrarRespaldo();
 }
 
 /**
- * Obtiene las canciones más populares de un artista buscando en el catálogo.
+ * Obtiene los detalles de un artista por su ID de Spotify y garantiza siempre el enriquecimiento
+ * de audiencia (followers), índice de popularidad (0-100) y géneros musicales para cualquier artista.
  */
+export async function getSpotifyArtist(artistId, artistNameHint = '') {
+  const buscarRespaldo = () => FALLBACK_CATALOG_ARTISTS.find((a) => a.id === artistId) || null;
+  const fallbackCatalogItem = buscarRespaldo();
+
+  let baseArtist = null;
+
+  if (artistId && !String(artistId).startsWith('dz_')) {
+    try {
+      let token = await getEffectiveSpotifyToken();
+      const url = `${API_BASE}/artists/${artistId}`;
+      let response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        publicTokenCache = null;
+        publicTokenExpiry = 0;
+        try {
+          token = await getPublicSpotifyToken();
+          response = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch {
+          // Ignorar fallo de reintento
+        }
+      }
+
+      if (response.ok) {
+        baseArtist = await response.json();
+      }
+    } catch {
+      // Si no hay token directo, se resolverá mediante enriquecimiento en servidor o respaldo
+    }
+  }
+
+  const hasFollowers = typeof baseArtist?.followers?.total === 'number';
+  const hasPopularity = typeof baseArtist?.popularity === 'number';
+  const hasGenres = Array.isArray(baseArtist?.genres) && baseArtist.genres.length > 0;
+
+  if (baseArtist && hasFollowers && hasPopularity && hasGenres) {
+    return baseArtist;
+  }
+
+  // Enriquecer siempre que Spotify API omita followers, popularity o genres (o cuando no hubo token)
+  const enriched = await enrichSpotifyArtistData(
+    artistId,
+    baseArtist?.name || artistNameHint || fallbackCatalogItem?.name || '',
+    !baseArtist
+  );
+
+  const resolvedName =
+    baseArtist?.name || enriched?.name || fallbackCatalogItem?.name || artistNameHint || null;
+
+  if (!resolvedName) {
+    return fallbackCatalogItem;
+  }
+
+  const resolvedImages =
+    baseArtist?.images?.length > 0
+      ? baseArtist.images
+      : enriched?.images?.length > 0
+        ? enriched.images
+        : fallbackCatalogItem?.images || [];
+
+  const resolvedFollowersTotal =
+    typeof baseArtist?.followers?.total === 'number'
+      ? baseArtist.followers.total
+      : typeof enriched?.followers?.total === 'number'
+        ? enriched.followers.total
+        : typeof fallbackCatalogItem?.followers?.total === 'number'
+          ? fallbackCatalogItem.followers.total
+          : null;
+
+  const resolvedPopularity =
+    typeof baseArtist?.popularity === 'number'
+      ? baseArtist.popularity
+      : typeof enriched?.popularity === 'number'
+        ? enriched.popularity
+        : typeof fallbackCatalogItem?.popularity === 'number'
+          ? fallbackCatalogItem.popularity
+          : null;
+
+  const resolvedGenres =
+    Array.isArray(baseArtist?.genres) && baseArtist.genres.length > 0
+      ? baseArtist.genres
+      : Array.isArray(enriched?.genres) && enriched.genres.length > 0
+        ? enriched.genres
+        : fallbackCatalogItem?.genres || [];
+
+  return {
+    ...(baseArtist || {}),
+    id: artistId,
+    name: resolvedName,
+    images: resolvedImages,
+    followers: { total: resolvedFollowersTotal },
+    popularity: resolvedPopularity,
+    genres: resolvedGenres,
+    external_urls: {
+      spotify:
+        baseArtist?.external_urls?.spotify ||
+        enriched?.external_urls?.spotify ||
+        fallbackCatalogItem?.external_urls?.spotify ||
+        `https://open.spotify.com/artist/${artistId}`
+    }
+  };
+}
 
 /**
  * Busca una pista individual en el catálogo de Spotify para preescucha de eras históricas.
@@ -240,89 +413,126 @@ export async function searchSingleTrack(trackName, artistName = '') {
 
 export async function getSpotifyArtistTopTracks(artistId, artistName = '', limit = 6) {
   const safeLimit = Math.min(Math.max(1, Number(limit) || 6), 10);
-  let token;
-  try {
-    token = await getEffectiveSpotifyToken();
-  } catch {
-    return [];
-  }
 
-  // 1. Intentar endpoint oficial de Top Tracks del artista
-  try {
-    const topUrl = `${API_BASE}/artists/${artistId}/top-tracks?market=US`;
-    let topRes = await fetch(topUrl, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (topRes.status === 401 || topRes.status === 403) {
-      publicTokenCache = null;
-      publicTokenExpiry = 0;
-      token = await getPublicSpotifyToken();
-      topRes = await fetch(topUrl, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+  if (artistId && !String(artistId).startsWith('dz_')) {
+    let token = null;
+    try {
+      token = await getEffectiveSpotifyToken();
+    } catch {
+      token = null;
     }
-    if (topRes.ok) {
-      const topData = await topRes.json();
-      if (Array.isArray(topData.tracks) && topData.tracks.length > 0) {
-        return topData.tracks.slice(0, safeLimit);
+
+    if (token) {
+      // 1. Intentar endpoint oficial de Top Tracks del artista
+      try {
+        const topUrl = `${API_BASE}/artists/${artistId}/top-tracks?market=US`;
+        let topRes = await fetch(topUrl, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (topRes.status === 401 || topRes.status === 403) {
+          publicTokenCache = null;
+          publicTokenExpiry = 0;
+          token = await getPublicSpotifyToken();
+          topRes = await fetch(topUrl, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+        if (topRes.ok) {
+          const topData = await topRes.json();
+          if (Array.isArray(topData.tracks) && topData.tracks.length > 0) {
+            return topData.tracks.slice(0, safeLimit);
+          }
+        }
+      } catch {
+        // Fallback a búsqueda por nombre de artista
+      }
+
+      // 2. Fallback: búsqueda de tracks por artista (compatible con modo desarrollo de Spotify API)
+      try {
+        const query = artistName ? `artist:"${artistName}"` : `artist:${artistId}`;
+        const searchUrl = `${API_BASE}/search?q=${encodeURIComponent(query)}&type=track&limit=${safeLimit}`;
+        let response = await fetch(searchUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          publicTokenCache = null;
+          publicTokenExpiry = 0;
+          token = await getPublicSpotifyToken();
+          response = await fetch(searchUrl, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data.tracks?.items) && data.tracks.items.length > 0) {
+            return data.tracks.items.slice(0, safeLimit);
+          }
+        }
+      } catch {
+        // Continuar al respaldo de embed del servidor
       }
     }
-  } catch {
-    // Fallback a búsqueda por nombre de artista
   }
 
-  // 2. Fallback: búsqueda de tracks por artista (compatible con modo desarrollo de Spotify API)
+  // 3. Respaldo vía servidor (extrae Top Tracks reales desde el embed de Spotify o Deezer)
   try {
-    const query = artistName ? `artist:"${artistName}"` : `artist:${artistId}`;
-    const searchUrl = `${API_BASE}/search?q=${encodeURIComponent(query)}&type=track&limit=${safeLimit}`;
-    let response = await fetch(searchUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      publicTokenCache = null;
-      publicTokenExpiry = 0;
-      token = await getPublicSpotifyToken();
-      response = await fetch(searchUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const enriched = await enrichSpotifyArtistData(artistId, artistName, true);
+    if (Array.isArray(enriched?.topTracks) && enriched.topTracks.length > 0) {
+      return enriched.topTracks.slice(0, safeLimit);
     }
-
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.tracks?.items || [];
   } catch {
-    return [];
+    // Ignorar error
   }
+
+  return [];
 }
 
 /**
  * Obtiene la discografía (álbumes y singles) de un artista.
  */
-export async function getSpotifyArtistAlbums(artistId, limit = 8) {
+export async function getSpotifyArtistAlbums(artistId, limit = 8, artistName = '') {
   const safeLimit = Math.min(Math.max(1, Number(limit) || 8), 10);
-  try {
-    let token = await getEffectiveSpotifyToken();
-    const url = `${API_BASE}/artists/${artistId}/albums?include_groups=album,single&limit=${safeLimit}`;
-    let response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
 
-    if (response.status === 401 || response.status === 403) {
-      publicTokenCache = null;
-      publicTokenExpiry = 0;
-      token = await getPublicSpotifyToken();
-      response = await fetch(url, {
+  if (artistId && !String(artistId).startsWith('dz_')) {
+    try {
+      let token = await getEffectiveSpotifyToken();
+      const url = `${API_BASE}/artists/${artistId}/albums?include_groups=album,single&limit=${safeLimit}`;
+      let response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-    }
 
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.items || [];
-  } catch {
-    return [];
+      if (response.status === 401 || response.status === 403) {
+        publicTokenCache = null;
+        publicTokenExpiry = 0;
+        token = await getPublicSpotifyToken();
+        response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          return data.items;
+        }
+      }
+    } catch {
+      // Continuar al respaldo de álbumes enriquecidos
+    }
   }
+
+  try {
+    const enriched = await enrichSpotifyArtistData(artistId, artistName, true);
+    if (Array.isArray(enriched?.albums) && enriched.albums.length > 0) {
+      return enriched.albums.slice(0, safeLimit);
+    }
+  } catch {
+    // Ignorar error
+  }
+
+  return [];
 }
 
 /**
@@ -354,40 +564,56 @@ export async function getSpotifyNewReleases(limit = 20) {
       res1 = await fetchSearch(`year:${currentYear}`, 0);
     }
 
-    if (!res1.ok) return [];
+    if (res1.ok) {
+      const data1 = await res1.json();
+      let rawItems = data1.albums?.items || [];
 
-    const data1 = await res1.json();
-    let rawItems = data1.albums?.items || [];
-
-    // Si se solicitaron más de 10 ítems, traemos la siguiente tanda de 10
-    if (limit > 10) {
-      try {
-        const res2 = await fetchSearch('tag:new', 10);
-        if (res2.ok) {
-          const data2 = await res2.json();
-          rawItems = [...rawItems, ...(data2.albums?.items || [])];
+      // Si se solicitaron más de 10 ítems, traemos la siguiente tanda de 10
+      if (limit > 10) {
+        try {
+          const res2 = await fetchSearch('tag:new', 10);
+          if (res2.ok) {
+            const data2 = await res2.json();
+            rawItems = [...rawItems, ...(data2.albums?.items || [])];
+          }
+        } catch {
+          // En caso de fallo en la segunda tanda, se preserva la primera
         }
-      } catch {
-        // En caso de fallo en la segunda tanda, se preserva la primera
+      }
+
+      if (rawItems.length > 0) {
+        return rawItems.map(album => ({
+          id: album.id,
+          name: album.name,
+          artist: album.artists?.map(a => a.name).join(', ') || 'Varios Artistas',
+          artistId: album.artists?.[0]?.id,
+          releaseDate: album.release_date,
+          totalTracks: album.total_tracks,
+          type: album.album_type, // 'album' | 'single'
+          image: album.images?.[0]?.url || album.images?.[1]?.url || '',
+          spotifyUrl: album.external_urls?.spotify || `https://open.spotify.com/album/${album.id}`,
+          uri: album.uri
+        }));
       }
     }
-
-    return rawItems.map(album => ({
-      id: album.id,
-      name: album.name,
-      artist: album.artists?.map(a => a.name).join(', ') || 'Varios Artistas',
-      artistId: album.artists?.[0]?.id,
-      releaseDate: album.release_date,
-      totalTracks: album.total_tracks,
-      type: album.album_type, // 'album' | 'single'
-      image: album.images?.[0]?.url || album.images?.[1]?.url || '',
-      spotifyUrl: album.external_urls?.spotify || `https://open.spotify.com/album/${album.id}`,
-      uri: album.uri
-    }));
   } catch (err) {
-    console.warn('Usando lanzamientos de respaldo:', err?.message || err);
-    return [];
+    console.warn('Consulta directa de estrenos de Spotify omitida (usando servidor):', err?.message || err);
   }
+
+  // Respaldo de servidor (/api/spotify-token?action=new-releases) para visitantes sin sesión
+  try {
+    const srvRes = await fetch(`/api/spotify-token?action=new-releases&limit=${limit}`);
+    if (srvRes.ok) {
+      const srvData = await srvRes.json();
+      if (Array.isArray(srvData) && srvData.length > 0) {
+        return srvData;
+      }
+    }
+  } catch (err) {
+    console.warn('Aviso leyendo estrenos del servidor:', err?.message || err);
+  }
+
+  return [];
 }
 
 
