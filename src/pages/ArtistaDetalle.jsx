@@ -11,7 +11,6 @@ import {
 import ArbolEcos from '../components/ArbolEcos';
 import { useWindowSize } from '../hooks/useWindowSize';
 import { getCuratedSpotifyMapping } from '../constants/artistasSpotifyMap';
-import { resolvePresetForEra } from '../constants/beatItPresets';
 
 // Formateador de duración en milisegundos a mm:ss
 const formatDurationMs = (ms) => {
@@ -678,122 +677,80 @@ export default function ArtistaDetalle() {
               }}
             >
               {artista.eras &&
-                artista.eras.map((era, index) => {
-                  const presetAfin = resolvePresetForEra(era, artista?.nombre || '', artista?.genres || []);
-
-                  return (
+                artista.eras.map((era, index) => (
+                  <div
+                    key={index}
+                    className="era-panel"
+                    style={{
+                      display: 'flex',
+                      flexDirection: esMovil ? 'column' : 'row',
+                      flexWrap: 'nowrap',
+                      gap: '0',
+                      background: '#0a0a0a',
+                      border: '1px solid #1a1a1a',
+                      borderRadius: '15px',
+                      overflow: 'hidden',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {/* Imagen de la Era */}
                     <div
-                      key={index}
-                      className="era-panel"
                       style={{
-                        display: 'flex',
-                        flexDirection: esMovil ? 'column' : 'row',
-                        flexWrap: 'nowrap',
-                        gap: '0',
-                        background: '#0a0a0a',
-                        border: '1px solid #1a1a1a',
-                        borderRadius: '15px',
-                        overflow: 'hidden',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                        width: '100%',
-                        boxSizing: 'border-box'
+                        flex: '1',
+                        width: esMovil ? '100%' : 'auto',
+                        minWidth: esMovil ? '100%' : '300px',
+                        borderRight: esMovil ? 'none' : '1px solid #1a1a1a',
+                        borderBottom: esMovil ? '1px solid #1a1a1a' : 'none'
                       }}
                     >
-                      {/* Imagen de la Era */}
-                      <div
+                      <img
+                        src={era.img}
+                        alt={era.titulo}
                         style={{
-                          flex: '1',
-                          width: esMovil ? '100%' : 'auto',
-                          minWidth: esMovil ? '100%' : '300px',
-                          borderRight: esMovil ? 'none' : '1px solid #1a1a1a',
-                          borderBottom: esMovil ? '1px solid #1a1a1a' : 'none'
-                        }}
-                      >
-                        <img
-                          src={era.img}
-                          alt={era.titulo}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            display: 'block',
-                            minHeight: esMovil ? '250px' : '300px'
-                          }}
-                        />
-                      </div>
-
-                      {/* Información de la Era */}
-                      <div
-                        style={{
-                          flex: '1.5',
                           width: '100%',
-                          minWidth: '0',
-                          padding: esMovil ? '2rem 1.5rem' : '3rem 2.5rem',
-                          boxSizing: 'border-box',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center'
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                          minHeight: esMovil ? '250px' : '300px'
+                        }}
+                      />
+                    </div>
+
+                    {/* Información de la Era */}
+                    <div
+                      style={{
+                        flex: '1.5',
+                        width: '100%',
+                        minWidth: '0',
+                        padding: esMovil ? '2rem 1.5rem' : '3rem 2.5rem',
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <span
+                        className="accent"
+                        style={{ fontSize: '1.2rem', fontWeight: 'bold', letterSpacing: '3px' }}
+                      >
+                        {era.año}
+                      </span>
+                      <h3
+                        style={{
+                          fontSize: esMovil ? '1.5rem' : '2rem',
+                          margin: '10px 0 15px 0',
+                          textTransform: 'uppercase'
                         }}
                       >
-                        <span
-                          className="accent"
-                          style={{ fontSize: '1.2rem', fontWeight: 'bold', letterSpacing: '3px' }}
-                        >
-                          {era.año}
-                        </span>
-                        <h3
-                          style={{
-                            fontSize: esMovil ? '1.5rem' : '2rem',
-                            margin: '10px 0 15px 0',
-                            textTransform: 'uppercase'
-                          }}
-                        >
-                          {era.titulo}
-                        </h3>
-                        <p style={{ color: '#aaa', lineHeight: '1.7', fontSize: '1rem', wordBreak: 'break-word' }}>
-                          {era.descripcion}
-                        </p>
+                        {era.titulo}
+                      </h3>
+                      <p style={{ color: '#aaa', lineHeight: '1.7', fontSize: '1rem', wordBreak: 'break-word' }}>
+                        {era.descripcion}
+                      </p>
 
-                        {/* --- PUENTE INTERACTIVO ERAS ↔ BEAT IT STUDIO --- */}
-                        <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-                          <Link
-                            to={`/beat-it?preset=${encodeURIComponent(presetAfin.name)}&era=${encodeURIComponent(era.titulo || '')}&from=${encodeURIComponent(artista?.nombre || '')}`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              background: 'rgba(0, 240, 255, 0.08)',
-                              color: 'var(--accent-color)',
-                              border: '1px solid rgba(0, 240, 255, 0.35)',
-                              padding: '8px 16px',
-                              borderRadius: '20px',
-                              textDecoration: 'none',
-                              fontSize: '0.82rem',
-                              fontWeight: 'bold',
-                              letterSpacing: '0.5px',
-                              transition: 'all 0.25s ease',
-                              boxShadow: '0 2px 10px rgba(0, 240, 255, 0.1)'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'var(--accent-color)';
-                              e.currentTarget.style.color = '#000';
-                              e.currentTarget.style.boxShadow = '0 0 16px rgba(0, 240, 255, 0.45)';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'rgba(0, 240, 255, 0.08)';
-                              e.currentTarget.style.color = 'var(--accent-color)';
-                              e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 240, 255, 0.1)';
-                              e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                            title={`Calibrar secuenciador Beat It con el patrón rítmico de ${presetAfin.name} (${presetAfin.bpm} BPM)`}
-                          >
-                            <i className={`fa-solid ${presetAfin.icon || 'fa-sliders'}`} />
-                            <span>Experimentar ritmo en Beat It ({presetAfin.name} • {presetAfin.bpm} BPM)</span>
-                          </Link>
-                        </div>
-
-                        {/* --- BOTÓN DESPLEGABLE (ACORDEÓN) --- */}
+                      {/* --- BOTÓN DESPLEGABLE (ACORDEÓN) --- */}
                       <div
                         onClick={() => toggleEra(index)}
                         style={{
@@ -1005,10 +962,9 @@ export default function ArtistaDetalle() {
                             })}
                           </div>
                         )}
-                      </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
             </div>
           </section>
           <ArbolEcos ecos={artista.ecos} />

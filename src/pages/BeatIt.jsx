@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBeatItScheduler } from '../hooks/useBeatItScheduler';
 import { useBeatItPersistence } from '../hooks/useBeatItPersistence';
@@ -10,7 +9,6 @@ import BeatItSpotifyRadarModal from '../components/BeatItSpotifyRadarModal';
 import EchoToast from '../components/EchoToast';
 import { useToast } from '../hooks/useToast';
 import { triggerSound } from '../services/beatItAudioEngine';
-import { findPresetByName } from '../constants/beatItPresets';
 
 export default function BeatIt() {
   const { user } = useAuth();
@@ -101,55 +99,10 @@ export default function BeatIt() {
     applyLoadedBeatToScheduler
   });
 
-  const [searchParams] = useSearchParams();
-  const initialPresetHandledRef = useRef(false);
-
-  const handleLoadPreset = useCallback(
-    (preset) => {
-      applyPresetToScheduler(preset);
-      setBeatName(`${preset.name}`);
-    },
-    [applyPresetToScheduler, setBeatName]
-  );
-
-  // --- HIDRATACIÓN AUTOMÁTICA DESDE EL PUENTE SÓNICO DE ERAS (?preset=...) ---
-  useEffect(() => {
-    const presetQuery = searchParams.get('preset');
-    if (!presetQuery || initialPresetHandledRef.current) return;
-
-    // Si la URL incluye beatId, la persistencia en Firestore toma prioridad
-    if (searchParams.get('beatId')) return;
-
-    const matchedPreset = findPresetByName(presetQuery);
-    if (matchedPreset) {
-      initialPresetHandledRef.current = true;
-      handleLoadPreset(matchedPreset);
-
-      const eraQuery = searchParams.get('era');
-      const fromQuery = searchParams.get('from');
-
-      const customBeatName = fromQuery
-        ? `${fromQuery} - ${eraQuery || matchedPreset.name}`
-        : `${matchedPreset.name} Studio`;
-
-      setBeatName(customBeatName);
-
-      setLoadedBeatNotice({
-        id: null,
-        name: customBeatName,
-        kit: matchedPreset.kit,
-        tempo: matchedPreset.bpm,
-        userId: null
-      });
-
-      const detailMsg =
-        eraQuery && fromQuery
-          ? `Inspirado en la era "${eraQuery}" de ${fromQuery} (${matchedPreset.bpm} BPM).`
-          : `Secuenciador calibrado con el patrón rítmico de ${matchedPreset.name} (${matchedPreset.bpm} BPM).`;
-
-      showToast?.('success', `Ritmo de la Era: ${matchedPreset.name}`, detailMsg);
-    }
-  }, [searchParams, handleLoadPreset, setBeatName, setLoadedBeatNotice, showToast]);
+  const handleLoadPreset = (preset) => {
+    applyPresetToScheduler(preset);
+    setBeatName(`${preset.name}`);
+  };
 
   const handleExportWav = (type = 'master') => exportWavWithScheduler(type, beatName);
   // --- ATAJOS DE TECLADO EN VIVO (PERFORMANCE MODE) ---
