@@ -9,12 +9,12 @@
 export const ARTISTAS_SPOTIFY_MAP = {
   // --- 10 ARTISTAS DE CULTO DE FIRESTORE (THE SONIC VAULT) ---
   'michael-jackson': {
-    spotifyId: '3fMbdgg4jU18AjLCKBvRSm',
+    spotifyId: '3fMbdgg4jU18AjLCKBhRSm',
     name: 'Michael Jackson',
     genres: ['pop', 'soul', 'funk', 'dance pop'],
-    followers: 42500000,
-    popularity: 89,
-    spotifyUrl: 'https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBvRSm'
+    followers: 92300000,
+    popularity: 92,
+    spotifyUrl: 'https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm'
   },
   'bruno-mars': {
     spotifyId: '0du5cEVh5yTK9QJze8zA0C',
@@ -49,28 +49,28 @@ export const ARTISTAS_SPOTIFY_MAP = {
     spotifyUrl: 'https://open.spotify.com/artist/00FQb4jTyendYWaN8pK0wa'
   },
   'eminem': {
-    spotifyId: '7dGJo4pcD2V6io4qpVIufA',
+    spotifyId: '7dGJo4pcD2V6oG8kP0tJRR',
     name: 'Eminem',
     genres: ['hip hop', 'detroit hip hop', 'rap'],
-    followers: 88500000,
+    followers: 73300000,
     popularity: 92,
-    spotifyUrl: 'https://open.spotify.com/artist/7dGJo4pcD2V6io4qpVIufA'
+    spotifyUrl: 'https://open.spotify.com/artist/7dGJo4pcD2V6oG8kP0tJRR'
   },
   'rihanna': {
-    spotifyId: '5pKCCKE222GqLoKfUQux9m',
+    spotifyId: '5pKCCKE2ajJHZ9KAiaK11H',
     name: 'Rihanna',
     genres: ['pop', 'r&b', 'dance pop', 'urban contemporary'],
-    followers: 58400000,
-    popularity: 91,
-    spotifyUrl: 'https://open.spotify.com/artist/5pKCCKE222GqLoKfUQux9m'
+    followers: 118100000,
+    popularity: 95,
+    spotifyUrl: 'https://open.spotify.com/artist/5pKCCKE2ajJHZ9KAiaK11H'
   },
   'dr-dre': {
-    spotifyId: '6DPYiyq5kWVOT465YGoNyF',
+    spotifyId: '6DPYiyq5kWVQS4RGwxzPC7',
     name: 'Dr. Dre',
     genres: ['gangsta rap', 'g-funk', 'hip hop', 'west coast rap'],
-    followers: 18200000,
-    popularity: 82,
-    spotifyUrl: 'https://open.spotify.com/artist/6DPYiyq5kWVOT465YGoNyF'
+    followers: 23500000,
+    popularity: 85,
+    spotifyUrl: 'https://open.spotify.com/artist/6DPYiyq5kWVQS4RGwxzPC7'
   },
   'the-weeknd': {
     spotifyId: '1Xyo4u8uXC1ZmMpatF05PJ',
@@ -91,12 +91,12 @@ export const ARTISTAS_SPOTIFY_MAP = {
 
   // --- REFERENTES VINCULADOS EN EL ECOSISTEMA SONORO ---
   'daft-punk': {
-    spotifyId: '4tZwfgrHOc3mvqY8ACxv30',
+    spotifyId: '4tZwfgrHOc3mvqYlEYSvVi',
     name: 'Daft Punk',
     genres: ['electro', 'filter house', 'french house'],
-    followers: 11200000,
-    popularity: 87,
-    spotifyUrl: 'https://open.spotify.com/artist/4tZwfgrHOc3mvqY8ACxv30'
+    followers: 27500000,
+    popularity: 88,
+    spotifyUrl: 'https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi'
   },
   'queen': {
     spotifyId: '1dfeR4HaWDbWqFHLkxsg1d',

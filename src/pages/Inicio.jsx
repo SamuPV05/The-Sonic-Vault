@@ -8,12 +8,12 @@ import SpotifyNewReleases from '../components/SpotifyNewReleases';
 
 
 const LEYENDAS_MARQUEE = [
-  { name: 'MICHAEL JACKSON', link: '/artistas/sp_3fMbdgg4jU18AjLCKBvRSm' },
-  { name: 'BRUNO MARS', link: '/artistas/sp_0du5cEVh5yTK9QJze8zA0C' },
-  { name: 'LADY GAGA', link: '/artistas/sp_1HY2Jd0NmPuamShAr6KMms' },
-  { name: 'LANA DEL REY', link: '/artistas/sp_00FQb4jTyendYWaN8pK0wa' },
-  { name: 'DAFT PUNK', link: '/artistas/sp_4tZwfgrHOc3mvqY8ACxv30' },
-  { name: 'THE WEEKND', link: '/artistas/sp_1Xyo4u8uXC1ZmMpatF05PJ' }
+  { name: 'MICHAEL JACKSON', link: '/artistas/michael-jackson' },
+  { name: 'BRUNO MARS', link: '/artistas/bruno-mars' },
+  { name: 'LADY GAGA', link: '/artistas/lady-gaga' },
+  { name: 'LANA DEL REY', link: '/artistas/lana-del-rey' },
+  { name: 'DAFT PUNK', link: '/artistas/sp_4tZwfgrHOc3mvqYlEYSvVi' },
+  { name: 'THE WEEKND', link: '/artistas/the-weeknd' }
 ];
 
 export default function Inicio() {
