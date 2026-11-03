@@ -967,7 +967,7 @@ export default function ArtistaDetalle() {
                 ))}
             </div>
           </section>
-          <ArbolEcos ecos={artista.ecos} />
+          <ArbolEcos ecos={artista.ecos} artistaActual={artista.nombre} />
         </>
       )}
 
