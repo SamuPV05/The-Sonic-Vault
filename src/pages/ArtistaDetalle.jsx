@@ -10,6 +10,7 @@ import {
 } from '../services/spotifyService';
 import ArbolEcos from '../components/ArbolEcos';
 import { useWindowSize } from '../hooks/useWindowSize';
+import { getCuratedSpotifyMapping } from '../constants/artistasSpotifyMap';
 
 // Formateador de duración en milisegundos a mm:ss
 const formatDurationMs = (ms) => {
@@ -115,7 +116,19 @@ export default function ArtistaDetalle() {
 
           if (docSnap.exists()) {
             const firestoreData = docSnap.data();
-            const generosCurados = extraerGenerosCurados(firestoreData);
+            const mappedSpotify =
+              getCuratedSpotifyMapping(id) ||
+              getCuratedSpotifyMapping(firestoreData.nombre);
+
+            const generosCurados = [
+              ...new Set([
+                ...extraerGenerosCurados(firestoreData),
+                ...(mappedSpotify?.genres || [])
+              ])
+            ].slice(0, 6);
+
+            const effectiveSpotifyId =
+              firestoreData.spotifyId || mappedSpotify?.spotifyId || null;
             const fallbackSpotifySearchUrl = `https://open.spotify.com/search/${encodeURIComponent(
               firestoreData.nombre || id
             )}`;
@@ -124,25 +137,34 @@ export default function ArtistaDetalle() {
               ...firestoreData,
               genres: generosCurados,
               followers:
-                typeof firestoreData.followers === 'number' ? firestoreData.followers : null,
+                typeof firestoreData.followers === 'number'
+                  ? firestoreData.followers
+                  : mappedSpotify?.followers || null,
               popularity:
-                typeof firestoreData.popularity === 'number' ? firestoreData.popularity : null,
-              spotifyUrl: firestoreData.spotifyUrl || fallbackSpotifySearchUrl,
-              spotifyId: firestoreData.spotifyId || null
+                typeof firestoreData.popularity === 'number'
+                  ? firestoreData.popularity
+                  : mappedSpotify?.popularity || null,
+              spotifyUrl:
+                firestoreData.spotifyUrl ||
+                mappedSpotify?.spotifyUrl ||
+                fallbackSpotifySearchUrl,
+              spotifyId: effectiveSpotifyId
             };
 
             setArtista(baseArtista);
             setCargando(false);
-            setSincronizandoTelemetria(true);
+            setSincronizandoTelemetria(!baseArtista.followers);
 
             try {
               const spData = await getSpotifyArtist(
-                firestoreData.spotifyId || '',
+                effectiveSpotifyId || '',
                 firestoreData.nombre || id
               );
               if (!cancelado && spData) {
                 const spGenres = Array.isArray(spData.genres) ? spData.genres : [];
-                const mergedGenres = [...new Set([...spGenres, ...generosCurados])].slice(0, 6);
+                const mergedGenres = [
+                  ...new Set([...spGenres, ...generosCurados])
+                ].slice(0, 6);
 
                 setArtista((prev) =>
                   prev
@@ -151,11 +173,13 @@ export default function ArtistaDetalle() {
                         spotifyId: spData.id || prev.spotifyId,
                         spotifyUrl: spData.external_urls?.spotify || prev.spotifyUrl,
                         followers:
-                          typeof spData.followers?.total === 'number'
+                          typeof spData.followers?.total === 'number' &&
+                          spData.followers.total > 0
                             ? spData.followers.total
                             : prev.followers,
                         popularity:
-                          typeof spData.popularity === 'number'
+                          typeof spData.popularity === 'number' &&
+                          spData.popularity > 0
                             ? spData.popularity
                             : prev.popularity,
                         genres: mergedGenres.length > 0 ? mergedGenres : prev.genres

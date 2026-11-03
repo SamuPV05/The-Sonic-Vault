@@ -2,6 +2,8 @@
 // SERVICIO DE INTEGRACIÓN CON SPOTIFY API (THE SONIC VAULT)
 // ============================================================================
 
+import { getCuratedSpotifyMapping } from '../constants/artistasSpotifyMap';
+
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 // El Client Secret NUNCA debe vivir en el cliente: lo gestiona /api/spotify-token en el servidor.
 
@@ -286,16 +288,29 @@ export async function getSpotifyArtist(artistId, artistNameHint = '') {
   const cleanId = String(artistId || '').trim();
   const cleanNameHint = String(artistNameHint || '').trim();
 
+  const curatedMatch =
+    getCuratedSpotifyMapping(cleanId) || getCuratedSpotifyMapping(cleanNameHint);
+
   const buscarRespaldo = () =>
     FALLBACK_CATALOG_ARTISTS.find(
       (a) =>
         (cleanId && a.id === cleanId) ||
         (cleanNameHint && a.name.toLowerCase() === cleanNameHint.toLowerCase())
-    ) || null;
+    ) || (curatedMatch ? {
+      id: curatedMatch.spotifyId,
+      name: curatedMatch.name,
+      genres: curatedMatch.genres,
+      popularity: curatedMatch.popularity,
+      followers: { total: curatedMatch.followers },
+      images: [],
+      external_urls: { spotify: curatedMatch.spotifyUrl }
+    } : null);
   const fallbackCatalogItem = buscarRespaldo();
 
   let effectiveSpotifyId =
-    /^[0-9A-Za-z]{22}$/.test(cleanId) ? cleanId : fallbackCatalogItem?.id || '';
+    /^[0-9A-Za-z]{22}$/.test(cleanId)
+      ? cleanId
+      : curatedMatch?.spotifyId || fallbackCatalogItem?.id || '';
   let baseArtist = null;
 
   // Si no tenemos un ID de Spotify válido pero tenemos el nombre del artista (ej. Firestore),
@@ -357,15 +372,15 @@ export async function getSpotifyArtist(artistId, artistNameHint = '') {
   // Enriquecer siempre que Spotify API omita followers, popularity o genres (o cuando no hubo token)
   const enriched = await enrichSpotifyArtistData(
     effectiveSpotifyId || cleanId,
-    baseArtist?.name || cleanNameHint || fallbackCatalogItem?.name || '',
+    baseArtist?.name || cleanNameHint || fallbackCatalogItem?.name || curatedMatch?.name || '',
     !baseArtist
   );
 
   const finalId =
-    baseArtist?.id || enriched?.id || fallbackCatalogItem?.id || effectiveSpotifyId || cleanId || null;
+    baseArtist?.id || enriched?.id || fallbackCatalogItem?.id || curatedMatch?.spotifyId || effectiveSpotifyId || cleanId || null;
 
   const resolvedName =
-    baseArtist?.name || enriched?.name || fallbackCatalogItem?.name || cleanNameHint || null;
+    baseArtist?.name || enriched?.name || fallbackCatalogItem?.name || curatedMatch?.name || cleanNameHint || null;
 
   if (!resolvedName) {
     return fallbackCatalogItem;
@@ -385,7 +400,9 @@ export async function getSpotifyArtist(artistId, artistNameHint = '') {
         ? enriched.followers.total
         : typeof fallbackCatalogItem?.followers?.total === 'number'
           ? fallbackCatalogItem.followers.total
-          : null;
+          : typeof curatedMatch?.followers === 'number'
+            ? curatedMatch.followers
+            : null;
 
   const resolvedPopularity =
     typeof baseArtist?.popularity === 'number' && baseArtist.popularity > 0
@@ -394,14 +411,16 @@ export async function getSpotifyArtist(artistId, artistNameHint = '') {
         ? enriched.popularity
         : typeof fallbackCatalogItem?.popularity === 'number'
           ? fallbackCatalogItem.popularity
-          : null;
+          : typeof curatedMatch?.popularity === 'number'
+            ? curatedMatch.popularity
+            : null;
 
   const resolvedGenres =
     Array.isArray(baseArtist?.genres) && baseArtist.genres.length > 0
       ? baseArtist.genres
       : Array.isArray(enriched?.genres) && enriched.genres.length > 0
         ? enriched.genres
-        : fallbackCatalogItem?.genres || [];
+        : fallbackCatalogItem?.genres || curatedMatch?.genres || [];
 
   return {
     ...(baseArtist || {}),
@@ -416,6 +435,7 @@ export async function getSpotifyArtist(artistId, artistNameHint = '') {
         baseArtist?.external_urls?.spotify ||
         enriched?.external_urls?.spotify ||
         fallbackCatalogItem?.external_urls?.spotify ||
+        curatedMatch?.spotifyUrl ||
         (finalId && !String(finalId).startsWith('dz_')
           ? `https://open.spotify.com/artist/${finalId}`
           : `https://open.spotify.com/search/${encodeURIComponent(resolvedName)}`)
