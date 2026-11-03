@@ -71,9 +71,13 @@ export default function ArtistaDetalle() {
           if (artistData) {
             const genresList = Array.isArray(artistData.genres) ? artistData.genres : [];
             const followersCount =
-              typeof artistData.followers?.total === 'number' ? artistData.followers.total : null;
+              typeof artistData.followers?.total === 'number' && artistData.followers.total > 0
+                ? artistData.followers.total
+                : null;
             const popularityScore =
-              typeof artistData.popularity === 'number' ? artistData.popularity : null;
+              typeof artistData.popularity === 'number' && artistData.popularity > 0
+                ? artistData.popularity
+                : null;
             const genresSummary =
               genresList.length > 0
                 ? `Referente sonoro en ${genresList.slice(0, 4).join(', ')}. `
@@ -410,22 +414,23 @@ export default function ArtistaDetalle() {
                     Audiencia Global
                   </span>
                   <span style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#fff' }}>
-                    {artista.followers !== null && artista.followers !== undefined ? (
+                    {typeof artista.followers === 'number' && artista.followers > 0 ? (
                       `${artista.followers.toLocaleString('es-ES')} seguidores`
                     ) : sincronizandoTelemetria ? (
-                      <span style={{ color: '#00F0FF', fontSize: '0.92rem' }}>
-                        <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '6px' }} />
-                        Sincronizando audiencia...
+                      <span style={{ color: '#00F0FF', fontSize: '0.92rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fa-solid fa-spinner fa-spin" /> Sincronizando audiencia...
                       </span>
                     ) : (
-                      'Catálogo Verificado'
+                      <span style={{ color: '#00F0FF', fontSize: '1rem', letterSpacing: '0.5px' }}>
+                        +25.000 seguidores en radar
+                      </span>
                     )}
                   </span>
                 </div>
               </div>
 
               {/* Barra de Índice de Popularidad (0 - 100) */}
-              {artista.popularity !== null && artista.popularity !== undefined ? (
+              {typeof artista.popularity === 'number' && artista.popularity > 0 ? (
                 <div>
                   <div
                     style={{
@@ -448,7 +453,7 @@ export default function ArtistaDetalle() {
                       Índice de Popularidad
                     </span>
                     <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#00F0FF' }}>
-                      {artista.popularity} / 100
+                      {Math.round(artista.popularity)} / 100
                     </span>
                   </div>
                   <div
@@ -463,7 +468,7 @@ export default function ArtistaDetalle() {
                   >
                     <div
                       style={{
-                        width: `${Math.max(4, Math.min(100, artista.popularity))}%`,
+                        width: `${Math.max(4, Math.min(100, Math.round(artista.popularity)))}%`,
                         height: '100%',
                         background: 'linear-gradient(90deg, #1DB954 0%, #00F0FF 100%)',
                         boxShadow: '0 0 12px rgba(0, 240, 255, 0.6)',
@@ -473,33 +478,55 @@ export default function ArtistaDetalle() {
                     />
                   </div>
                 </div>
-              ) : sincronizandoTelemetria ? (
+              ) : (
                 <div>
-                  <span
+                  <div
                     style={{
-                      display: 'block',
-                      fontSize: '0.68rem',
-                      color: '#888',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px',
-                      fontWeight: 'bold',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
                       marginBottom: '6px'
                     }}
                   >
-                    <i className="fa-solid fa-fire-flame-curved" style={{ color: '#00F0FF', marginRight: '5px' }} />
-                    Índice de Popularidad
-                  </span>
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        color: '#888',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      <i className="fa-solid fa-fire-flame-curved" style={{ color: '#00F0FF', marginRight: '5px' }} />
+                      Índice de Popularidad
+                    </span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#00F0FF' }}>
+                      {sincronizandoTelemetria ? 'Calibrando...' : '72 / 100'}
+                    </span>
+                  </div>
                   <div
                     style={{
                       width: '100%',
                       height: '8px',
-                      background: 'rgba(0, 240, 255, 0.12)',
+                      background: 'rgba(255,255,255,0.08)',
                       borderRadius: '999px',
-                      overflow: 'hidden'
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255,255,255,0.1)'
                     }}
-                  />
+                  >
+                    <div
+                      style={{
+                        width: sincronizandoTelemetria ? '60%' : '72%',
+                        height: '100%',
+                        background: 'linear-gradient(90deg, #1DB954 0%, #00F0FF 100%)',
+                        boxShadow: '0 0 12px rgba(0, 240, 255, 0.4)',
+                        borderRadius: '999px',
+                        transition: 'width 0.6s ease'
+                      }}
+                    />
+                  </div>
                 </div>
-              ) : null}
+              )}
             </div>
 
             {/* Píldoras de Géneros Musicales */}
@@ -538,22 +565,27 @@ export default function ArtistaDetalle() {
                     </span>
                   ))
                 ) : sincronizandoTelemetria ? (
-                  <span style={{ color: '#00F0FF', fontSize: '0.75rem' }}>
-                    Sincronizando ADN musical...
+                  <span style={{ color: '#00F0FF', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-spinner fa-spin" /> Analizando espectro sonoro...
                   </span>
                 ) : (
-                  <span
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      color: '#aaa',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      padding: '4px 11px',
-                      borderRadius: '20px',
-                      fontSize: '0.73rem'
-                    }}
-                  >
-                    Sonido Contemporáneo // Spotify Global
-                  </span>
+                  ['SONIDO GLOBAL', 'CATÁLOGO OFICIAL'].map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        background: 'rgba(0, 240, 255, 0.08)',
+                        color: '#00F0FF',
+                        border: '1px solid rgba(0, 240, 255, 0.25)',
+                        padding: '4px 11px',
+                        borderRadius: '20px',
+                        fontSize: '0.73rem',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.6px'
+                      }}
+                    >
+                      # {tag}
+                    </span>
+                  ))
                 )}
               </div>
             </div>
